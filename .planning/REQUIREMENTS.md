@@ -143,21 +143,86 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Empty until roadmap creation populates the phase mapping.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01..15 | TBD (Phase 1) | Pending |
-| INTRO-01..12 | TBD (Phase 2) | Pending |
-| STATE-01..24 | TBD (Phase 3) | Pending |
-| MODX-01..16 | TBD (Phase 4) | Pending |
-| DOCS-01..05 | TBD (Phase 5) | Pending |
+| CORE-01 | Phase 1 — Core Hardening | Pending |
+| CORE-02 | Phase 1 — Core Hardening | Pending |
+| CORE-03 | Phase 1 — Core Hardening | Pending |
+| CORE-04 | Phase 1 — Core Hardening | Pending |
+| CORE-05 | Phase 1 — Core Hardening | Pending |
+| CORE-06 | Phase 1 — Core Hardening | Pending |
+| CORE-07 | Phase 1 — Core Hardening | Pending |
+| CORE-08 | Phase 1 — Core Hardening | Pending |
+| CORE-09 | Phase 1 — Core Hardening | Pending |
+| CORE-10 | Phase 1 — Core Hardening | Pending |
+| CORE-11 | Phase 1 — Core Hardening | Pending |
+| CORE-12 | Phase 1 — Core Hardening | Pending |
+| CORE-13 | Phase 1 — Core Hardening | Pending |
+| CORE-14 | Phase 1 — Core Hardening | Pending |
+| CORE-15 | Phase 1 — Core Hardening | Pending |
+| INTRO-01 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-02 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-03 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-04 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-05 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-06 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-07 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-08 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-09 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-10 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-11 | Phase 2 — Introspection & Type Generation | Pending |
+| INTRO-12 | Phase 2 — Introspection & Type Generation | Pending |
+| STATE-01 | Phase 3 — State Manager | Pending |
+| STATE-02 | Phase 3 — State Manager | Pending |
+| STATE-03 | Phase 3 — State Manager | Pending |
+| STATE-04 | Phase 3 — State Manager | Pending |
+| STATE-05 | Phase 3 — State Manager | Pending |
+| STATE-06 | Phase 3 — State Manager | Pending |
+| STATE-07 | Phase 3 — State Manager | Pending |
+| STATE-08 | Phase 3 — State Manager | Pending |
+| STATE-09 | Phase 3 — State Manager | Pending |
+| STATE-10 | Phase 3 — State Manager | Pending |
+| STATE-11 | Phase 3 — State Manager | Pending |
+| STATE-12 | Phase 3 — State Manager | Pending |
+| STATE-13 | Phase 3 — State Manager | Pending |
+| STATE-14 | Phase 3 — State Manager | Pending |
+| STATE-15 | Phase 3 — State Manager | Pending |
+| STATE-16 | Phase 3 — State Manager | Pending |
+| STATE-17 | Phase 3 — State Manager | Pending |
+| STATE-18 | Phase 3 — State Manager | Pending |
+| STATE-19 | Phase 3 — State Manager | Pending |
+| STATE-20 | Phase 3 — State Manager | Pending |
+| STATE-21 | Phase 3 — State Manager | Pending |
+| STATE-22 | Phase 3 — State Manager | Pending |
+| STATE-23 | Phase 3 — State Manager | Pending |
+| STATE-24 | Phase 3 — State Manager | Pending |
+| MODX-01 | Phase 4 — moduleX | Pending |
+| MODX-02 | Phase 4 — moduleX | Pending |
+| MODX-03 | Phase 4 — moduleX | Pending |
+| MODX-04 | Phase 4 — moduleX | Pending |
+| MODX-05 | Phase 4 — moduleX | Pending |
+| MODX-06 | Phase 4 — moduleX | Pending |
+| MODX-07 | Phase 4 — moduleX | Pending |
+| MODX-08 | Phase 4 — moduleX | Pending |
+| MODX-09 | Phase 4 — moduleX | Pending |
+| MODX-10 | Phase 4 — moduleX | Pending |
+| MODX-11 | Phase 4 — moduleX | Pending |
+| MODX-12 | Phase 4 — moduleX | Pending |
+| MODX-13 | Phase 4 — moduleX | Pending |
+| MODX-14 | Phase 4 — moduleX | Pending |
+| MODX-15 | Phase 4 — moduleX | Pending |
+| MODX-16 | Phase 4 — moduleX | Pending |
+| DOCS-01 | Phase 5 — Docs & Examples | Pending |
+| DOCS-02 | Phase 5 — Docs & Examples | Pending |
+| DOCS-03 | Phase 5 — Docs & Examples | Pending |
+| DOCS-04 | Phase 5 — Docs & Examples | Pending |
+| DOCS-05 | Phase 5 — Docs & Examples | Pending |
 
-**Coverage (pre-roadmap):**
+**Coverage:**
 - v1 requirements: **72 total** (15 CORE + 12 INTRO + 24 STATE + 16 MODX + 5 DOCS)
-- Mapped to phases: 0
-- Unmapped: 72 ⚠️ (roadmap will resolve)
+- Mapped to phases: **72** ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-10*
-*Last updated: 2026-04-10 after initial definition*
+*Last updated: 2026-04-10 — traceability populated after roadmap creation*
