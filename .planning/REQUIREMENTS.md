@@ -97,43 +97,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLIENT-01 | TBD | Pending |
-| CLIENT-02 | TBD | Pending |
-| CLIENT-03 | TBD | Pending |
-| CLIENT-04 | TBD | Pending |
-| CLIENT-05 | TBD | Pending |
-| CLIENT-06 | TBD | Pending |
-| CLIENT-07 | TBD | Pending |
-| CLIENT-08 | TBD | Pending |
-| CLIENT-09 | TBD | Pending |
-| CLIENT-10 | TBD | Pending |
-| INTRO-01 | TBD | Pending |
-| INTRO-02 | TBD | Pending |
-| INTRO-03 | TBD | Pending |
-| INTRO-04 | TBD | Pending |
-| INTRO-05 | TBD | Pending |
-| INTRO-06 | TBD | Pending |
-| INTRO-07 | TBD | Pending |
-| TESTC-01 | TBD | Pending |
-| TESTC-02 | TBD | Pending |
-| TESTC-03 | TBD | Pending |
-| TESTC-04 | TBD | Pending |
-| TESTC-05 | TBD | Pending |
-| TESTC-06 | TBD | Pending |
-| TESTC-07 | TBD | Pending |
-| TESTC-08 | TBD | Pending |
-| FIXES-01 | TBD | Pending |
-| FIXES-02 | TBD | Pending |
-| FIXES-03 | TBD | Pending |
-| RELEASE-01 | TBD | Pending |
-| RELEASE-02 | TBD | Pending |
-| RELEASE-03 | TBD | Pending |
+| CLIENT-01 | Phase 1 | Pending |
+| CLIENT-02 | Phase 1 | Pending |
+| CLIENT-03 | Phase 1 | Pending |
+| CLIENT-04 | Phase 1 | Pending |
+| CLIENT-05 | Phase 1 | Pending |
+| CLIENT-06 | Phase 1 | Pending |
+| CLIENT-07 | Phase 1 | Pending |
+| CLIENT-08 | Phase 1 | Pending |
+| CLIENT-09 | Phase 1 | Pending |
+| CLIENT-10 | Phase 1 | Pending |
+| INTRO-01 | Phase 2 | Pending |
+| INTRO-02 | Phase 2 | Pending |
+| INTRO-03 | Phase 2 | Pending |
+| INTRO-04 | Phase 2 | Pending |
+| INTRO-05 | Phase 2 | Pending |
+| INTRO-06 | Phase 2 | Pending |
+| INTRO-07 | Phase 2 | Pending |
+| TESTC-01 | Phase 3 | Pending |
+| TESTC-02 | Phase 3 | Pending |
+| TESTC-03 | Phase 3 | Pending |
+| TESTC-04 | Phase 3 | Pending |
+| TESTC-05 | Phase 3 | Pending |
+| TESTC-06 | Phase 3 | Pending |
+| TESTC-07 | Phase 3 | Pending |
+| TESTC-08 | Phase 3 | Pending |
+| FIXES-01 | Phase 1 | Pending |
+| FIXES-02 | Phase 1 | Pending |
+| FIXES-03 | Phase 1 | Pending |
+| RELEASE-01 | Phase 4 | Pending |
+| RELEASE-02 | Phase 4 | Pending |
+| RELEASE-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 31 total
-- Mapped to phases: 0 ⚠️ (filled by roadmap)
-- Unmapped: 31 ⚠️
+- Mapped to phases: 31 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-18 after initial definition*
+*Last updated: 2026-05-18 after roadmap creation*
