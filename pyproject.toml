@@ -1,0 +1,80 @@
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6",
+    "respx>=0.22",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "mkdocs-material>=9",
+    "mkdocstrings[python]>=0.27",
+    "python-semantic-release>=9",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+godoo = { workspace = true }
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "TCH", "RUF"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+testpaths = ["packages", "tests"]
+markers = [
+    "integration: marks tests requiring Docker/Odoo (deselect with '-m not integration')",
+]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source_pkgs = ["godoo", "godoo_testcontainers", "godoo_introspection"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+[tool.semantic_release]
+version_toml = [
+    "packages/godoo/pyproject.toml:project.version",
+    "packages/godoo-testcontainers/pyproject.toml:project.version",
+    "packages/godoo-introspection/pyproject.toml:project.version",
+]
+allow_zero_version = true
+major_on_zero = false
+branch = "main"
+commit_parser = "conventional"
+build_command = """
+    uv build --package godoo && \
+    uv build --package godoo-testcontainers && \
+    uv build --package godoo-introspection
+"""
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.remote]
+type = "github"
+token = { env = "GH_TOKEN" }

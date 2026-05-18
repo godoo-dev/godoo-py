@@ -1,0 +1,26 @@
+[project]
+name = "godoo-introspection"
+version = "0.1.1"
+description = "Schema discovery and codegen for Odoo models"
+license = "LGPL-3.0-or-later"
+requires-python = ">=3.14"
+dependencies = ["godoo>=0.1.0"]
+authors = [{ name = "Marc Fargas", email = "marc@marcfargas.com" }]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Framework :: AsyncIO",
+    "Framework :: Odoo",
+    "Intended Audience :: Developers",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Documentation = "https://www.marcfargas.com/~odoopy/"
+Repository = "https://github.com/marcfargas/godoo"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/godoo_introspection"]

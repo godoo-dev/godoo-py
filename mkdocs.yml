@@ -1,0 +1,65 @@
+site_name: godoo
+site_url: https://www.marcfargas.com/~godoo/
+site_description: Async Python SDK for Odoo JSON-RPC
+repo_url: https://github.com/marcfargas/godoo
+repo_name: marcfargas/godoo
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Services:
+    - Mail: services/mail.md
+    - Modules: services/modules.md
+    - Attendance: services/attendance.md
+    - Timesheets: services/timesheets.md
+    - Accounting: services/accounting.md
+    - URLs: services/urls.md
+    - Properties: services/properties.md
+    - CDC: services/cdc.md
+  - Guides:
+    - Multi-Environment: guides/multi-environment.md
+    - Safety Guards: guides/safety-guards.md
+    - Error Handling: guides/error-handling.md
+  - API Reference:
+    - Client: api/client.md
+    - Errors: api/errors.md
+    - Safety: api/safety.md
+    - Services: api/services.md
+  - Testing: testing.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [packages/godoo/src, packages/godoo-testcontainers/src]
+          options:
+            show_source: false
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+exclude_docs: |
+  superpowers/
