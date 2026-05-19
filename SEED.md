@@ -108,9 +108,6 @@ The existing client is functional but missing the following:
 - `execute_kw()` — raw call passthrough for non-standard RPC methods
 - `read_binary()` — fetches binary field data (e.g. attachments)
 - Bulk `create` — pass a list of value dicts to create multiple records in one RPC call
-- `OAuthProxyClient` — bearer-token transport variant for Odoo instances fronted by an
-  OAuth proxy (passes a `Bearer` token in the `Authorization` header instead of a
-  session cookie)
 - `py.typed` PEP 561 marker — signals to type checkers that the package ships inline
   type information; required for downstream `mypy`/`pyright` integration
 
@@ -185,8 +182,7 @@ defines *how* to report; this section defines *what* `godoo-py` reports. Full me
 
 - All named client parity gaps closed: async context manager, `iter_search_read()`,
   `with_context()`, `fields_get()`, `ref()`, `execute_kw()`, `read_binary()`, bulk
-  `create`, `OAuthProxyClient`, and `py.typed` — each bullet from §2 verified and
-  shipped
+  `create`, and `py.typed` — each bullet from §2 verified and shipped
 - `godoo-introspection` built from scratch and functional: all six components
   implemented (`Introspector`, `IntrospectionCache`, `CodeGenerator`, type mapper, CLI,
   and `Literal` selection fields)
@@ -246,3 +242,5 @@ whether `hypothesis` or property-based testing is used are satellite decisions.
 *Seed authored 2026-05-18 as part of the godoo-hq Phase 3 — Adoption Briefs initiative.
 This document is the spine's charter to `godoo-py`; the satellite's own
 `/gsd:new-project` pass owns all implementation decisions not explicitly stated here.*
+
+*Amended 2026-05-19 by the satellite owner: `OAuthProxyClient` struck from §2 and §4 — dropped from v1 scope (never implemented; not a real parity gap).*

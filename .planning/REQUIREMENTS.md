@@ -20,7 +20,6 @@ godoo async Odoo client — parity with `@godoo/client`.
 - [ ] **CLIENT-06**: User can issue a raw, non-standard RPC method via `execute_kw()`
 - [ ] **CLIENT-07**: User can fetch binary field data (e.g. attachments) via `read_binary()`
 - [ ] **CLIENT-08**: User can create multiple records in one RPC call by passing a list of value dicts to `create`
-- [ ] **CLIENT-09**: User can connect to an OAuth-proxied Odoo instance via `OAuthProxyClient` (bearer-token transport)
 - [ ] **CLIENT-10**: The `godoo` package ships a `py.typed` PEP 561 marker
 
 ### Introspection
@@ -105,7 +104,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLIENT-06 | Phase 1 | Pending |
 | CLIENT-07 | Phase 1 | Pending |
 | CLIENT-08 | Phase 1 | Pending |
-| CLIENT-09 | Phase 1 | Pending |
 | CLIENT-10 | Phase 1 | Pending |
 | INTRO-01 | Phase 2 | Pending |
 | INTRO-02 | Phase 2 | Pending |
@@ -130,10 +128,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RELEASE-03 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 31 total
-- Mapped to phases: 31 (100%)
+- v1 requirements: 30 total
+- Mapped to phases: 30 (100%)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-18 after roadmap creation*
+*Last updated: 2026-05-19 — CLIENT-09 (OAuthProxyClient) dropped from v1 scope*

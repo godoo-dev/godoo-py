@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: The godoo client package reaches full parity with @godoo/client and all adjacent transport/service bugs are fixed
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
-**Requirements**: CLIENT-01, CLIENT-02, CLIENT-03, CLIENT-04, CLIENT-05, CLIENT-06, CLIENT-07, CLIENT-08, CLIENT-09, CLIENT-10, FIXES-01, FIXES-02, FIXES-03
+**Requirements**: CLIENT-01, CLIENT-02, CLIENT-03, CLIENT-04, CLIENT-05, CLIENT-06, CLIENT-07, CLIENT-08, CLIENT-10, FIXES-01, FIXES-02, FIXES-03
 **Success Criteria** (what must be TRUE):
   1. User can use `async with OdooClient(...)` for automatic session open/close without calling `authenticate()` and `aclose()` manually
   2. User can stream arbitrarily large Odoo result sets via `async for record in client.iter_search_read(...)` without loading all records into memory

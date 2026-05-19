@@ -41,7 +41,6 @@ that godoo-ts already ships.
 - [ ] `execute_kw()` raw RPC passthrough
 - [ ] `read_binary()` binary-field fetch
 - [ ] Bulk `create` (list of value dicts)
-- [ ] `OAuthProxyClient` bearer-token transport variant
 - [ ] `py.typed` PEP 561 marker
 
 **godoo-introspection — build from scratch:**
@@ -110,6 +109,7 @@ that godoo-ts already ships.
 | v1 scope = SEED §2 gaps + bugs in the same files | Adjacent bugs are cheap to fix in the same blast radius | — Pending |
 | Keep the Python 3.14 floor for v1 | SEED is silent; hold charter scope, revisit post-v1 | — Pending |
 | Include a release phase (repo create + PyPI publish) | SEED §5 deliverable; the satellite owns publish | — Pending |
+| Drop CLIENT-09 (`OAuthProxyClient`) from v1; amend SEED §2/§4 | Owner decision — never implemented, not a real parity gap | ✓ Good |
 
 ## Evolution
 
@@ -129,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-18 after initialization*
+*Last updated: 2026-05-19 — CLIENT-09 (OAuthProxyClient) dropped from v1 scope*
