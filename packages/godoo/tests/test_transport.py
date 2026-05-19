@@ -11,6 +11,7 @@ from godoo.errors import (
     OdooMissingError,
     OdooNetworkError,
     OdooRpcError,
+    OdooTimeoutError,
     OdooValidationError,
 )
 from godoo.rpc import JsonRpcTransport, OdooSessionInfo
@@ -187,3 +188,24 @@ async def test_logout_clears_session(transport):
         assert transport.session is not None
         transport.logout()
         assert transport.session is None
+
+
+@pytest.mark.asyncio
+async def test_read_timeout_raises_odoo_timeout_error(transport):
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=httpx.ReadTimeout("timed out"))
+        with pytest.raises(OdooTimeoutError):
+            await transport.call_rpc("common.authenticate", {})
+
+
+@pytest.mark.asyncio
+async def test_connect_timeout_raises_odoo_timeout_error(transport):
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=httpx.ConnectTimeout("timed out"))
+        with pytest.raises(OdooTimeoutError):
+            await transport.call_rpc("common.authenticate", {})
+
+
+def test_transport_timeout_param_accepted():
+    t = JsonRpcTransport(BASE_URL, DB, timeout=30.0)
+    assert t._client.timeout.read == 30.0
