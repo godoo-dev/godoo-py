@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Client Parity | 4/4 | Complete   | 2026-05-19 |
+| 1. Client Parity | 5/5 | Complete   | 2026-05-19 |
 | 2. Introspection | 0/? | Not started | - |
 | 3. Testcontainers Parity | 0/? | Not started | - |
 | 4. Release | 0/? | Not started | - |
