@@ -561,8 +561,9 @@ async def test_aexit_preserves_body_exception_when_aclose_fails():
         raise RuntimeError("transport shutdown failure")
 
     # Patch authenticate so __aenter__ succeeds without real HTTP, and aclose to fail
-    with patch.object(c, "authenticate", new_callable=AsyncMock) as mock_auth, patch.object(
-        c, "aclose", side_effect=RuntimeError("transport shutdown failure")
+    with (
+        patch.object(c, "authenticate", new_callable=AsyncMock) as mock_auth,
+        patch.object(c, "aclose", side_effect=RuntimeError("transport shutdown failure")),
     ):
         mock_auth.return_value = None
 
