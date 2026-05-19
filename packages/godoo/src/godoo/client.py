@@ -18,6 +18,8 @@ from godoo.safety import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from godoo.services.accounting.service import AccountingService
     from godoo.services.attendance.service import AttendanceService
     from godoo.services.cdc.service import CdcService
@@ -202,6 +204,57 @@ class OdooClient:
     def with_context(self, **kwargs: Any) -> _OdooContextScope:
         """Return a sync context manager that merges kwargs into every RPC call in its block."""
         return _OdooContextScope(kwargs)
+
+    async def iter_search_read(
+        self,
+        model: str,
+        domain: list[Any] | None = None,
+        *,
+        fields: list[str] | None = None,
+        batch_size: int = 500,
+        limit: int | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Async generator yielding records via keyset (id-cursor) pagination.
+
+        Always orders by id ascending; does not accept a custom order parameter.
+        Injects 'id' into fetched fields internally for cursor advancement;
+        strips it from yielded records if the caller did not request it.
+        """
+        base_domain = list(domain or [])
+        last_id = 0
+        yielded = 0
+        # Always fetch id for cursor advancement; strip later if not requested by caller
+        caller_requested_id = fields is None or "id" in fields
+        fetch_fields = fields if fields is None else list(dict.fromkeys(["id", *list(fields)]))
+
+        while True:
+            page_domain = [*base_domain, ("id", ">", last_id)]
+            remaining = (limit - yielded) if limit is not None else None
+            fetch_size = min(batch_size, remaining) if remaining is not None else batch_size
+
+            batch = await self.search_read(
+                model,
+                page_domain,
+                fields=fetch_fields,
+                limit=fetch_size,
+                order="id",
+                **kwargs,
+            )
+            if not batch:
+                break
+
+            for record in batch:
+                if not caller_requested_id:
+                    record = {k: v for k, v in record.items() if k != "id"}
+                yield record
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+
+            if len(batch) < fetch_size:
+                break
+            last_id = batch[-1]["id"]
 
     async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int:
         return cast("int", await self.call(model, "create", [values], kwargs))
