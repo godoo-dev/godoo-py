@@ -42,8 +42,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Transport fixes: configurable timeout + OdooTimeoutError (FIXES-02, FIXES-03)
-- [ ] 01-02-PLAN.md — CDC get_feed fix + py.typed marker (FIXES-01, CLIENT-10)
+- [x] 01-01-PLAN.md — Transport fixes: configurable timeout + OdooTimeoutError (FIXES-02, FIXES-03)
+- [x] 01-02-PLAN.md — CDC get_feed fix + py.typed marker (FIXES-01, CLIENT-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Client Parity | 0/4 | Not started | - |
+| 1. Client Parity | 2/4 | In Progress|  |
 | 2. Introspection | 0/? | Not started | - |
 | 3. Testcontainers Parity | 0/? | Not started | - |
 | 4. Release | 0/? | Not started | - |
