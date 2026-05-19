@@ -34,7 +34,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can call `client.with_context(lang="fr_FR").search_read(...)` and the context dict is threaded through to the next RPC call only
   4. User can call `fields_get()`, `ref()`, `execute_kw()`, `read_binary()`, and bulk `create` with a list of dicts — all return correct typed results
   5. `CdcService.get_feed` works correctly from the class API, transport timeouts raise `OdooTimeoutError` (not `OdooNetworkError`), and a configurable request timeout is respected
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 01-01-PLAN.md — Transport fixes: configurable timeout + OdooTimeoutError (FIXES-02, FIXES-03)
+- [ ] 01-02-PLAN.md — CDC get_feed fix + py.typed marker (FIXES-01, CLIENT-10)
+- [ ] 01-03-PLAN.md — Client lifecycle + with_context + iter_search_read (CLIENT-01, CLIENT-02, CLIENT-03)
+- [ ] 01-04-PLAN.md — Client CRUD methods: fields_get, ref, execute_kw, read_binary, bulk create (CLIENT-04/05/06/07/08)
 
 ### Phase 2: Introspection
 **Goal**: The godoo-introspection package is fully implemented, tested, and ships a working CLI matching @godoo/introspection parity
@@ -80,7 +85,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Client Parity | 0/? | Not started | - |
+| 1. Client Parity | 0/4 | Not started | - |
 | 2. Introspection | 0/? | Not started | - |
 | 3. Testcontainers Parity | 0/? | Not started | - |
 | 4. Release | 0/? | Not started | - |
