@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -30,6 +31,30 @@ logger = logging.getLogger("godoo.client")
 
 # Sentinel — means "no safety context was explicitly set by the caller"
 _UNDEFINED = object()
+
+# Module-level ContextVar for ambient RPC context — task-safe (each asyncio task gets its own copy).
+# Default is None (not {} — mutable defaults are disallowed by B039); callers treat None as empty.
+_ambient_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "_ambient_context", default=None
+)
+
+
+class _OdooContextScope:
+    """Sync context manager that threads ambient RPC context for the duration of a with block."""
+
+    def __init__(self, layer: dict[str, Any]) -> None:
+        self._layer = layer
+        self._token: contextvars.Token[dict[str, Any] | None] | None = None
+
+    def __enter__(self) -> _OdooContextScope:
+        current = _ambient_context.get() or {}
+        self._token = _ambient_context.set({**current, **self._layer})
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        if self._token is not None:
+            _ambient_context.reset(self._token)
+            self._token = None
 
 
 @dataclass
@@ -118,6 +143,12 @@ class OdooClient:
             description=f"{model}.{method}",
         )
         await self._guard(op)
+        # Merge ambient context (from with_context block) with explicit per-call context (explicit wins)
+        ambient = _ambient_context.get() or {}
+        if ambient or "context" in kwargs:
+            merged_ctx = {**ambient, **kwargs.get("context", {})}
+            if merged_ctx:
+                kwargs = {**kwargs, "context": merged_ctx}
         return await self._transport.call(model, method, args, kwargs)
 
     # ------------------------------------------------------------------
@@ -167,6 +198,10 @@ class OdooClient:
 
     async def search_count(self, model: str, domain: list[Any] | None = None, **kwargs: Any) -> int:
         return cast("int", await self.call(model, "search_count", [domain or []], kwargs))
+
+    def with_context(self, **kwargs: Any) -> _OdooContextScope:
+        """Return a sync context manager that merges kwargs into every RPC call in its block."""
+        return _OdooContextScope(kwargs)
 
     async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int:
         return cast("int", await self.call(model, "create", [values], kwargs))
@@ -248,3 +283,17 @@ class OdooClient:
 
     async def aclose(self) -> None:
         await self._transport.aclose()
+
+    async def __aenter__(self) -> OdooClient:
+        """Authenticate and return self — enables `async with OdooClient(config) as client:`."""
+        await self.authenticate()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Close the transport on exit — always called regardless of exception."""
+        await self.aclose()
