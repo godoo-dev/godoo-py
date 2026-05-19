@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 
 import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig, _ambient_context
-from godoo.errors import OdooAuthError, OdooSafetyError
+from godoo.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
 from godoo.safety import OperationInfo, SafetyContext
 
 BASE_URL = "http://odoo.test"
@@ -385,3 +386,139 @@ async def test_iter_search_read_empty_yields_nothing(auth_client):
         records = [r async for r in auth_client.iter_search_read("res.partner")]
 
     assert records == []
+
+
+# ------------------------------------------------------------------
+# CLIENT-04: fields_get
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_fields_get_returns_dict(auth_client):
+    """fields_get returns the raw dict from Odoo keyed by field name."""
+    respx.post(f"{BASE_URL}/jsonrpc").mock(
+        return_value=httpx.Response(200, json=_jsonrpc_result({"name": {"type": "char"}}))
+    )
+    result = await auth_client.fields_get("res.partner")
+    assert result == {"name": {"type": "char"}}
+
+
+@pytest.mark.asyncio
+async def test_fields_get_with_attributes(auth_client):
+    """fields_get passes the attributes kwarg into the RPC payload."""
+    captured: dict = {}
+
+    def capture_and_respond(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        # params.args = [db, uid, password, model, method, args, kwargs]
+        captured.update(body["params"]["args"][6])
+        return httpx.Response(200, json=_jsonrpc_result({"name": {"type": "char"}}))
+
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=capture_and_respond)
+        await auth_client.fields_get("res.partner", attributes=["string", "type"])
+
+    assert captured.get("attributes") == ["string", "type"]
+
+
+# ------------------------------------------------------------------
+# CLIENT-05: ref
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ref_resolves_xml_id(auth_client):
+    """ref returns the integer res_id for a valid xml_id."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([{"res_id": 1}])))
+        result = await auth_client.ref("base.main_company")
+    assert result == 1
+
+
+@pytest.mark.asyncio
+async def test_ref_raises_missing_error(auth_client):
+    """ref raises OdooMissingError when the xml_id is not found."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([])))
+        with pytest.raises(OdooMissingError):
+            await auth_client.ref("unknown.xml_id")
+
+
+@pytest.mark.asyncio
+async def test_ref_raises_validation_error_malformed(auth_client):
+    """ref raises OdooValidationError locally for xml_id with no dot — no RPC call made."""
+    with pytest.raises(OdooValidationError):
+        await auth_client.ref("nomodule")
+
+
+# ------------------------------------------------------------------
+# CLIENT-06: execute_kw
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_execute_kw_routes_through_call(auth_client):
+    """execute_kw delegates to call() and returns the raw result."""
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result({"key": "val"})))
+    result = await auth_client.execute_kw("account.move", "action_post", [], {})
+    assert result == {"key": "val"}
+
+
+# ------------------------------------------------------------------
+# CLIENT-07: read_binary
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_read_binary_returns_bytes(auth_client):
+    """read_binary decodes base64 field and returns plain bytes."""
+    encoded = base64.b64encode(b"hello").decode()
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(
+            return_value=httpx.Response(200, json=_jsonrpc_result([{"datas": encoded}]))
+        )
+        result = await auth_client.read_binary("ir.attachment", 42, "datas")
+    assert result == b"hello"
+
+
+@pytest.mark.asyncio
+async def test_read_binary_returns_empty_bytes_for_false_field(auth_client):
+    """read_binary returns b'' when Odoo returns False for an unset binary field."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(
+            return_value=httpx.Response(200, json=_jsonrpc_result([{"datas": False}]))
+        )
+        result = await auth_client.read_binary("ir.attachment", 42, "datas")
+    assert result == b""
+
+
+@pytest.mark.asyncio
+async def test_read_binary_raises_missing_error(auth_client):
+    """read_binary raises OdooMissingError when record is not found (empty list)."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([])))
+        with pytest.raises(OdooMissingError):
+            await auth_client.read_binary("ir.attachment", 99, "datas")
+
+
+# ------------------------------------------------------------------
+# CLIENT-08: bulk create with @overload
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_bulk_create_returns_list_of_ints(auth_client):
+    """create with a list of dicts returns list[int]."""
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([42, 43])))
+    result = await auth_client.create("res.partner", [{"name": "A"}, {"name": "B"}])
+    assert result == [42, 43]
+
+
+@pytest.mark.asyncio
+async def test_bulk_create_empty_list_raises(auth_client):
+    """create with empty list raises OdooValidationError locally, no RPC call."""
+    with pytest.raises(OdooValidationError, match="empty"):
+        await auth_client.create("res.partner", [])
