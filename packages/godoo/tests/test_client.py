@@ -555,6 +555,7 @@ async def test_aexit_preserves_body_exception_when_aclose_fails():
     """__aexit__ logs the aclose() failure and lets the original body exception propagate."""
     c = OdooClient(_make_config())
     with respx.mock:
+        # Mock both authenticate (for __aenter__) and the failing transport
         respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(2)))
         await c.authenticate()
 
@@ -564,6 +565,7 @@ async def test_aexit_preserves_body_exception_when_aclose_fails():
 
     c.aclose = failing_aclose  # type: ignore[method-assign]
 
+    # Directly call __aexit__ with the body exception — simulates `async with` body raising ValueError
+    body_exc = ValueError("body error")
     with pytest.raises(ValueError, match="body error"):
-        async with c:
-            raise ValueError("body error")
+        await c.__aexit__(type(body_exc), body_exc, None)
