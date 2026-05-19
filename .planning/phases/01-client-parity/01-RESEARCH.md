@@ -677,17 +677,13 @@ async def test_iter_search_read_two_pages(auth_client):
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`iter_search_read` — does Odoo always return `id` when fields are specified?**
-   - What we know: Standard Odoo ORM `search_read` returns only the requested fields when `fields=` is given. The `id` field is special in some Odoo versions and may be returned regardless.
-   - What's unclear: Whether Odoo 16/17/18 always returns `id` even in `search_read` with explicit `fields`, making the inject-and-strip pattern unnecessary.
-   - Recommendation: Implement the guard (always inject `id`; strip if not in caller's list). This is safe regardless of Odoo version behavior.
+   RESOLVED: Implement the inject-and-strip guard regardless of Odoo version (defensive; iter_search_read injects `id` into the requested fields and strips it from yielded records if the caller did not request it). This is correct and harmless regardless of whether Odoo returns `id` automatically.
 
 2. **`read_binary` — should empty binary (`False`) return `b""` or raise `OdooMissingError`?**
-   - What we know: Odoo returns `False` for unset binary fields. D-18 only specifies returning decoded `bytes`.
-   - What's unclear: Whether the caller expects `b""` for an empty field or an exception.
-   - Recommendation: Return `b""` for `False`/`None` fields. Raising `OdooMissingError` would be surprising for a valid record with an unset attachment. Document this behavior.
+   RESOLVED: Return `b""` for `False`/`None` field values (documented behavior, not an error). Raising `OdooMissingError` would be surprising for a valid record with an unset attachment field. The `if raw is False or raw is None: return b""` guard is implemented in all plans as the canonical behavior.
 
 ---
 
