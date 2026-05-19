@@ -12,15 +12,15 @@ SEED.md §2 (parity gaps), the codebase map's adjacent bugs, and SEED §5 (relea
 
 godoo async Odoo client — parity with `@godoo/client`.
 
-- [ ] **CLIENT-01**: User can use `OdooClient` as an async context manager (`async with`) that opens and closes the session/transport
-- [ ] **CLIENT-02**: User can stream large result sets via `iter_search_read()`, an auto-paginated async generator
-- [ ] **CLIENT-03**: User can thread a context dict into the next RPC call via `with_context(lang=...)`
-- [ ] **CLIENT-04**: User can retrieve a model's field metadata via `fields_get()`
-- [ ] **CLIENT-05**: User can resolve an XML ID to a numeric record id via `ref(xml_id)`
-- [ ] **CLIENT-06**: User can issue a raw, non-standard RPC method via `execute_kw()`
-- [ ] **CLIENT-07**: User can fetch binary field data (e.g. attachments) via `read_binary()`
-- [ ] **CLIENT-08**: User can create multiple records in one RPC call by passing a list of value dicts to `create`
-- [ ] **CLIENT-10**: The `godoo` package ships a `py.typed` PEP 561 marker
+- [x] **CLIENT-01**: User can use `OdooClient` as an async context manager (`async with`) that opens and closes the session/transport
+- [x] **CLIENT-02**: User can stream large result sets via `iter_search_read()`, an auto-paginated async generator
+- [x] **CLIENT-03**: User can thread a context dict into the next RPC call via `with_context(lang=...)`
+- [x] **CLIENT-04**: User can retrieve a model's field metadata via `fields_get()`
+- [x] **CLIENT-05**: User can resolve an XML ID to a numeric record id via `ref(xml_id)`
+- [x] **CLIENT-06**: User can issue a raw, non-standard RPC method via `execute_kw()`
+- [x] **CLIENT-07**: User can fetch binary field data (e.g. attachments) via `read_binary()`
+- [x] **CLIENT-08**: User can create multiple records in one RPC call by passing a list of value dicts to `create`
+- [x] **CLIENT-10**: The `godoo` package ships a `py.typed` PEP 561 marker
 
 ### Introspection
 
@@ -51,9 +51,9 @@ godoo-testcontainers — parity with `@godoo/testcontainers`.
 
 Bugs in files the parity work already touches (in-scope per the v1 scope decision).
 
-- [ ] **FIXES-01**: `CdcService.get_feed` returns a directly usable async iterator from the class API (no un-awaited generator)
-- [ ] **FIXES-02**: Transport timeouts raise `OdooTimeoutError` instead of being collapsed into `OdooNetworkError`
-- [ ] **FIXES-03**: User can configure a request timeout on the transport / client config
+- [x] **FIXES-01**: `CdcService.get_feed` returns a directly usable async iterator from the class API (no un-awaited generator)
+- [x] **FIXES-02**: Transport timeouts raise `OdooTimeoutError` instead of being collapsed into `OdooNetworkError`
+- [x] **FIXES-03**: User can configure a request timeout on the transport / client config
 
 ### Release
 
@@ -96,15 +96,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLIENT-01 | Phase 1 | Pending |
-| CLIENT-02 | Phase 1 | Pending |
-| CLIENT-03 | Phase 1 | Pending |
-| CLIENT-04 | Phase 1 | Pending |
-| CLIENT-05 | Phase 1 | Pending |
-| CLIENT-06 | Phase 1 | Pending |
-| CLIENT-07 | Phase 1 | Pending |
-| CLIENT-08 | Phase 1 | Pending |
-| CLIENT-10 | Phase 1 | Pending |
+| CLIENT-01 | Phase 1 | Complete |
+| CLIENT-02 | Phase 1 | Complete |
+| CLIENT-03 | Phase 1 | Complete |
+| CLIENT-04 | Phase 1 | Complete |
+| CLIENT-05 | Phase 1 | Complete |
+| CLIENT-06 | Phase 1 | Complete |
+| CLIENT-07 | Phase 1 | Complete |
+| CLIENT-08 | Phase 1 | Complete |
+| CLIENT-10 | Phase 1 | Complete |
 | INTRO-01 | Phase 2 | Pending |
 | INTRO-02 | Phase 2 | Pending |
 | INTRO-03 | Phase 2 | Pending |
@@ -120,9 +120,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TESTC-06 | Phase 3 | Pending |
 | TESTC-07 | Phase 3 | Pending |
 | TESTC-08 | Phase 3 | Pending |
-| FIXES-01 | Phase 1 | Pending |
-| FIXES-02 | Phase 1 | Pending |
-| FIXES-03 | Phase 1 | Pending |
+| FIXES-01 | Phase 1 | Complete |
+| FIXES-02 | Phase 1 | Complete |
+| FIXES-03 | Phase 1 | Complete |
 | RELEASE-01 | Phase 4 | Pending |
 | RELEASE-02 | Phase 4 | Pending |
 | RELEASE-03 | Phase 4 | Pending |
