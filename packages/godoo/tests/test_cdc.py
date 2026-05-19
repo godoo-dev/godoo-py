@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import httpx
 import pytest
 import respx
@@ -138,3 +140,23 @@ async def test_check_model_no_tracking(auth_client):
     result = await svc.check("res.config.settings")
     assert result.has_tracking is False
     assert result.tracked_fields == []
+
+
+# ---------------------------------------------------------------------------
+# get_feed — class API returns async iterator directly (FIXES-01)
+# ---------------------------------------------------------------------------
+
+
+def test_get_feed_is_not_coroutine_function():
+    """CdcService.get_feed must be a plain def, not async def.
+
+    If it were async def, calling client.cdc.get_feed(opts) would return
+    a coroutine that must be awaited, not an async iterator that can be used
+    directly in `async for`. The fix is to remove the `async` keyword from
+    the method definition in service.py.
+    """
+    assert not inspect.iscoroutinefunction(CdcService.get_feed), (
+        "CdcService.get_feed is declared `async def` but must be a plain `def` "
+        "so it returns the async generator from functions.get_feed directly. "
+        "Remove the `async` keyword from the method signature in service.py."
+    )
