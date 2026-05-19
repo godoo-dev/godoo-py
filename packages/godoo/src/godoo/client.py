@@ -39,6 +39,7 @@ class OdooClientConfig:
     username: str
     password: str
     safety: SafetyContext | None = field(default=None)
+    timeout: float | None = field(default=None)
 
 
 class OdooClient:
@@ -46,7 +47,7 @@ class OdooClient:
 
     def __init__(self, config: OdooClientConfig) -> None:
         self._config = config
-        self._transport = JsonRpcTransport(config.url, config.database)
+        self._transport = JsonRpcTransport(config.url, config.database, timeout=config.timeout)
         # _safety_context:
         #   _UNDEFINED  → use config.safety (which may be None)
         #   None        → explicitly disabled

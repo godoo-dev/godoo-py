@@ -14,6 +14,7 @@ from godoo.errors import (
     OdooMissingError,
     OdooNetworkError,
     OdooRpcError,
+    OdooTimeoutError,
     OdooValidationError,
 )
 from godoo.rpc.types import OdooSessionInfo
@@ -24,10 +25,10 @@ logger = logging.getLogger("godoo.client.rpc")
 class JsonRpcTransport:
     """Async JSON-RPC transport backed by httpx.AsyncClient."""
 
-    def __init__(self, base_url: str, db: str) -> None:
+    def __init__(self, base_url: str, db: str, timeout: float | None = None) -> None:
         self._base_url = base_url.rstrip("/")
         self._db = db
-        self._client = httpx.AsyncClient()
+        self._client = httpx.AsyncClient(timeout=timeout)
         self._session: OdooSessionInfo | None = None
         self._password: str | None = None
 
@@ -83,6 +84,8 @@ class JsonRpcTransport:
                 f"HTTP error {exc.response.status_code}: {exc.response.text}",
                 cause=exc,
             ) from exc
+        except httpx.TimeoutException as exc:
+            raise OdooTimeoutError(f"Request timed out: {exc}", cause=exc) from exc
         except httpx.RequestError as exc:
             raise OdooNetworkError(f"Connection error: {exc}", cause=exc) from exc
 
