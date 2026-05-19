@@ -436,5 +436,15 @@ class OdooClient:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        """Close the transport on exit — always called regardless of exception."""
-        await self.aclose()
+        """Close the transport on exit — always called regardless of exception.
+
+        If aclose() raises and the block body also raised, the body exception is preserved:
+        the close failure is logged as a warning rather than propagated over the original error.
+        If aclose() raises on a clean exit (no body exception), it is re-raised as normal.
+        """
+        try:
+            await self.aclose()
+        except Exception:
+            if exc_val is None:
+                raise
+            logger.warning("aclose() failed during __aexit__; preserving the original exception", exc_info=True)

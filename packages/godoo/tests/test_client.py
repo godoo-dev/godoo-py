@@ -553,19 +553,21 @@ async def test_read_binary_malformed_base64(auth_client):
 @pytest.mark.asyncio
 async def test_aexit_preserves_body_exception_when_aclose_fails():
     """__aexit__ logs the aclose() failure and lets the original body exception propagate."""
-    c = OdooClient(_make_config())
-    with respx.mock:
-        # Mock both authenticate (for __aenter__) and the failing transport
-        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(2)))
-        await c.authenticate()
+    from unittest.mock import AsyncMock, patch
 
-    # Patch aclose to raise a RuntimeError during teardown
+    c = OdooClient(_make_config())
+
     async def failing_aclose() -> None:
         raise RuntimeError("transport shutdown failure")
 
-    c.aclose = failing_aclose  # type: ignore[method-assign]
+    # Patch authenticate so __aenter__ succeeds without real HTTP, and aclose to fail
+    with patch.object(c, "authenticate", new_callable=AsyncMock) as mock_auth, patch.object(
+        c, "aclose", side_effect=RuntimeError("transport shutdown failure")
+    ):
+        mock_auth.return_value = None
 
-    # Directly call __aexit__ with the body exception — simulates `async with` body raising ValueError
-    body_exc = ValueError("body error")
-    with pytest.raises(ValueError, match="body error"):
-        await c.__aexit__(type(body_exc), body_exc, None)
+        # async with body raises ValueError; aclose() also raises RuntimeError.
+        # The body ValueError must be what propagates out (RuntimeError is logged, not raised).
+        with pytest.raises(ValueError, match="body error"):
+            async with c:
+                raise ValueError("body error")
