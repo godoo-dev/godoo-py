@@ -431,9 +431,7 @@ async def test_fields_get_with_attributes(auth_client):
 async def test_ref_resolves_xml_id(auth_client):
     """ref returns the integer res_id for a valid xml_id."""
     with respx.mock:
-        respx.post(f"{BASE_URL}/jsonrpc").mock(
-            return_value=httpx.Response(200, json=_jsonrpc_result([{"res_id": 1}]))
-        )
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([{"res_id": 1}])))
         result = await auth_client.ref("base.main_company")
     assert result == 1
 
@@ -463,9 +461,7 @@ async def test_ref_raises_validation_error_malformed(auth_client):
 @pytest.mark.asyncio
 async def test_execute_kw_routes_through_call(auth_client):
     """execute_kw delegates to call() and returns the raw result."""
-    respx.post(f"{BASE_URL}/jsonrpc").mock(
-        return_value=httpx.Response(200, json=_jsonrpc_result({"key": "val"}))
-    )
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result({"key": "val"})))
     result = await auth_client.execute_kw("account.move", "action_post", [], {})
     assert result == {"key": "val"}
 

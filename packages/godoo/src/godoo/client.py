@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import contextvars
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, overload
 
-from godoo.errors import OdooAuthError, OdooSafetyError
+from godoo.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
 from godoo.rpc import JsonRpcTransport, OdooSessionInfo
 from godoo.safety import (
     OperationInfo,
@@ -256,7 +257,81 @@ class OdooClient:
                 break
             last_id = batch[-1]["id"]
 
-    async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int:
+    async def fields_get(self, model: str, attributes: list[str] | None = None) -> dict[str, Any]:
+        """Return field metadata dict keyed by field name (Odoo's native fields_get shape)."""
+        kw: dict[str, Any] = {}
+        if attributes is not None:
+            kw["attributes"] = attributes
+        return cast("dict[str, Any]", await self.call(model, "fields_get", [], kw))
+
+    async def ref(self, xml_id: str) -> int:
+        """Resolve an external ID (module.name) to a numeric record id.
+
+        Raises OdooValidationError for malformed xml_id.
+        Raises OdooMissingError when the xml_id is not found.
+        """
+        parts = xml_id.split(".", 1)
+        if len(parts) != 2:
+            raise OdooValidationError(f"Invalid XML ID format (expected 'module.name'): {xml_id!r}")
+        module, name = parts
+        records = await self.search_read(
+            "ir.model.data",
+            [("module", "=", module), ("name", "=", name)],
+            fields=["res_id"],
+        )
+        if not records:
+            raise OdooMissingError(f"XML ID not found: {xml_id!r}")
+        return cast("int", records[0]["res_id"])
+
+    async def execute_kw(
+        self,
+        model: str,
+        method: str,
+        args: list[Any],
+        kwargs: dict[str, Any] | None = None,
+    ) -> Any:
+        """Raw RPC passthrough for non-standard Odoo methods.
+
+        Routes through call() so the safety guard still classifies and gates it.
+        """
+        return await self.call(model, method, args, kwargs or {})
+
+    async def read_binary(self, model: str, record_id: int, field: str) -> bytes:
+        """Fetch a binary field and return decoded bytes.
+
+        Returns b"" when the field is unset (Odoo returns False for empty binary fields).
+        Raises OdooMissingError when the record does not exist.
+        """
+        records = await self.read(model, record_id, fields=[field])
+        if not records:
+            raise OdooMissingError(f"Record {model}:{record_id} not found")
+        raw = records[0].get(field)
+        if raw is False or raw is None:
+            return b""
+        return base64.b64decode(raw)
+
+    @overload
+    async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int: ...
+
+    @overload
+    async def create(self, model: str, values: list[dict[str, Any]], **kwargs: Any) -> list[int]: ...
+
+    async def create(
+        self,
+        model: str,
+        values: dict[str, Any] | list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> int | list[int]:
+        """Create one or more records.
+
+        Pass a single dict to create one record (returns int id).
+        Pass a list of dicts to create multiple records (returns list[int] ids).
+        Raises OdooValidationError locally if the list is empty (no RPC call made).
+        """
+        if isinstance(values, list):
+            if not values:
+                raise OdooValidationError("Cannot create with empty list of values")
+            return cast("list[int]", await self.call(model, "create", [values], kwargs))
         return cast("int", await self.call(model, "create", [values], kwargs))
 
     async def write(
