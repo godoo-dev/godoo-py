@@ -28,20 +28,24 @@ that godoo-ts already ships.
 - ✓ `godoo-testcontainers` — Docker Postgres+Odoo container with a seed resolver — existing
 - ✓ uv workspace, hatchling builds, ruff + strict mypy, pytest-asyncio test setup — existing
 
+<!-- Validated in Phase 1: Client Parity (2026-05-19). -->
+
+- ✓ Async context manager (`async with OdooClient(...)`) — Phase 1
+- ✓ `iter_search_read()` auto-paginated async generator — Phase 1
+- ✓ `with_context(lang=...)` call modifier — Phase 1
+- ✓ `fields_get()` field-metadata introspection — Phase 1
+- ✓ `ref(xml_id)` XML-ID lookup — Phase 1
+- ✓ `execute_kw()` raw RPC passthrough — Phase 1
+- ✓ `read_binary()` binary-field fetch — Phase 1
+- ✓ Bulk `create` (list of value dicts) — Phase 1
+- ✓ `py.typed` PEP 561 marker — Phase 1
+- ✓ Fix `CdcService.get_feed` signature bug — Phase 1
+- ✓ Raise `OdooTimeoutError` on timeout — Phase 1
+- ✓ Request-timeout configuration on the transport — Phase 1
+
 ### Active
 
-<!-- v1 milestone: close parity gaps, build introspection, fill out testcontainers, fix adjacent bugs, release. -->
-
-**godoo client — parity gaps:**
-- [ ] Async context manager (`async with OdooClient(...)`)
-- [ ] `iter_search_read()` auto-paginated async generator
-- [ ] `with_context(lang=...)` call modifier
-- [ ] `fields_get()` field-metadata introspection
-- [ ] `ref(xml_id)` XML-ID lookup
-- [ ] `execute_kw()` raw RPC passthrough
-- [ ] `read_binary()` binary-field fetch
-- [ ] Bulk `create` (list of value dicts)
-- [ ] `py.typed` PEP 561 marker
+<!-- v1 milestone: build introspection, fill out testcontainers, release. -->
 
 **godoo-introspection — build from scratch:**
 - [ ] `Introspector` — queries `ir.model` / `ir.model.fields` for live schema
@@ -57,11 +61,6 @@ that godoo-ts already ships.
 - [ ] Four resource provisioners (partners, projects, users, properties)
 - [ ] `TestHarness` high-level fixture composing the provisioners
 - [ ] `py.typed` markers (introspection + testcontainers)
-
-**Adjacent bugs (files the parity work already touches):**
-- [ ] Fix `CdcService.get_feed` signature bug (class API returns un-awaited generator)
-- [ ] Raise `OdooTimeoutError` on timeout (currently never raised)
-- [ ] Request-timeout configuration on the transport
 
 **Release:**
 - [ ] Create `godoo-dev/godoo-py` repo, rename `godoo`→`godoo-client` on PyPI, publish
@@ -129,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-19 — CLIENT-09 (OAuthProxyClient) dropped from v1 scope*
+*Last updated: 2026-05-19 — Phase 1 (Client Parity) complete; 12 requirements validated*
