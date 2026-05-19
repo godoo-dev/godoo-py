@@ -52,7 +52,12 @@ _ambient_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.Co
 
 
 class _OdooContextScope:
-    """Sync context manager that threads ambient RPC context for the duration of a with block."""
+    """Sync context manager that sets ambient RPC context for the current task within its block.
+
+    Uses a ``contextvars.ContextVar``, so each asyncio task gets its own copy of the context.
+    Tasks spawned via ``asyncio.create_task()`` inside the block inherit the ambient context at
+    creation time and retain that copy independently — it is not reset when the block exits.
+    """
 
     def __init__(self, layer: dict[str, Any]) -> None:
         self._layer = layer
@@ -211,7 +216,14 @@ class OdooClient:
         return cast("int", await self.call(model, "search_count", [domain or []], kwargs))
 
     def with_context(self, **kwargs: Any) -> _OdooContextScope:
-        """Return a sync context manager that merges kwargs into every RPC call in its block."""
+        """Return a sync context manager that merges kwargs into every RPC call made in the
+        current task within its block.
+
+        The ambient context is stored in a ``contextvars.ContextVar``.  Tasks created via
+        ``asyncio.create_task()`` inside the block inherit a copy of the ambient context per
+        standard ``ContextVar`` semantics — that copy is independent of the block and is not
+        reset when the block exits.
+        """
         return _OdooContextScope(kwargs)
 
     async def iter_search_read(
