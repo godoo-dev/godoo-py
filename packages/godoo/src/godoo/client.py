@@ -308,7 +308,12 @@ class OdooClient:
         raw = records[0].get(field)
         if raw is False or raw is None:
             return b""
-        return base64.b64decode(raw)
+        try:
+            return base64.b64decode(raw)
+        except (ValueError, TypeError) as exc:
+            raise OdooValidationError(
+                f"Binary field {field!r} on {model}:{record_id} is not valid base64"
+            ) from exc
 
     @overload
     async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int: ...

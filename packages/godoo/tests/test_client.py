@@ -522,3 +522,48 @@ async def test_bulk_create_empty_list_raises(auth_client):
     """create with empty list raises OdooValidationError locally, no RPC call."""
     with pytest.raises(OdooValidationError, match="empty"):
         await auth_client.create("res.partner", [])
+
+
+# ------------------------------------------------------------------
+# CR-02 regression: read_binary malformed base64
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_read_binary_malformed_base64(auth_client):
+    """read_binary raises OdooValidationError (not binascii.Error) for a malformed base64 field."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(
+            return_value=httpx.Response(200, json=_jsonrpc_result([{"datas": "@@@notbase64@@@"}]))
+        )
+        with pytest.raises(OdooValidationError) as exc_info:
+            await auth_client.read_binary("ir.attachment", 42, "datas")
+    # Must be an OdooError subclass — not a bare ValueError/binascii.Error
+    from godoo.errors import OdooError
+
+    assert isinstance(exc_info.value, OdooError)
+    assert "datas" in str(exc_info.value)
+
+
+# ------------------------------------------------------------------
+# WR-04 regression: __aexit__ preserves body exception when aclose() fails
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_aexit_preserves_body_exception_when_aclose_fails():
+    """__aexit__ logs the aclose() failure and lets the original body exception propagate."""
+    c = OdooClient(_make_config())
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(2)))
+        await c.authenticate()
+
+    # Patch aclose to raise a RuntimeError during teardown
+    async def failing_aclose() -> None:
+        raise RuntimeError("transport shutdown failure")
+
+    c.aclose = failing_aclose  # type: ignore[method-assign]
+
+    with pytest.raises(ValueError, match="body error"):
+        async with c:
+            raise ValueError("body error")
