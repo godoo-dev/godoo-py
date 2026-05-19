@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -17,6 +18,8 @@ from godoo.safety import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from godoo.services.accounting.service import AccountingService
     from godoo.services.attendance.service import AttendanceService
     from godoo.services.cdc.service import CdcService
@@ -30,6 +33,30 @@ logger = logging.getLogger("godoo.client")
 
 # Sentinel — means "no safety context was explicitly set by the caller"
 _UNDEFINED = object()
+
+# Module-level ContextVar for ambient RPC context — task-safe (each asyncio task gets its own copy).
+# Default is None (not {} — mutable defaults are disallowed by B039); callers treat None as empty.
+_ambient_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "_ambient_context", default=None
+)
+
+
+class _OdooContextScope:
+    """Sync context manager that threads ambient RPC context for the duration of a with block."""
+
+    def __init__(self, layer: dict[str, Any]) -> None:
+        self._layer = layer
+        self._token: contextvars.Token[dict[str, Any] | None] | None = None
+
+    def __enter__(self) -> _OdooContextScope:
+        current = _ambient_context.get() or {}
+        self._token = _ambient_context.set({**current, **self._layer})
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        if self._token is not None:
+            _ambient_context.reset(self._token)
+            self._token = None
 
 
 @dataclass
@@ -118,6 +145,12 @@ class OdooClient:
             description=f"{model}.{method}",
         )
         await self._guard(op)
+        # Merge ambient context (from with_context block) with explicit per-call context (explicit wins)
+        ambient = _ambient_context.get() or {}
+        if ambient or "context" in kwargs:
+            merged_ctx = {**ambient, **kwargs.get("context", {})}
+            if merged_ctx:
+                kwargs = {**kwargs, "context": merged_ctx}
         return await self._transport.call(model, method, args, kwargs)
 
     # ------------------------------------------------------------------
@@ -167,6 +200,61 @@ class OdooClient:
 
     async def search_count(self, model: str, domain: list[Any] | None = None, **kwargs: Any) -> int:
         return cast("int", await self.call(model, "search_count", [domain or []], kwargs))
+
+    def with_context(self, **kwargs: Any) -> _OdooContextScope:
+        """Return a sync context manager that merges kwargs into every RPC call in its block."""
+        return _OdooContextScope(kwargs)
+
+    async def iter_search_read(
+        self,
+        model: str,
+        domain: list[Any] | None = None,
+        *,
+        fields: list[str] | None = None,
+        batch_size: int = 500,
+        limit: int | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Async generator yielding records via keyset (id-cursor) pagination.
+
+        Always orders by id ascending; does not accept a custom order parameter.
+        Injects 'id' into fetched fields internally for cursor advancement;
+        strips it from yielded records if the caller did not request it.
+        """
+        base_domain = list(domain or [])
+        last_id = 0
+        yielded = 0
+        # Always fetch id for cursor advancement; strip later if not requested by caller
+        caller_requested_id = fields is None or "id" in fields
+        fetch_fields = fields if fields is None else list(dict.fromkeys(["id", *list(fields)]))
+
+        while True:
+            page_domain = [*base_domain, ("id", ">", last_id)]
+            remaining = (limit - yielded) if limit is not None else None
+            fetch_size = min(batch_size, remaining) if remaining is not None else batch_size
+
+            batch = await self.search_read(
+                model,
+                page_domain,
+                fields=fetch_fields,
+                limit=fetch_size,
+                order="id",
+                **kwargs,
+            )
+            if not batch:
+                break
+
+            for record in batch:
+                if not caller_requested_id:
+                    record = {k: v for k, v in record.items() if k != "id"}
+                yield record
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+
+            if len(batch) < fetch_size:
+                break
+            last_id = batch[-1]["id"]
 
     async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int:
         return cast("int", await self.call(model, "create", [values], kwargs))
@@ -248,3 +336,17 @@ class OdooClient:
 
     async def aclose(self) -> None:
         await self._transport.aclose()
+
+    async def __aenter__(self) -> OdooClient:
+        """Authenticate and return self — enables `async with OdooClient(config) as client:`."""
+        await self.authenticate()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Close the transport on exit — always called regardless of exception."""
+        await self.aclose()

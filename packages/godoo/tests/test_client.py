@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+
 import httpx
 import pytest
 import respx
-from godoo.client import OdooClient, OdooClientConfig
+from godoo.client import OdooClient, OdooClientConfig, _ambient_context
 from godoo.errors import OdooAuthError, OdooSafetyError
 from godoo.safety import OperationInfo, SafetyContext
 
@@ -173,3 +176,212 @@ async def test_set_safety_context_overrides():
 
     with pytest.raises(OdooSafetyError):
         await client.write("res.partner", [1], {"name": "Blocked"})
+
+
+# ------------------------------------------------------------------
+# CLIENT-01: async context manager
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_context_manager_authenticates_and_closes():
+    """__aenter__ authenticates + returns self; __aexit__ calls aclose()."""
+    c = OdooClient(_make_config())
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(2)))
+    async with c as opened:
+        assert opened is c
+        assert c.is_authenticated()
+    # aclose() was called — transport is closed; no assertion needed (mock consumed auth response)
+
+
+# ------------------------------------------------------------------
+# CLIENT-03: with_context ambient RPC context
+# ------------------------------------------------------------------
+
+
+def _extract_rpc_kwargs(request: httpx.Request) -> dict:
+    """Extract the kwargs dict from an execute_kw JSON-RPC request body.
+
+    The transport builds: params.args = [db, uid, password, model, method, args, kwargs]
+    So kwargs is at params.args[6].
+    """
+    body = json.loads(request.content)
+    args_list = body["params"]["args"]
+    # args[6] is the kwargs dict passed to execute_kw
+    return args_list[6] if len(args_list) > 6 else {}  # type: ignore[no-any-return]
+
+
+@pytest.mark.asyncio
+async def test_with_context_applies_to_rpc_call(auth_client):
+    """with_context injects lang into the RPC kwargs.context."""
+    captured: dict = {}
+
+    def capture_and_respond(request: httpx.Request) -> httpx.Response:
+        captured.update(_extract_rpc_kwargs(request))
+        return httpx.Response(200, json=_jsonrpc_result([]))
+
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=capture_and_respond)
+        with auth_client.with_context(lang="fr_FR"):
+            await auth_client.search_read("res.partner")
+
+    assert captured.get("context", {}).get("lang") == "fr_FR"
+
+
+@pytest.mark.asyncio
+async def test_with_context_nested_merges(auth_client):
+    """Nested with_context blocks merge; each pops only its own layer on exit."""
+    captured_inner: dict = {}
+    captured_outer_after: dict = {}
+    call_count = 0
+
+    def capture_and_respond(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        rpc_kwargs = _extract_rpc_kwargs(request)
+        ctx = rpc_kwargs.get("context", {})
+        if call_count == 0:
+            captured_inner.update(ctx)
+        else:
+            captured_outer_after.update(ctx)
+        call_count += 1
+        return httpx.Response(200, json=_jsonrpc_result([]))
+
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=capture_and_respond)
+        with auth_client.with_context(lang="fr"):
+            with auth_client.with_context(key="v2"):
+                # First call: inside inner block — should have both lang and key
+                await auth_client.search_read("res.partner")
+            # Second call: inside outer block only — should have only lang
+            await auth_client.search_read("res.partner")
+
+    assert captured_inner.get("lang") == "fr"
+    assert captured_inner.get("key") == "v2"
+    assert captured_outer_after.get("lang") == "fr"
+    assert "key" not in captured_outer_after
+
+
+@pytest.mark.asyncio
+async def test_with_context_explicit_kwarg_wins(auth_client):
+    """Explicit per-call context= kwarg overrides ambient context for that call."""
+    captured: dict = {}
+
+    def capture_and_respond(request: httpx.Request) -> httpx.Response:
+        captured.update(_extract_rpc_kwargs(request).get("context", {}))
+        return httpx.Response(200, json=_jsonrpc_result([]))
+
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=capture_and_respond)
+        with auth_client.with_context(lang="fr_FR"):
+            # Explicit context={"lang": "de_DE"} must win
+            await auth_client.search_read("res.partner", context={"lang": "de_DE"})
+
+    assert captured.get("lang") == "de_DE"
+
+
+@pytest.mark.asyncio
+async def test_with_context_outside_block_no_ambient(auth_client):
+    """Outside any with_context block, no ambient context is injected."""
+    captured_kwargs: dict = {}
+
+    def capture_and_respond(request: httpx.Request) -> httpx.Response:
+        captured_kwargs.update(_extract_rpc_kwargs(request))
+        return httpx.Response(200, json=_jsonrpc_result([]))
+
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=capture_and_respond)
+        await auth_client.search_read("res.partner")
+
+    # No context key in kwargs, or context is empty
+    assert captured_kwargs.get("context", {}) == {}
+
+
+@pytest.mark.asyncio
+async def test_with_context_concurrent_isolation(auth_client):
+    """Two concurrent asyncio tasks with different with_context do not clobber each other."""
+    results: dict[str, str] = {}
+
+    async def task_a() -> None:
+        with auth_client.with_context(lang="fr_FR"):
+            await asyncio.sleep(0)  # yield so task_b can run
+            results["a"] = (_ambient_context.get() or {}).get("lang", "")
+
+    async def task_b() -> None:
+        with auth_client.with_context(lang="de_DE"):
+            await asyncio.sleep(0)  # yield so task_a can run
+            results["b"] = (_ambient_context.get() or {}).get("lang", "")
+
+    await asyncio.gather(task_a(), task_b())
+
+    assert results["a"] == "fr_FR", f"task_a saw {results['a']!r}, expected 'fr_FR'"
+    assert results["b"] == "de_DE", f"task_b saw {results['b']!r}, expected 'de_DE'"
+
+
+# ------------------------------------------------------------------
+# CLIENT-02: iter_search_read keyset pagination
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_iter_search_read_two_pages(auth_client):
+    """Two pages: page1 has batch_size records, page2 is shorter — yields all records."""
+    page1 = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}, {"id": 3, "name": "C"}]
+    page2 = [{"id": 4, "name": "D"}]
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(
+            side_effect=[
+                httpx.Response(200, json=_jsonrpc_result(page1)),
+                httpx.Response(200, json=_jsonrpc_result(page2)),
+            ]
+        )
+        records = [r async for r in auth_client.iter_search_read("res.partner", batch_size=3)]
+
+    assert len(records) == 4
+    assert records[-1]["id"] == 4
+
+
+@pytest.mark.asyncio
+async def test_iter_search_read_limit_caps_results(auth_client):
+    """limit=2 stops iteration after 2 records even if more are available."""
+    page = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}, {"id": 3, "name": "C"}]
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(page)))
+        records = [r async for r in auth_client.iter_search_read("res.partner", batch_size=10, limit=2)]
+
+    assert len(records) == 2
+
+
+@pytest.mark.asyncio
+async def test_iter_search_read_strips_id_when_not_requested(auth_client):
+    """When caller passes fields=['name'] (no 'id'), yielded records do not contain 'id'."""
+    page = [{"id": 1, "name": "A"}, {"id": 2, "name": "B"}]
+    with respx.mock:
+        # Return only 2 records (< batch_size=500 → stop after first page)
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(page)))
+        records = [r async for r in auth_client.iter_search_read("res.partner", fields=["name"])]
+
+    assert all("id" not in r for r in records)
+    assert [r["name"] for r in records] == ["A", "B"]
+
+
+@pytest.mark.asyncio
+async def test_iter_search_read_includes_id_when_requested(auth_client):
+    """When caller passes fields=['id', 'name'], yielded records contain 'id'."""
+    page = [{"id": 1, "name": "A"}]
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(page)))
+        records = [r async for r in auth_client.iter_search_read("res.partner", fields=["id", "name"])]
+
+    assert records[0]["id"] == 1
+    assert records[0]["name"] == "A"
+
+
+@pytest.mark.asyncio
+async def test_iter_search_read_empty_yields_nothing(auth_client):
+    """Empty first batch immediately stops iteration."""
+    with respx.mock:
+        respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([])))
+        records = [r async for r in auth_client.iter_search_read("res.partner")]
+
+    assert records == []
