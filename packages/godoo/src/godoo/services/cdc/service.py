@@ -35,5 +35,5 @@ class CdcService:
     ) -> list[TrackingEvent]:
         return await get_history(self._client, model, res_id, options)
 
-    async def get_feed(self, options: GetFeedOptions) -> AsyncIterator[TrackingEvent]:
+    def get_feed(self, options: GetFeedOptions) -> AsyncIterator[TrackingEvent]:
         return get_feed(self._client, options)
