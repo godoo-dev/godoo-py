@@ -7,7 +7,7 @@ import contextvars
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, cast, overload
+from typing import TYPE_CHECKING, Any, Final, cast, overload
 
 from godoo.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
 from godoo.rpc import JsonRpcTransport, OdooSessionInfo
@@ -33,7 +33,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger("godoo.client")
 
 # Sentinel — means "no safety context was explicitly set by the caller"
-_UNDEFINED = object()
+
+
+class _UndefinedType:
+    """Sentinel type for _UNDEFINED — indicates that no safety context override was set.
+
+    When _safety_context holds this value the client falls back to the config's safety default.
+    """
+
+
+_UNDEFINED: Final = _UndefinedType()
 
 # Module-level ContextVar for ambient RPC context — task-safe (each asyncio task gets its own copy).
 # Default is None (not {} — mutable defaults are disallowed by B039); callers treat None as empty.
@@ -80,7 +89,7 @@ class OdooClient:
         #   _UNDEFINED  → use config.safety (which may be None)
         #   None        → explicitly disabled
         #   SafetyContext → explicitly set
-        self._safety_context: Any = _UNDEFINED
+        self._safety_context: SafetyContext | _UndefinedType | None = _UNDEFINED
 
     # ------------------------------------------------------------------
     # Auth
@@ -105,10 +114,9 @@ class OdooClient:
     def _effective_safety(self) -> SafetyContext | None:
         if self._safety_context is _UNDEFINED:
             return resolve_safety_context(self._config.safety, undefined=False)
-        return resolve_safety_context(
-            self._safety_context if self._safety_context is not _UNDEFINED else None,
-            undefined=False,
-        )
+        # Explicitly set by set_safety_context() — _UndefinedType branch already returned above
+        assert not isinstance(self._safety_context, _UndefinedType)
+        return resolve_safety_context(self._safety_context, undefined=False)
 
     async def _guard(self, op: OperationInfo) -> None:
         """Check safety; raise OdooSafetyError if denied."""
