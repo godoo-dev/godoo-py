@@ -18,7 +18,7 @@ release under the `godoo-dev/godoo-py` GitHub org.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Client Parity** - Close all godoo client gaps and fix in-scope transport/service bugs (completed 2026-05-19)
-- [ ] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library)
+- [x] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library) (completed 2026-05-21)
 - [ ] **Phase 3: Testcontainers Parity** - Close all godoo-testcontainers gaps (snapshot cache, addons, provisioners, harness)
 - [ ] **Phase 4: Release** - Create the GitHub repo, rename godoo→godoo-client on PyPI, publish all three packages
 
@@ -71,11 +71,11 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Schema fetch + cache: Introspector, IntrospectionCache, ModelSchema, FieldSchema, FieldMeta, py.typed, tests (INTRO-01, INTRO-02, INTRO-07)
+- [x] 02-01-PLAN.md — Schema fetch + cache: Introspector, IntrospectionCache, ModelSchema, FieldSchema, FieldMeta, py.typed, tests (INTRO-01, INTRO-02, INTRO-07)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — Type mapping + code generation: type_mapper, CodeGenerator, tests (INTRO-03, INTRO-04, INTRO-06)
+- [x] 02-02-PLAN.md — Type mapping + code generation: type_mapper, CodeGenerator, tests (INTRO-03, INTRO-04, INTRO-06)
 
 ### Phase 3: Testcontainers Parity
 
@@ -115,6 +115,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
-| 2. Introspection | 0/2 | Not started | - |
+| 2. Introspection | 2/2 | Complete   | 2026-05-21 |
 | 3. Testcontainers Parity | 0/? | Not started | - |
 | 4. Release | 0/? | Not started | - |
