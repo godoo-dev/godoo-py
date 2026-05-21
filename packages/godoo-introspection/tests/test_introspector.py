@@ -7,7 +7,6 @@ import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
 from godoo.errors import OdooMissingError, OdooValidationError
-
 from godoo_introspection.introspector import IntrospectionCache, Introspector
 from godoo_introspection.markers import FieldMeta
 from godoo_introspection.types import FieldSchema, ModelSchema
@@ -96,10 +95,12 @@ async def test_get_schema_missing_model_raises(auth_client):
     """Mock ir.model returning empty list — raises OdooMissingError."""
     # RPC 1: ir.model — empty result
     # RPC 2: ir.model.fields — empty result
-    responses = iter([
-        _rpc_response([]),   # ir.model
-        _rpc_response([]),   # ir.model.fields
-    ])
+    responses = iter(
+        [
+            _rpc_response([]),  # ir.model
+            _rpc_response([]),  # ir.model.fields
+        ]
+    )
     respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     with pytest.raises(OdooMissingError):
@@ -115,17 +116,33 @@ async def test_get_schema_returns_model_schema(auth_client):
     # RPC 2: ir.model.fields
     field_records = [
         {
-            "id": 10, "name": "name", "ttype": "char", "field_description": "Name",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [],
+            "id": 10,
+            "name": "name",
+            "ttype": "char",
+            "field_description": "Name",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [],
         }
     ]
-    responses = iter([
-        _rpc_response(model_records),  # ir.model
-        _rpc_response(field_records),  # ir.model.fields
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),  # ir.model
+            _rpc_response(field_records),  # ir.model.fields
+        ]
+    )
     respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     schema = await introspector.get_schema("res.partner")
@@ -142,17 +159,33 @@ async def test_get_schema_caches_result(auth_client):
     model_records = [{"id": 1, "name": "Partner", "model": "res.partner", "transient": False}]
     field_records = [
         {
-            "id": 10, "name": "name", "ttype": "char", "field_description": "Name",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [],
+            "id": 10,
+            "name": "name",
+            "ttype": "char",
+            "field_description": "Name",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [],
         }
     ]
-    responses = iter([
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+        ]
+    )
     route = respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     schema1 = await introspector.get_schema("res.partner")
@@ -169,20 +202,36 @@ async def test_get_schema_bypass_cache(auth_client):
     model_records = [{"id": 1, "name": "Partner", "model": "res.partner", "transient": False}]
     field_records = [
         {
-            "id": 10, "name": "name", "ttype": "char", "field_description": "Name",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [],
+            "id": 10,
+            "name": "name",
+            "ttype": "char",
+            "field_description": "Name",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [],
         }
     ]
     # First call: 2 RPCs; second call (bypass): 2 more RPCs = 4 total
-    responses = iter([
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+        ]
+    )
     route = respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     await introspector.get_schema("res.partner")
@@ -200,26 +249,56 @@ async def test_get_schemas_batch_one_rpc(auth_client):
     ]
     field_records = [
         {
-            "id": 10, "name": "name", "ttype": "char", "field_description": "Name",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [],
+            "id": 10,
+            "name": "name",
+            "ttype": "char",
+            "field_description": "Name",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [],
             "model": "res.partner",
         },
         {
-            "id": 20, "name": "login", "ttype": "char", "field_description": "Login",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [],
+            "id": 20,
+            "name": "login",
+            "ttype": "char",
+            "field_description": "Login",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [],
             "model": "res.users",
         },
     ]
-    responses = iter([
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+        ]
+    )
     route = respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     result = await introspector.get_schemas(["res.partner", "res.users"])
@@ -236,11 +315,25 @@ async def test_selection_fields_populated(auth_client):
     model_records = [{"id": 1, "name": "Move", "model": "account.move", "transient": False}]
     field_records = [
         {
-            "id": 11, "name": "state", "ttype": "selection", "field_description": "Status",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [100, 101],
+            "id": 11,
+            "name": "state",
+            "ttype": "selection",
+            "field_description": "Status",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [100, 101],
             "model": "account.move",
         }
     ]
@@ -248,11 +341,13 @@ async def test_selection_fields_populated(auth_client):
         {"field_id": [11, "state"], "value": "draft", "name": "Draft", "sequence": 1},
         {"field_id": [11, "state"], "value": "posted", "name": "Posted", "sequence": 2},
     ]
-    responses = iter([
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-        _rpc_response(sel_records),  # ir.model.fields.selection
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+            _rpc_response(sel_records),  # ir.model.fields.selection
+        ]
+    )
     respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     schema = await introspector.get_schema("account.move")
@@ -266,19 +361,35 @@ async def test_dynamic_selection_empty_list(auth_client):
     model_records = [{"id": 1, "name": "Move", "model": "account.move", "transient": False}]
     field_records = [
         {
-            "id": 11, "name": "state", "ttype": "selection", "field_description": "Status",
-            "relation": False, "relation_field": False, "required": False, "readonly": False,
-            "store": True, "index": False, "copied": True, "translate": False,
-            "help": "", "compute": False, "depends": "", "modules": "",
-            "on_delete": False, "size": False, "selection_ids": [100],
+            "id": 11,
+            "name": "state",
+            "ttype": "selection",
+            "field_description": "Status",
+            "relation": False,
+            "relation_field": False,
+            "required": False,
+            "readonly": False,
+            "store": True,
+            "index": False,
+            "copied": True,
+            "translate": False,
+            "help": "",
+            "compute": False,
+            "depends": "",
+            "modules": "",
+            "on_delete": False,
+            "size": False,
+            "selection_ids": [100],
             "model": "account.move",
         }
     ]
-    responses = iter([
-        _rpc_response(model_records),
-        _rpc_response(field_records),
-        _rpc_response([]),  # ir.model.fields.selection — empty (dynamic selection)
-    ])
+    responses = iter(
+        [
+            _rpc_response(model_records),
+            _rpc_response(field_records),
+            _rpc_response([]),  # ir.model.fields.selection — empty (dynamic selection)
+        ]
+    )
     respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=responses)
     introspector = Introspector(auth_client)
     schema = await introspector.get_schema("account.move")

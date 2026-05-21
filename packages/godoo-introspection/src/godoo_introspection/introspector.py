@@ -55,7 +55,7 @@ def _parse_digits(value: Any) -> tuple[int, int] | None:
     if isinstance(value, (list, tuple)) and len(value) == 2:
         try:
             return (int(value[0]), int(value[1]))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     if isinstance(value, str):
         cleaned = value.strip("() ")
@@ -63,7 +63,7 @@ def _parse_digits(value: Any) -> tuple[int, int] | None:
         if len(parts) == 2:
             try:
                 return (int(parts[0]), int(parts[1]))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return None
     return None
 
@@ -81,7 +81,7 @@ def _coerce_int_or_none(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -151,9 +151,7 @@ class Introspector:
             raise OdooMissingError(f"Model not found in ir.model: {name!r}")
         return schemas[name]
 
-    async def get_schemas(
-        self, names: list[str], *, bypass_cache: bool = False
-    ) -> dict[str, ModelSchema]:
+    async def get_schemas(self, names: list[str], *, bypass_cache: bool = False) -> dict[str, ModelSchema]:
         """Batch schema fetch. Issues one RPC for all requested models.
 
         Warms the per-instance cache for every model returned.
