@@ -30,7 +30,7 @@ godoo-introspection — built from scratch, parity with `@godoo/introspection`.
 - [ ] **INTRO-02**: Introspection results are served from an `IntrospectionCache` keyed by model name, with a live-bypass option
 - [ ] **INTRO-03**: User can generate typed Python representations from a live schema via a `CodeGenerator`
 - [ ] **INTRO-04**: A type mapper translates Odoo field types (`char`, `many2one`, `selection`, …) to Python type hints
-- [ ] **INTRO-05**: User can generate types from the command line via `godoo-introspect --url <url> --db <db> --output <dir>`
+- ~~**INTRO-05**: User can generate types from the command line via `godoo-introspect --url <url> --db <db> --output <dir>`~~ *(dropped — D-CLI-1: library is the deliverable; no CLI in v1)*
 - [ ] **INTRO-06**: Selection fields are emitted as `Literal[...]` type hints, preserving the closed-set constraint
 - [ ] **INTRO-07**: The `godoo-introspection` package ships a `py.typed` PEP 561 marker
 
@@ -109,7 +109,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INTRO-02 | Phase 2 | Pending |
 | INTRO-03 | Phase 2 | Pending |
 | INTRO-04 | Phase 2 | Pending |
-| INTRO-05 | Phase 2 | Pending |
+| ~~INTRO-05~~ | ~~Phase 2~~ | ~~Dropped (D-CLI-1)~~ |
 | INTRO-06 | Phase 2 | Pending |
 | INTRO-07 | Phase 2 | Pending |
 | TESTC-01 | Phase 3 | Pending |
@@ -128,8 +128,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RELEASE-03 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 30 (100%)
+- v1 requirements: 29 total (INTRO-05 dropped per D-CLI-1)
+- Mapped to phases: 29 (100%)
 - Unmapped: 0
 
 ---

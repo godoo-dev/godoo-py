@@ -58,13 +58,13 @@ Plans:
 **Goal**: The godoo-introspection package is fully implemented, tested, and ships a working library matching @godoo/introspection parity
 **Mode:** mvp
 **Depends on**: Phase 1
-**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04, INTRO-06, INTRO-07
+**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04, INTRO-06, INTRO-07 *(INTRO-05 dropped — D-CLI-1)*
 **Success Criteria** (what must be TRUE):
 
   1. User can instantiate `Introspector(client)` and call `.get_schema("res.partner")` to receive a live field map from a running Odoo instance
   2. Subsequent calls to `Introspector.get_schema` for the same model return cached results; passing `bypass_cache=True` forces a fresh fetch
   3. User can call `CodeGenerator(introspector).generate(schema)` and receive a valid Python module string with a TypedDict, with `selection` fields rendered as `Literal[...]`
-  4. Calling `CodeGenerator(introspector).write(schemas, output_dir)` writes one `.py` file per requested model into the output directory
+  4. Calling `CodeGenerator(introspector).write(schemas, output_dir)` writes one `.py` file per requested model into the output directory (library API — no CLI entry point)
   5. The `godoo-introspection` package includes a `py.typed` marker and passes `mypy --strict`
 
 **Plans**: 2 plans
