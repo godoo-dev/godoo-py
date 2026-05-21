@@ -1,0 +1,220 @@
+"""Code generator: transforms ModelSchema into a valid Python TypedDict module string."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+from godoo_introspection.type_mapper import python_type_str
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from godoo_introspection.introspector import Introspector
+    from godoo_introspection.types import FieldSchema, ModelSchema
+
+logger = logging.getLogger("godoo_introspection.codegen")
+
+# ------------------------------------------------------------------
+# FieldMeta attribute defaults — used to suppress default-valued kwargs
+# in the generated FieldMeta(...) constructor string.
+# ------------------------------------------------------------------
+
+_FIELD_META_DEFAULTS: dict[str, object] = {
+    "field_description": "",
+    "relation": None,
+    "relation_field": None,
+    "required": False,
+    "readonly": False,
+    "store": True,
+    "index": False,
+    "copy": True,
+    "translate": False,
+    "help": "",
+    "compute": None,
+    "depends": (),
+    "modules": (),
+    "on_delete": None,
+    "size": None,
+    "digits": None,
+    "original_ttype": None,
+    "dynamic_selection": False,
+}
+
+
+# ------------------------------------------------------------------
+# Private helpers
+# ------------------------------------------------------------------
+
+
+def _model_to_classname(model: str) -> str:
+    """Convert 'res.partner' → 'ResPartner', 'account.move.line' → 'AccountMoveLine'."""
+    return "".join(part.capitalize() for part in model.replace(".", "_").split("_"))
+
+
+def _model_to_filename(model: str) -> str:
+    """Convert 'res.partner' → 'res_partner.py'."""
+    return model.replace(".", "_") + ".py"
+
+
+def _annotated_field_meta_str(field: FieldSchema) -> str:
+    """Build the FieldMeta(...) constructor call string for embedding in generated code.
+
+    Always emits ttype=. Omits kwargs whose values match FieldMeta defaults to
+    keep generated output readable. Uses repr() for string / None values so
+    special characters (quotes, backslashes) are safely escaped (T-02-07, T-02-08).
+    """
+    parts = [f"ttype={field.ttype!r}"]
+
+    def _emit(key: str, value: object) -> None:
+        if value != _FIELD_META_DEFAULTS.get(key):
+            parts.append(f"{key}={value!r}")
+
+    _emit("field_description", field.field_description)
+    _emit("relation", field.relation)
+    _emit("relation_field", field.relation_field)
+    _emit("required", field.required)
+    _emit("readonly", field.readonly)
+    _emit("store", field.store)
+    _emit("index", field.index)
+    _emit("copy", field.copy)
+    _emit("translate", field.translate)
+    _emit("help", field.help)
+    _emit("compute", field.compute)
+    _emit("depends", field.depends)
+    _emit("modules", field.modules)
+    _emit("on_delete", field.on_delete)
+    _emit("size", field.size)
+    _emit("digits", field.digits)
+
+    # Codegen-specific: emit original_ttype when ttype is unmapped
+    if field.ttype not in {
+        "char",
+        "text",
+        "html",
+        "image",
+        "integer",
+        "float",
+        "monetary",
+        "boolean",
+        "date",
+        "datetime",
+        "binary",
+        "serialized",
+        "many2one",
+        "one2many",
+        "many2many",
+        "reference",
+        "selection",
+        "json",
+        "properties",
+    }:
+        # Unknown ttype: emit original_ttype and override ttype to '<unknown>'
+        # We produce FieldMeta(ttype='<unknown>', original_ttype=...) per D-Mapping-3
+        parts[0] = "ttype='<unknown>'"
+        parts.append(f"original_ttype={field.ttype!r}")
+    else:
+        _emit("original_ttype", None)  # no-op: default is None
+
+    # dynamic_selection flag — set by codegen when ttype=selection and selection is empty
+    if field.ttype == "selection" and not field.selection:
+        parts.append("dynamic_selection=True")
+
+    return f"FieldMeta({', '.join(parts)})"
+
+
+# ------------------------------------------------------------------
+# CodeGenerator
+# ------------------------------------------------------------------
+
+
+class CodeGenerator:
+    """Transforms ModelSchema objects into valid Python TypedDict module strings.
+
+    Usage::
+
+        gen = CodeGenerator(introspector)
+        source = gen.generate(schema)           # string
+        gen.write([schema1, schema2], out_dir)  # write files
+    """
+
+    def __init__(self, introspector: Introspector) -> None:
+        self._introspector = introspector
+
+    def generate(self, schema: ModelSchema) -> str:
+        """Return a valid Python module string for one model.
+
+        The output contains a TypedDict class with ``total=False``.
+        The ``id`` field is ``Required[int]``; all other fields are
+        ``NotRequired[Annotated[T, FieldMeta(...)]]``.
+        """
+        class_name = _model_to_classname(schema.name)
+
+        lines = [
+            "# AUTOGENERATED by godoo-introspection - do not edit manually.",
+            f"# Model: {schema.name}",
+            "",
+            "from typing import Annotated, Any, Literal, NotRequired, Required, TypedDict",
+            "",
+            "from godoo_introspection.markers import FieldMeta",
+            "",
+            "",
+            f"class {class_name}(TypedDict, total=False):",
+            "    id: Required[int]",
+        ]
+
+        # Emit one line per field, skipping 'id' (already emitted as Required[int])
+        non_id_fields = [(fn, fs) for fn, fs in schema.fields.items() if fn != "id"]
+
+        for field_name, fs in non_id_fields:
+            # Security: validate field_name is a valid Python identifier (T-02-06)
+            if not field_name.isidentifier():
+                logger.warning("Field name %r is not a valid Python identifier — skipping", field_name)
+                continue
+            type_str = python_type_str(fs)
+            meta_str = _annotated_field_meta_str(fs)
+            lines.append(f"    {field_name}: NotRequired[Annotated[{type_str}, {meta_str}]]")
+
+        # If only id or no fields at all, emit pass so the class body is not empty
+        if not non_id_fields:
+            lines.append("    pass")
+
+        lines.append("")
+        return "\n".join(lines)
+
+    def write(self, schemas: list[ModelSchema], output_dir: Path) -> None:
+        """Write one .py file per schema plus an __init__.py barrel in output_dir.
+
+        Raises ValueError if output_dir is not an existing directory.
+        """
+        # Security: validate output_dir before any write (T-02-05)
+        if not output_dir.is_dir():
+            raise ValueError(f"output_dir {output_dir!r} is not a directory")
+
+        class_names: list[tuple[str, str]] = []  # (stem, class_name)
+
+        for schema in schemas:
+            source = self.generate(schema)
+            filename = _model_to_filename(schema.name)
+            stem = filename[:-3]  # remove .py
+            class_name = _model_to_classname(schema.name)
+            (output_dir / filename).write_text(source, encoding="utf-8")
+            class_names.append((stem, class_name))
+            logger.debug("Wrote %s → %s", schema.name, filename)
+
+        # Generate barrel __init__.py
+        barrel_lines = [
+            "# AUTOGENERATED by godoo-introspection — do not edit manually.",
+            "",
+        ]
+        for stem, class_name in class_names:
+            barrel_lines.append(f"from .{stem} import {class_name}")
+        barrel_lines.append("")
+        barrel_lines.append("__all__ = [")
+        for _, class_name in class_names:
+            barrel_lines.append(f'    "{class_name}",')
+        barrel_lines.append("]")
+        barrel_lines.append("")
+
+        (output_dir / "__init__.py").write_text("\n".join(barrel_lines), encoding="utf-8")
+        logger.debug("Wrote __init__.py barrel with %d exports", len(class_names))

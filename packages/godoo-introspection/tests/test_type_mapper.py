@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
-
-import pytest
+from typing import TYPE_CHECKING
 
 from godoo_introspection.type_mapper import python_type_str
 from godoo_introspection.types import FieldSchema
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _field(ttype: str, **kwargs: object) -> FieldSchema:
