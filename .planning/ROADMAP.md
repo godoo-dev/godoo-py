@@ -18,7 +18,7 @@ release under the `godoo-dev/godoo-py` GitHub org.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Client Parity** - Close all godoo client gaps and fix in-scope transport/service bugs (completed 2026-05-19)
-- [ ] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, CLI)
+- [ ] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library)
 - [ ] **Phase 3: Testcontainers Parity** - Close all godoo-testcontainers gaps (snapshot cache, addons, provisioners, harness)
 - [ ] **Phase 4: Release** - Create the GitHub repo, rename godoo→godoo-client on PyPI, publish all three packages
 
@@ -55,19 +55,27 @@ Plans:
 
 ### Phase 2: Introspection
 
-**Goal**: The godoo-introspection package is fully implemented, tested, and ships a working CLI matching @godoo/introspection parity
+**Goal**: The godoo-introspection package is fully implemented, tested, and ships a working library matching @godoo/introspection parity
 **Mode:** mvp
 **Depends on**: Phase 1
-**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04, INTRO-05, INTRO-06, INTRO-07
+**Requirements**: INTRO-01, INTRO-02, INTRO-03, INTRO-04, INTRO-06, INTRO-07
 **Success Criteria** (what must be TRUE):
 
   1. User can instantiate `Introspector(client)` and call `.get_schema("res.partner")` to receive a live field map from a running Odoo instance
   2. Subsequent calls to `Introspector.get_schema` for the same model return cached results; passing `bypass_cache=True` forces a fresh fetch
-  3. User can call `CodeGenerator(introspector).generate("res.partner")` and receive a valid Python module string with typed dataclass or TypedDict, with `selection` fields rendered as `Literal[...]`
-  4. Running `godoo-introspect --url http://... --db mydb --output ./types` writes one `.py` file per requested model into the output directory
+  3. User can call `CodeGenerator(introspector).generate(schema)` and receive a valid Python module string with a TypedDict, with `selection` fields rendered as `Literal[...]`
+  4. Calling `CodeGenerator(introspector).write(schemas, output_dir)` writes one `.py` file per requested model into the output directory
   5. The `godoo-introspection` package includes a `py.typed` marker and passes `mypy --strict`
 
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Schema fetch + cache: Introspector, IntrospectionCache, ModelSchema, FieldSchema, FieldMeta, py.typed, tests (INTRO-01, INTRO-02, INTRO-07)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Type mapping + code generation: type_mapper, CodeGenerator, tests (INTRO-03, INTRO-04, INTRO-06)
 
 ### Phase 3: Testcontainers Parity
 
@@ -107,6 +115,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
-| 2. Introspection | 0/? | Not started | - |
+| 2. Introspection | 0/2 | Not started | - |
 | 3. Testcontainers Parity | 0/? | Not started | - |
 | 4. Release | 0/? | Not started | - |
