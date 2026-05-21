@@ -90,7 +90,7 @@ The implementation follows the project's established quad pattern (`types.py` / 
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
 | `typing` (stdlib) | Python 3.14 | `TypedDict`, `Required`, `NotRequired`, `Annotated`, `Literal`, `get_type_hints` | Native stdlib; all constructs verified available in 3.14 |
-| `dataclasses` (stdlib) | Python 3.14 | `@dataclass(frozen=True)` for `ModelSchema`, `FieldSchema`, `FieldMeta` | Project convention — dataclasses everywhere, no Pydantic |
+| `dataclasses` (stdlib) | Python 3.14 | `@dataclass(frozen=True)` for `FieldSchema`, `FieldMeta`; plain `@dataclass` for `ModelSchema` | Project convention — dataclasses everywhere, no Pydantic |
 | `textwrap` (stdlib) | Python 3.14 | `dedent()` for clean multi-line code generation | No external templating needed for this output size |
 | `logging` (stdlib) | Python 3.14 | Warning log for unknown ttypes (D-Mapping-3) | Project convention: `logging.getLogger("godoo_introspection.codegen")` |
 | `godoo` (workspace) | `>=0.1.0` | `OdooClient`, `OdooMissingError`, `OdooValidationError` | Already declared as dependency in `packages/godoo-introspection/pyproject.toml` |
@@ -163,7 +163,7 @@ packages/godoo-introspection/
     ├── py.typed                            # PEP 561 marker (INTRO-07)
     ├── __init__.py                         # barrel: Introspector, CodeGenerator, FieldMeta, ModelSchema, FieldSchema
     ├── markers.py                          # FieldMeta frozen dataclass (public — consumers import this)
-    ├── types.py                            # ModelSchema, FieldSchema frozen dataclasses
+    ├── types.py                            # ModelSchema, FieldSchema dataclasses
     ├── introspector.py                     # Introspector class + IntrospectionCache
     ├── type_mapper.py                      # ttype -> Python type hint string (pure function)
     └── codegen.py                          # CodeGenerator class
@@ -247,7 +247,7 @@ class FieldSchema:
     # ^ list of (value, label) tuples from ir.model.fields.selection records
 
 
-@dataclass(frozen=True)
+@dataclass  # NOT frozen=True — ModelSchema is NOT frozen (see Pitfall 6: dict field is unhashable)
 class ModelSchema:
     """Typed schema for one Odoo model, returned by Introspector.get_schema()."""
     name: str                           # technical model name, e.g. 'res.partner'
@@ -256,7 +256,7 @@ class ModelSchema:
     fields: dict[str, FieldSchema] = field(default_factory=dict)
 ```
 
-**Note on `dict` in frozen dataclass:** `dict` fields in `@dataclass(frozen=True)` are legal; the frozen constraint prevents reassignment of the attribute, not mutation of the dict contents. For true immutability callers can use `types.MappingProxyType`, but that is not required by project conventions.
+**Note on `ModelSchema` not being frozen:** `ModelSchema` uses plain `@dataclass` (without `frozen=True`) because it contains a `dict` field. A frozen dataclass with a `dict` field is not hashable — `hash()` would raise `TypeError`. Since `ModelSchema` is never used as a dict key or set element, omitting `frozen=True` is the correct approach. See Pitfall 6 for the full explanation. `FieldSchema` and `FieldMeta` (pure scalar fields only) can and should remain `frozen=True`.
 
 ### Pattern 3: `Introspector` Class (introspector.py)
 
@@ -638,22 +638,25 @@ def _model_to_classname(model: str) -> str:
 
 **If this table is empty:** N/A — assumptions are documented above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`depends` field shape from ir.model.fields**
    - What we know: `depends` on the `ir.model.fields` record is described in CONTEXT.md D-Meta-3 as `tuple[str, ...]` — a list of comma-separated field names.
    - What's unclear: Whether `search_read` on `ir.model.fields` returns `depends` as a single comma-separated string or as a list. The Python `ir.model.fields.depends` attribute is a `Char` in the database.
    - Recommendation: Fetch it as a string and split on `,` in the `FieldSchema` builder. Store as `tuple[str, ...]`. Handle empty string as empty tuple.
+   - **RESOLVED:** Treat `depends` as a comma-separated `Char` field returned by `search_read`. In `introspector.py`, split the raw string on `","`, strip whitespace from each token, and discard empty tokens; store the result as `tuple[str, ...]`. Empty string or missing key yields `()`. This defensive approach is already encoded in the plan action for Task 2 of plan 02-01.
 
 2. **`selection_ids` availability in search_read on ir.model.fields**
    - What we know: `selection_ids` is a One2many field on `ir.model.fields` pointing to `ir.model.fields.selection`. It should return a list of record IDs.
    - What's unclear: Whether `search_read` returns `selection_ids` as a list of ints (standard One2many behaviour) or whether it requires `read` instead.
    - Recommendation: Include `selection_ids` in the `_IR_FIELDS` projection; if it returns `[]` for a selection field, fall back to dynamic detection. Verify in integration tests.
+   - **RESOLVED:** Include `selection_ids` in `_IR_FIELDS` and use the returned IDs to drive the third RPC against `ir.model.fields.selection`. If `selection_ids` is absent or empty for a `ttype='selection'` field, treat the field as dynamic (`dynamic_selection=True`). This defensive fallback is already encoded in plan 02-01 Task 2 and verified in plan 02-01 Task 3 test cases 8 and 9.
 
 3. **`modules` computed field accessibility**
    - What we know: `modules` on `ir.model.fields` is a computed Char field listing modules where the field is defined.
    - What's unclear: Whether computed fields are readable via `search_read` on `ir.model.fields`. Most computed fields with `store=False` are not returned by `search_read`.
    - Recommendation: Attempt to include `modules` in the projection; if the search_read response omits it (no key in the dict), default to empty tuple. This is safe defensive coding. Verify in integration tests.
+   - **RESOLVED:** Include `modules` in `_IR_FIELDS`. Use `.get("modules", "")` when building `FieldSchema` from the raw `search_read` dict, and apply the same comma-split-and-strip treatment as `depends` to convert to `tuple[str, ...]`. If the key is absent (field not returned by Odoo), the result is `()` — non-blocking. Integration tests will confirm actual availability on the target Odoo version.
 
 ## Environment Availability
 
