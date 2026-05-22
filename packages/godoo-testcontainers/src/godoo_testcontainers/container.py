@@ -65,6 +65,7 @@ class OdooTestContainer:
         snapshot: bool = True,
         cache_dir: Path | None = None,
         env: dict[str, str] | None = None,
+        properties: dict[str, str] | None = None,
     ) -> None:
         self._modules = modules if modules is not None else []
         self._database = database
@@ -74,6 +75,10 @@ class OdooTestContainer:
         self._snapshot_enabled = snapshot
         self._cache_dir = cache_dir
         self._env = env if env is not None else {}
+        # Stored for snapshot key accuracy only — the container does NOT call set_param.
+        # TestHarness passes its properties dict here so different properties produce
+        # a different snapshot key (D-Snap-1), ensuring correct cache invalidation.
+        self._properties_for_key: dict[str, str] = properties if properties is not None else {}
 
     async def start(self) -> StartedOdooContainer:
         odoo_ver = normalise_odoo_version(os.environ.get("ODOO_VERSION"))
@@ -103,8 +108,6 @@ class OdooTestContainer:
             else:
                 # TESTC-01: build snapshot config before pg starts so we can bind-mount
                 # the cache dir into the Postgres container (rw — pg_dump writes there).
-                # properties={} here because TestHarness supplies the real dict in plan 03-03;
-                # OdooTestContainer itself does not know the harness-level properties.
                 snapshot_cfg: SnapshotConfig | None = None
                 if snapshot_enabled:
                     snapshot_cfg = make_snapshot_config(
@@ -117,7 +120,7 @@ class OdooTestContainer:
                         database=self._database,
                         admin_password=self._admin_password,
                         env=self._env,
-                        properties={},
+                        properties=self._properties_for_key,
                     )
                     # Cache dir must exist BEFORE pg.start() — Docker volume mapping
                     # does not create the host dir on Windows (and creates root-owned
