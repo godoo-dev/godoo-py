@@ -128,9 +128,7 @@ class TestSnapshotEnablement:
         )
         assert cfg.enabled is False
 
-    def test_cache_dir_default_is_cwd_local(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_cache_dir_default_is_cwd_local(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """D-Snap-3: default cache dir is cwd/.odoo-testcontainers/snapshots/."""
         monkeypatch.chdir(tmp_path)
         # Unset env var in case it is set in the test environment.
@@ -151,9 +149,7 @@ class TestSnapshotEnablement:
         )
         assert cfg.cache_dir == tmp_path
 
-    def test_cache_dir_override_via_env(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_cache_dir_override_via_env(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """D-Snap-2: ODOO_TESTCONTAINERS_SNAPSHOT_DIR overrides cache_dir param."""
         monkeypatch.setenv("ODOO_TESTCONTAINERS_SNAPSHOT_DIR", str(tmp_path))
         cfg = make_snapshot_config(

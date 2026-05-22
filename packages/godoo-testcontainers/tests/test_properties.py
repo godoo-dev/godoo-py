@@ -49,14 +49,10 @@ class TestConfigParameterHelper:
         client = self._make_client()
         helper = ConfigParameterHelper(client)
         await helper.set_many({"x.key": "myvalue"})
-        client.execute_kw.assert_called_once_with(
-            "ir.config_parameter", "set_param", ["x.key", "myvalue"]
-        )
+        client.execute_kw.assert_called_once_with("ir.config_parameter", "set_param", ["x.key", "myvalue"])
 
     async def test_set_accepts_empty_value(self) -> None:
         client = self._make_client()
         helper = ConfigParameterHelper(client)
         await helper.set("some.key", "")
-        client.execute_kw.assert_called_once_with(
-            "ir.config_parameter", "set_param", ["some.key", ""]
-        )
+        client.execute_kw.assert_called_once_with("ir.config_parameter", "set_param", ["some.key", ""])

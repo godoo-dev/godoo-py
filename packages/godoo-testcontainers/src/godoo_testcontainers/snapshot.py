@@ -167,11 +167,7 @@ def make_snapshot_config(
       ODOO_TESTCONTAINERS_SNAPSHOT=disabled  → disables caching regardless of snapshot_enabled.
       ODOO_TESTCONTAINERS_SNAPSHOT_DIR       → overrides cache_dir.
     """
-    enabled = (
-        False
-        if os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT", "").lower() == "disabled"
-        else snapshot_enabled
-    )
+    enabled = False if os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT", "").lower() == "disabled" else snapshot_enabled
 
     env_dir = os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT_DIR", "")
     if env_dir:

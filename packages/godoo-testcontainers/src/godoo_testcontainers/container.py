@@ -160,9 +160,7 @@ class OdooTestContainer:
                     .with_network_aliases("db")
                 )
                 if snapshot_cfg is not None and snapshot_cfg.enabled:
-                    pg_builder = pg_builder.with_volume_mapping(
-                        str(snapshot_cfg.cache_dir), "/snapshot-cache", "rw"
-                    )
+                    pg_builder = pg_builder.with_volume_mapping(str(snapshot_cfg.cache_dir), "/snapshot-cache", "rw")
                 pg = pg_builder
                 await asyncio.to_thread(pg.start)
                 pg_user, pg_password = "odoo", "odoo"
