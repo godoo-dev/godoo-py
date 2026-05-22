@@ -117,7 +117,19 @@ Plans:
   2. `pip install godoo-client` installs the async Odoo client (the internal package is renamed from `godoo` to `godoo-client`)
   3. `pip install godoo-introspection` and `pip install godoo-testcontainers` both succeed and import correctly on Python 3.14
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 04-01-github-ci-PLAN.md — Create GitHub repo, configure origin, fix mypy CI to cover all three src trees (RELEASE-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-namespace-restructure-PLAN.md — Restructure all three packages into shared godoo.* namespace, rename godoo→godoo-client, migrate all imports (RELEASE-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-03-publish-PLAN.md — Create godoo placeholder distribution, wire four-distribution semantic-release, set up trusted publishing, first PyPI publish (RELEASE-03)
 
 ## Progress
 
@@ -129,4 +141,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
 | 3. Testcontainers Parity | 3/3 | Complete    | 2026-05-22 |
-| 4. Release | 0/? | Not started | - |
+| 4. Release | 0/3 | Not started | - |
