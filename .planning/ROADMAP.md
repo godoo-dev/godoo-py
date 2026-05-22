@@ -18,7 +18,7 @@ release under the `godoo-dev/godoo-py` GitHub org.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Client Parity** - Close all godoo client gaps and fix in-scope transport/service bugs (completed 2026-05-19)
-- [x] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library) (completed 2026-05-21)
+- [x] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library) (completed 2026-05-21)
 - [ ] **Phase 3: Testcontainers Parity** - Close all godoo-testcontainers gaps (snapshot cache, addons, provisioners, harness)
 - [ ] **Phase 4: Release** - Create the GitHub repo, rename godoo→godoo-client on PyPI, publish all three packages
 
@@ -79,19 +79,31 @@ Plans:
 
 ### Phase 3: Testcontainers Parity
 
-**Goal**: The godoo-testcontainers package reaches full parity with @godoo/testcontainers — snapshot caching, custom addons, four provisioners, and TestHarness
+**Goal**: The godoo-testcontainers package reaches full parity with @godoo/testcontainers — snapshot caching, custom addons, properties provisioner, and TestHarness
 **Mode:** mvp
 **Depends on**: Phase 1
-**Requirements**: TESTC-01, TESTC-02, TESTC-03, TESTC-04, TESTC-05, TESTC-06, TESTC-07, TESTC-08
+**Requirements**: TESTC-01, TESTC-02, TESTC-06, TESTC-07, TESTC-08 *(TESTC-03/04/05 dropped — D-Drop-1)*
 **Success Criteria** (what must be TRUE):
 
-  1. A second test run with unchanged provisioner inputs completes faster than the first (snapshot restored from `~/.odoo-testcontainers/snapshots/` via pg_dump/restore)
+  1. A second test run with unchanged provisioner inputs completes faster than the first (snapshot restored from `cwd/.odoo-testcontainers/snapshots/` via pg_dump/restore)
   2. User can pass `addons_path=Path("./my_addons")` to `OdooTestContainer` and the custom module directory is mounted into the container
-  3. User can call `harness.partners.create(...)`, `harness.projects.create(...)`, `harness.users.create(...)`, and `harness.properties.set(...)` to seed test data without writing raw RPC calls
-  4. A `TestHarness` fixture provides a single clean API composing all four provisioners and exposes a ready `OdooClient`
+  3. `harness.properties.set(...)` and `harness.modules.install(...)` seed test state without writing raw RPC calls
+  4. A `TestHarness` fixture provides a single clean API composing the snapshot cache, module install, and properties provisioner, and exposes a ready `OdooClient`
   5. The `godoo-testcontainers` package includes a `py.typed` marker and passes `mypy --strict`
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Charter amendments (strike TESTC-03/04/05 per D-Drop-1, fix snapshot path text) + py.typed marker (TESTC-08)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Snapshot cache module (snapshot.py) + addons mount wired into container.py (TESTC-01, TESTC-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-03-PLAN.md — Properties helper (ConfigParameterHelper) + TestHarness async-cm + barrel exports (TESTC-06, TESTC-07)
 
 ### Phase 4: Release
 
@@ -116,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
-| 3. Testcontainers Parity | 0/? | Not started | - |
+| 3. Testcontainers Parity | 0/3 | Not started | - |
 | 4. Release | 0/? | Not started | - |
