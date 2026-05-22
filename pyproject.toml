@@ -63,6 +63,7 @@ version_toml = [
     "packages/godoo/pyproject.toml:project.version",
     "packages/godoo-testcontainers/pyproject.toml:project.version",
     "packages/godoo-introspection/pyproject.toml:project.version",
+    "packages/godoo-meta/pyproject.toml:project.version",
 ]
 allow_zero_version = true
 major_on_zero = false
@@ -71,7 +72,8 @@ commit_parser = "conventional"
 build_command = """
     uv build --package godoo-client && \
     uv build --package godoo-testcontainers && \
-    uv build --package godoo-introspection
+    uv build --package godoo-introspection && \
+    uv build --package godoo
 """
 
 [tool.semantic_release.commit_parser_options]
