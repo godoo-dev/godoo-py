@@ -5,7 +5,10 @@ import contextlib
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import httpx
 from godoo import OdooClient, OdooClientConfig
@@ -16,6 +19,15 @@ from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 
 from godoo_testcontainers.seed_resolver import normalise_odoo_version, resolve_seed_info
+from godoo_testcontainers.snapshot import (
+    ODOO_CORE_ADDONS_PATH,
+    SnapshotConfig,
+    _build_addons_cmd,
+    has_snapshot,
+    make_snapshot_config,
+    restore_snapshot,
+    save_snapshot,
+)
 
 logger = logging.getLogger("godoo.testcontainers")
 
@@ -49,17 +61,28 @@ class OdooTestContainer:
         database: str = "test_odoo",
         admin_password: str = "admin",
         startup_timeout: int = 300,
+        addons_path: Path | list[Path] | None = None,
+        snapshot: bool = True,
+        cache_dir: Path | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
         self._modules = modules if modules is not None else []
         self._database = database
         self._admin_password = admin_password
         self._startup_timeout = startup_timeout
+        self._addons_path = addons_path
+        self._snapshot_enabled = snapshot
+        self._cache_dir = cache_dir
         self._env = env if env is not None else {}
 
     async def start(self) -> StartedOdooContainer:
         odoo_ver = normalise_odoo_version(os.environ.get("ODOO_VERSION"))
         seed_info = resolve_seed_info(self._modules, odoo_ver)
+
+        # Snapshot caching applies to the cold postgres:15-alpine path only.
+        # When seed_info is resolved, the seed image acts as its own fast path
+        # and snapshot caching is skipped (see 03-RESEARCH.md Open Question 4).
+        snapshot_enabled = self._snapshot_enabled and (seed_info is None)
 
         network = Network()
         await asyncio.to_thread(network.create)
@@ -78,7 +101,30 @@ class OdooTestContainer:
                 await asyncio.to_thread(wait_for_logs, pg, "PostgreSQL init process complete; ready for start up.", 90)
                 pg_user, pg_password = "admin", "admin"
             else:
-                pg = (
+                # TESTC-01: build snapshot config before pg starts so we can bind-mount
+                # the cache dir into the Postgres container (rw — pg_dump writes there).
+                # properties={} here because TestHarness supplies the real dict in plan 03-03;
+                # OdooTestContainer itself does not know the harness-level properties.
+                snapshot_cfg: SnapshotConfig | None = None
+                if snapshot_enabled:
+                    snapshot_cfg = make_snapshot_config(
+                        snapshot_enabled=True,
+                        cache_dir=self._cache_dir,
+                        odoo_version=odoo_ver,
+                        postgres_image="postgres:15-alpine",
+                        modules=self._modules,
+                        addons_path=self._addons_path,
+                        database=self._database,
+                        admin_password=self._admin_password,
+                        env=self._env,
+                        properties={},
+                    )
+                    # Cache dir must exist BEFORE pg.start() — Docker volume mapping
+                    # does not create the host dir on Windows (and creates root-owned
+                    # dirs on Linux), so we create it explicitly.
+                    snapshot_cfg.cache_dir.mkdir(parents=True, exist_ok=True)
+
+                pg_builder = (
                     PostgresContainer(
                         "postgres:15-alpine",
                         username="odoo",
@@ -88,13 +134,36 @@ class OdooTestContainer:
                     .with_network(network)
                     .with_network_aliases("db")
                 )
+                if snapshot_cfg is not None:
+                    pg_builder = pg_builder.with_volume_mapping(
+                        str(snapshot_cfg.cache_dir), "/snapshot-cache", "rw"
+                    )
+                pg = pg_builder
                 await asyncio.to_thread(pg.start)
                 pg_user, pg_password = "odoo", "odoo"
 
+            # TESTC-01: restore snapshot after postgres is up but BEFORE odoo starts.
+            snapshot_hit = False
+            if snapshot_enabled and snapshot_cfg is not None and has_snapshot(snapshot_cfg):
+                logger.info("Snapshot hit — restoring from %s", snapshot_cfg.host_path)
+                await restore_snapshot(pg, snapshot_cfg, self._database, pg_user)
+                snapshot_hit = True
+
             # Odoo
             cmd_parts = ["--database", self._database, "--without-demo", "all", "--max-cron-threads", "0"]
-            if not seed_info:
+            # Skip --init base when snapshot hit — DB already has base installed.
+            # Also skip when seed_info is set (seed image provides the pre-init DB).
+            if not seed_info and not snapshot_hit:
                 cmd_parts[2:2] = ["--init", "base"]
+
+            # TESTC-02: addons mount — add volume mappings and extend --addons-path.
+            # cmd_parts must be fully built before with_command() is called, so we
+            # extend it here before constructing the DockerContainer builder.
+            mounts, addon_targets = _build_addons_cmd(self._addons_path)
+            if addon_targets:
+                # --addons-path replaces odoo.conf setting entirely, so always include
+                # the core Odoo addons path to avoid "Module 'base' not found" errors.
+                cmd_parts.extend(["--addons-path", ",".join([ODOO_CORE_ADDONS_PATH, *addon_targets])])
 
             odoo = (
                 DockerContainer(f"odoo:{odoo_ver}")
@@ -108,6 +177,8 @@ class OdooTestContainer:
             )
             for k, v in self._env.items():
                 odoo = odoo.with_env(k, v)
+            for host_src, container_target, mode in mounts:
+                odoo = odoo.with_volume_mapping(host_src, container_target, mode)
 
             await asyncio.to_thread(odoo.start)
 
@@ -150,6 +221,15 @@ class OdooTestContainer:
                         await self._wait_for_odoo_ready(url, self._database, max_attempts=60)
                         await client.authenticate()
                         await mm.install_module(mod)
+
+            # TESTC-01: save snapshot after module install completes (snapshot miss path).
+            # Save failure is non-fatal — tests continue without snapshot benefit.
+            if snapshot_enabled and snapshot_cfg is not None and not snapshot_hit:
+                logger.info("Snapshot miss — saving to %s", snapshot_cfg.host_path)
+                try:
+                    await save_snapshot(pg, snapshot_cfg, self._database, pg_user)
+                except Exception as exc:
+                    logger.warning("Snapshot save failed (non-fatal): %s", exc)
 
             return StartedOdooContainer(
                 odoo_container=odoo,

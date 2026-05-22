@@ -1,18 +1,5 @@
 from __future__ import annotations
 
-"""Snapshot cache for OdooTestContainer.
-
-This module owns all snapshot cache logic: key computation, save, restore, and
-enablement configuration. Snapshot caching applies to the cold postgres:15-alpine
-path only. When a seed image is used (ODOO_SEED_IMAGE is set and covers all
-requested modules), the seed image acts as its own fast path and snapshot caching
-is skipped.
-
-SNAPSHOT_SCHEMA_VERSION: bump this integer to invalidate every cached snapshot at
-once. Increment whenever the key algorithm or dump format changes in a way that
-makes old snapshots incompatible or untrustworthy.
-"""
-
 import asyncio
 import contextlib
 import hashlib
@@ -180,11 +167,11 @@ def make_snapshot_config(
       ODOO_TESTCONTAINERS_SNAPSHOT=disabled  → disables caching regardless of snapshot_enabled.
       ODOO_TESTCONTAINERS_SNAPSHOT_DIR       → overrides cache_dir.
     """
-    enabled: bool
-    if os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT", "").lower() == "disabled":
-        enabled = False
-    else:
-        enabled = snapshot_enabled
+    enabled = (
+        False
+        if os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT", "").lower() == "disabled"
+        else snapshot_enabled
+    )
 
     env_dir = os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT_DIR", "")
     if env_dir:
