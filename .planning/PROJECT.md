@@ -129,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-19 — Phase 1 (Client Parity) complete; 12 requirements validated*
+*Last updated: 2026-05-22 — Phase 04.1 (Package READMEs) complete; PyPI pages wired for 0.2.1 (packaging defect fix, no requirement IDs)*
