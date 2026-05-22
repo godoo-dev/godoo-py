@@ -175,7 +175,10 @@ def make_snapshot_config(
 
     env_dir = os.environ.get("ODOO_TESTCONTAINERS_SNAPSHOT_DIR", "")
     if env_dir:
-        cache_dir_resolved = Path(env_dir)
+        # WR-05: canonicalise the env-supplied dir so relative/traversal forms
+        # (e.g. "../../somewhere") are resolved to an absolute, auditable path
+        # before it ever reaches the pg_dump write path.
+        cache_dir_resolved = Path(env_dir).resolve()
     elif cache_dir is not None:
         cache_dir_resolved = cache_dir
     else:
@@ -250,6 +253,12 @@ async def save_snapshot(pg: Any, cfg: SnapshotConfig, database: str, pg_user: st
     workers. If another worker saves the same key first, the fast-path skip at entry
     returns immediately; the second skip after dump discards the duplicate.
     """
+    # CR-01: defence in depth — never write a dump when caching is disabled
+    # (e.g. ODOO_TESTCONTAINERS_SNAPSHOT=disabled).
+    if not cfg.enabled:
+        logger.info("Snapshot caching disabled, skipping save: %s", cfg.host_path)
+        return
+
     # Fast-path skip: another worker already saved this snapshot.
     if cfg.host_path.exists():
         logger.info("Snapshot already exists, skipping save: %s", cfg.host_path)
