@@ -25,7 +25,7 @@ uv workspace with 3 packages:
 
 - ruff: line-length 120, select `[E, F, W, I, UP, B, SIM, TCH, RUF]`
 - mypy --strict on all `src/` directories
-- Run: `uv run ruff check . && uv run ruff format . && uv run mypy packages/godoo/src packages/godoo-testcontainers/src`
+- Run: `uv run ruff check . && uv run ruff format . && uv run mypy packages/godoo/src packages/godoo-testcontainers/src packages/godoo-introspection/src`
 
 ## Testing
 
