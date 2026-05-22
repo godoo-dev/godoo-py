@@ -38,11 +38,11 @@ godoo-introspection — built from scratch, parity with `@godoo/introspection`.
 
 godoo-testcontainers — parity with `@godoo/testcontainers`.
 
-- [ ] **TESTC-01**: A local snapshot cache (`pg_dump`/restore keyed by a content hash, under `~/.odoo-testcontainers/snapshots/`) skips re-provisioning when inputs are unchanged
+- [ ] **TESTC-01**: A local snapshot cache (`pg_dump`/restore keyed by a content hash, under `cwd/.odoo-testcontainers/snapshots/`) skips re-provisioning when inputs are unchanged
 - [ ] **TESTC-02**: User can mount a local custom addons directory into the testcontainer via `addonsPath`
-- [ ] **TESTC-03**: A partners provisioner seeds `res.partner` records into the test database
-- [ ] **TESTC-04**: A projects provisioner seeds `project.project` + `project.task.type` records
-- [ ] **TESTC-05**: A users provisioner seeds `res.users` records with configurable groups
+- ~~**TESTC-03**: A partners provisioner seeds `res.partner` records into the test database~~ *(dropped — D-Drop-1: declarative seeding belongs to godoo-stateman)*
+- ~~**TESTC-04**: A projects provisioner seeds `project.project` + `project.task.type` records~~ *(dropped — D-Drop-1)*
+- ~~**TESTC-05**: A users provisioner seeds `res.users` records with configurable groups~~ *(dropped — D-Drop-1)*
 - [ ] **TESTC-06**: A properties provisioner sets `ir.config_parameter` key/value pairs
 - [ ] **TESTC-07**: A `TestHarness` fixture composes the provisioners and exposes a clean test API
 - [ ] **TESTC-08**: The `godoo-testcontainers` package ships a `py.typed` PEP 561 marker
@@ -114,9 +114,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INTRO-07 | Phase 2 | Pending |
 | TESTC-01 | Phase 3 | Pending |
 | TESTC-02 | Phase 3 | Pending |
-| TESTC-03 | Phase 3 | Pending |
-| TESTC-04 | Phase 3 | Pending |
-| TESTC-05 | Phase 3 | Pending |
+| ~~TESTC-03~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
+| ~~TESTC-04~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
+| ~~TESTC-05~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
 | TESTC-06 | Phase 3 | Pending |
 | TESTC-07 | Phase 3 | Pending |
 | TESTC-08 | Phase 3 | Pending |
@@ -128,10 +128,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RELEASE-03 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 29 total (INTRO-05 dropped per D-CLI-1)
-- Mapped to phases: 29 (100%)
+- v1 requirements: 26 total (INTRO-05, TESTC-03, TESTC-04, TESTC-05 dropped)
+- Mapped to phases: 26 (100%)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-18*
-*Last updated: 2026-05-19 — CLIENT-09 (OAuthProxyClient) dropped from v1 scope*
+*Last updated: 2026-05-22 — TESTC-03/04/05 dropped per D-Drop-1; TESTC-01 path amended per D-Snap-3-amendment*

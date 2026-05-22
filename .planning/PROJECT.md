@@ -58,7 +58,7 @@ that godoo-ts already ships.
 **godoo-testcontainers — parity gaps:**
 - [ ] Local snapshot cache (`pg_dump`/restore keyed by content hash)
 - [ ] Custom addons mount (`addonsPath`)
-- [ ] Four resource provisioners (partners, projects, users, properties)
+- [ ] Properties provisioner (ir.config_parameter k/v via ConfigParameterHelper)
 - [ ] `TestHarness` high-level fixture composing the provisioners
 - [ ] `py.typed` markers (introspection + testcontainers)
 
@@ -109,6 +109,7 @@ that godoo-ts already ships.
 | Keep the Python 3.14 floor for v1 | SEED is silent; hold charter scope, revisit post-v1 | — Pending |
 | Include a release phase (repo create + PyPI publish) | SEED §5 deliverable; the satellite owns publish | — Pending |
 | Drop CLIENT-09 (`OAuthProxyClient`) from v1; amend SEED §2/§4 | Owner decision — never implemented, not a real parity gap | ✓ Good |
+| Drop TESTC-03/04/05 (partners/projects/users provisioners) from v1 | Declarative seeding belongs to godoo-stateman; testcontainers does bare minimum | D-Drop-1 |
 
 ## Evolution
 
