@@ -24,6 +24,10 @@ must_haves:
     - "The godoo PyPI page displays the family README"
     - "All four distributions publish via trusted publishing (no long-lived API tokens)"
     - "The CI release.yml pipeline fires only after the full Test matrix is green on main"
+  decisions_covered:
+    - "D-04: empty `godoo` placeholder distribution hosting the family README on PyPI — no importable Python code ships in that wheel."
+    - "D-05: first release at 0.x (0.1.1) — matches existing semantic-release version_toml config in pyproject.toml."
+    - "D-07: Docker/Odoo integration tests (17.0/18.0/19.0 matrix) are a hard blocker on the publish path — the Release workflow fires only after the Test workflow succeeds on main."
   artifacts:
     - path: "packages/godoo-meta/pyproject.toml"
       provides: "godoo placeholder distribution — no dependencies, no src/ tree, ships only metadata + family README"

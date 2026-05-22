@@ -71,6 +71,10 @@ must_haves:
     - "mypy passes on all three src trees under the new namespace layout"
     - "All unit tests pass under the new import paths"
     - "uv workspace resolves godoo-client as a workspace member"
+  decisions_covered:
+    - "D-01: shared `godoo` PEP 420 implicit namespace — no top-level `godoo/__init__.py` ships in any distribution."
+    - "D-02: PyPI distribution names are godoo-client, godoo-introspection, and godoo-testcontainers (client renamed from godoo)."
+    - "D-03: import migration in scope across all three packages — all `from godoo_*` and `from godoo.` references updated to new namespace paths."
   artifacts:
     - path: "packages/godoo/src/godoo/client/__init__.py"
       provides: "Barrel re-exports for godoo.client namespace — OdooClient, OdooClientConfig, errors, safety, services"

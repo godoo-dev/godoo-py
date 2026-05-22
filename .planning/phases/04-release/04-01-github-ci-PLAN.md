@@ -21,6 +21,10 @@ must_haves:
     - "lint + unit tests pass locally; CI Test workflow is triggered on develop (green confirmed asynchronously)"
     - "CLAUDE.md ## Linting & Types documents the correct three-tree mypy invocation"
     - "test.yml declares 'name: Test' matching the release.yml workflow_run trigger"
+  decisions_covered:
+    - "D-06: CI parity — full test matrix (lint + unit + integration 17.0/18.0/19.0) runs on every push."
+    - "D-08: mypy namespace-package fix — explicit_package_bases + mypy_path cover all three src trees."
+    - "D-09: create github.com/godoo-dev/godoo-py as public LGPL-3.0 repo and push full commit history with origin configured."
   artifacts:
     - path: ".github/workflows/test.yml"
       provides: "CI matrix with corrected mypy step covering all three src trees (D-08); declares name: Test matching release.yml trigger"
