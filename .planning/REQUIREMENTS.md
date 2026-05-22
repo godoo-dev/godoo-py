@@ -38,8 +38,8 @@ godoo-introspection — built from scratch, parity with `@godoo/introspection`.
 
 godoo-testcontainers — parity with `@godoo/testcontainers`.
 
-- [ ] **TESTC-01**: A local snapshot cache (`pg_dump`/restore keyed by a content hash, under `cwd/.odoo-testcontainers/snapshots/`) skips re-provisioning when inputs are unchanged
-- [ ] **TESTC-02**: User can mount a local custom addons directory into the testcontainer via `addonsPath`
+- [x] **TESTC-01**: A local snapshot cache (`pg_dump`/restore keyed by a content hash, under `cwd/.odoo-testcontainers/snapshots/`) skips re-provisioning when inputs are unchanged
+- [x] **TESTC-02**: User can mount a local custom addons directory into the testcontainer via `addonsPath`
 - ~~**TESTC-03**: A partners provisioner seeds `res.partner` records into the test database~~ *(dropped — D-Drop-1: declarative seeding belongs to godoo-stateman)*
 - ~~**TESTC-04**: A projects provisioner seeds `project.project` + `project.task.type` records~~ *(dropped — D-Drop-1)*
 - ~~**TESTC-05**: A users provisioner seeds `res.users` records with configurable groups~~ *(dropped — D-Drop-1)*
@@ -112,8 +112,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ~~INTRO-05~~ | ~~Phase 2~~ | ~~Dropped (D-CLI-1)~~ |
 | INTRO-06 | Phase 2 | Pending |
 | INTRO-07 | Phase 2 | Pending |
-| TESTC-01 | Phase 3 | Pending |
-| TESTC-02 | Phase 3 | Pending |
+| TESTC-01 | Phase 3 | Complete |
+| TESTC-02 | Phase 3 | Complete |
 | ~~TESTC-03~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
 | ~~TESTC-04~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
 | ~~TESTC-05~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
