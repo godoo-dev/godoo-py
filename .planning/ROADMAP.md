@@ -136,12 +136,12 @@ Plans:
 **Goal:** Fix empty PyPI pages for all three real distributions by wiring readme keys and authoring short client-facing READMEs; publish 0.2.1 via the existing automated release pipeline
 **Requirements**: (none assigned — packaging defect fix)
 **Depends on:** Phase 4
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 04.1-01-PLAN.md — Wire readme key in three pyproject.toml files + author three package READMEs + fix: commit to trigger 0.2.1
+- [x] 04.1-01-PLAN.md — Wire readme key in three pyproject.toml files + author three package READMEs + fix: commit to trigger 0.2.1
 
 ## Progress
 
@@ -154,4 +154,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
 | 3. Testcontainers Parity | 3/3 | Complete    | 2026-05-22 |
 | 4. Release | 3/3 | Complete   | 2026-05-22 |
-| 4.1. Package READMEs | 0/1 | In progress | — |
+| 4.1. Package READMEs | 1/1 | Complete    | 2026-05-22 |
