@@ -39,4 +39,4 @@ jobs:
 
       - name: Publish to PyPI
         if: steps.release.outcome == 'success'
-        run: uv publish --trusted-publishing always
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/
