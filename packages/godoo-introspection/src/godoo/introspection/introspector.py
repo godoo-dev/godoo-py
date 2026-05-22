@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from godoo.client.errors import OdooMissingError, OdooValidationError
-
 from godoo.introspection.types import FieldSchema, ModelSchema
 
 if TYPE_CHECKING:

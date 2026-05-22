@@ -7,7 +7,6 @@ import uuid
 from typing import Any
 
 import httpx
-
 from godoo.client.errors import (
     OdooAccessError,
     OdooAuthError,

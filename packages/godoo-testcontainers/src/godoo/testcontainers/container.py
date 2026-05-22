@@ -14,11 +14,6 @@ import httpx
 from godoo.client import OdooClient, OdooClientConfig
 from godoo.client.errors import OdooNetworkError, OdooTimeoutError
 from godoo.client.services.modules import ModuleManager
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.network import Network
-from testcontainers.core.waiting_utils import wait_for_logs
-from testcontainers.postgres import PostgresContainer
-
 from godoo.testcontainers.seed_resolver import normalise_odoo_version, resolve_seed_info
 from godoo.testcontainers.snapshot import (
     ODOO_CORE_ADDONS_PATH,
@@ -29,6 +24,11 @@ from godoo.testcontainers.snapshot import (
     restore_snapshot,
     save_snapshot,
 )
+
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.network import Network
+from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.postgres import PostgresContainer
 
 logger = logging.getLogger("godoo.testcontainers")
 
