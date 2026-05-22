@@ -67,6 +67,7 @@ must_haves:
     - "User can run `from godoo.introspection import Introspector` and get Introspector"
     - "User can run `from godoo.testcontainers import OdooTestContainer` and get OdooTestContainer"
     - "No distribution ships a godoo/__init__.py (namespace invariant holds)"
+    - "All three wheels installed into a single venv coexist without namespace poisoning"
     - "mypy passes on all three src trees under the new namespace layout"
     - "All unit tests pass under the new import paths"
     - "uv workspace resolves godoo-client as a workspace member"
@@ -99,11 +100,11 @@ must_haves:
 ---
 
 <objective>
-Restructure all three packages into a shared `godoo` PEP 420 implicit namespace — moving source trees to `src/godoo/client/`, `src/godoo/introspection/`, `src/godoo/testcontainers/` — and rename the client distribution from `godoo` to `godoo-client`. Migrate all internal and cross-package imports, update pyproject.toml files, and verify the namespace invariant holds.
+Restructure all three packages into a shared `godoo` PEP 420 implicit namespace — moving source trees to `src/godoo/client/`, `src/godoo/introspection/`, `src/godoo/testcontainers/` — and rename the client distribution from `godoo` to `godoo-client`. Migrate all internal and cross-package imports, update pyproject.toml files, and verify the namespace invariant holds across all three built wheels including coexistence in a single venv.
 
 Purpose: RELEASE-02 — the import surface `from godoo.client import OdooClient` / `from godoo.introspection import Introspector` / `from godoo.testcontainers import OdooTestContainer` is the public API. The `azure.*` / `google.cloud.*` pattern requires no `godoo/__init__.py` in any wheel.
 
-Output: All three src trees under `src/godoo/{subpackage}/`, three pyproject.toml files updated with hatchling namespace config, root pyproject.toml updated for the renamed workspace member, all imports migrated, all unit tests passing, wheels buildable with correct namespace layout.
+Output: All three src trees under `src/godoo/{subpackage}/`, three pyproject.toml files updated with hatchling namespace config, root pyproject.toml updated for the renamed workspace member, all imports migrated, all unit tests passing, wheels buildable with correct namespace layout, coexistence verified in a clean venv.
 </objective>
 
 <execution_context>
@@ -270,7 +271,7 @@ Key cross-package import anchors (from PATTERNS.md):
     All files must retain `from __future__ import annotations` as their first line (per CLAUDE.md convention).
   </action>
   <verify>
-    <automated>python -c "import subprocess; r = subprocess.run(['python', '-m', 'pytest', 'packages/', '-m', 'not integration', '--co', '-q'], capture_output=True, text=True); print(r.stdout[-2000:]); print(r.stderr[-1000:])"</automated>
+    <automated>uv run pytest packages/ -m "not integration" -q</automated>
   </verify>
   <acceptance_criteria>
     - `find packages/ -path "*/src/godoo/__init__.py"` returns zero results (namespace invariant)
@@ -347,7 +348,7 @@ Key cross-package import anchors (from PATTERNS.md):
 </task>
 
 <task type="auto" tdd="false">
-  <name>Task 3: Migrate test file imports and verify wheel namespace invariant</name>
+  <name>Task 3: Migrate test file imports and verify wheel namespace invariant across all three distributions</name>
   <files>
     packages/godoo/tests/test_client.py,
     packages/godoo/tests/test_config.py,
@@ -401,11 +402,19 @@ Key cross-package import anchors (from PATTERNS.md):
     tests/integration/test_modules.py:
     - Line 8: `from godoo_testcontainers import StartedOdooContainer` (TYPE_CHECKING) → `from godoo.testcontainers import StartedOdooContainer`
 
-    After migrating ALL test imports, build the godoo-client wheel and verify namespace invariant:
+    After migrating ALL test imports, build all three wheels and verify the namespace invariant across every distribution:
     - `rm -rf dist/`
-    - `uv build --package godoo-client`
-    - `unzip -l dist/godoo_client-*.whl | grep "godoo/"` — output must show ONLY `godoo/client/...` entries
-    - `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` — must return zero lines (no namespace-root __init__)
+    - `uv build --package godoo-client && uv build --package godoo-introspection && uv build --package godoo-testcontainers`
+    - `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` → must return zero lines (no namespace-root __init__)
+    - `unzip -l dist/godoo_introspection-*.whl | grep "godoo/__init__"` → must return zero lines
+    - `unzip -l dist/godoo_testcontainers-*.whl | grep "godoo/__init__"` → must return zero lines
+    - `unzip -l dist/godoo_client-*.whl | grep "godoo/"` → output must show ONLY `godoo/client/...` entries
+
+    After the wheel checks, perform the coexistence check — this is the actual namespace-poisoning failure scenario:
+    - Create a fresh venv: `python -m venv /tmp/godoo-coexist-test`
+    - Install all three built wheels: `/tmp/godoo-coexist-test/bin/pip install dist/godoo_client-*.whl dist/godoo_introspection-*.whl dist/godoo_testcontainers-*.whl`
+    - `/tmp/godoo-coexist-test/bin/python -c "import godoo.client, godoo.introspection, godoo.testcontainers; print('coexistence OK')"` — this must exit 0
+    - If it fails with `ImportError: cannot import name ...` or a namespace conflict error, the `only-include` hatchling config in one of the three wheels is wrong — inspect `unzip -l dist/<failing-wheel>` to identify which wheel is shipping the wrong content.
   </action>
   <verify>
     <automated>uv run ruff check . && uv run ruff format --check . && uv run mypy packages/godoo/src packages/godoo-introspection/src packages/godoo-testcontainers/src && uv run pytest packages/ -m "not integration" -q</automated>
@@ -414,12 +423,15 @@ Key cross-package import anchors (from PATTERNS.md):
     - `uv run pytest packages/ -m "not integration" -q` exits 0 — all unit tests pass with new import paths
     - `uv run ruff check .` exits 0 — no linting errors in test files
     - `uv run mypy packages/godoo/src packages/godoo-introspection/src packages/godoo-testcontainers/src` exits 0
-    - `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` returns zero lines (namespace invariant in wheel)
+    - `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` returns zero lines (namespace invariant in godoo-client wheel)
+    - `unzip -l dist/godoo_introspection-*.whl | grep "godoo/__init__"` returns zero lines (namespace invariant in godoo-introspection wheel)
+    - `unzip -l dist/godoo_testcontainers-*.whl | grep "godoo/__init__"` returns zero lines (namespace invariant in godoo-testcontainers wheel)
     - `unzip -l dist/godoo_client-*.whl | grep "godoo/"` shows only `godoo/client/` entries
+    - `/tmp/godoo-coexist-test/bin/python -c "import godoo.client, godoo.introspection, godoo.testcontainers"` exits 0 (coexistence verified in clean venv)
     - `find packages/ -path "*/src/godoo/__init__.py"` returns zero results
     - `find packages/ -name "godoo_testcontainers" -o -name "godoo_introspection"` returns zero results (old directory names gone)
   </acceptance_criteria>
-  <done>All test imports migrated; full unit test suite passes; godoo-client wheel verified to contain only godoo/client/* (no namespace-root __init__.py)</done>
+  <done>All test imports migrated; full unit test suite passes; all three wheels verified to contain no namespace-root __init__.py; all three wheels coexist correctly in a clean venv</done>
 </task>
 
 </tasks>
@@ -438,9 +450,10 @@ Key cross-package import anchors (from PATTERNS.md):
 | Threat ID | Category | Component | Disposition | Mitigation Plan |
 |-----------|----------|-----------|-------------|-----------------|
 | T-04-02-01 | Tampering | src/godoo/ namespace root | mitigate | Post-restructure invariant check: `find packages/ -path "*/src/godoo/__init__.py"` must return zero; enforced in every task's acceptance criteria |
-| T-04-02-02 | Tampering | hatchling wheel contents | mitigate | Wheel inspection via `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` must return zero lines; run in Task 3 acceptance criteria |
+| T-04-02-02 | Tampering | hatchling wheel contents — all three distributions | mitigate | Wheel inspection via `unzip -l dist/<wheel>.whl | grep "godoo/__init__"` must return zero lines for ALL THREE wheels; run in Task 3 acceptance criteria |
 | T-04-02-03 | Denial of Service | uv workspace desync on rename | mitigate | [tool.uv.sources] key renamed atomically with project.name in Task 2; `uv sync` run immediately as verification |
 | T-04-02-04 | Information Disclosure | codegen.py emitted import string | mitigate | The string `"from godoo_introspection.markers import FieldMeta"` is code generated and emitted to user files — must be updated to `"from godoo.introspection.markers import FieldMeta"` in codegen.py line 159; covered by test_codegen.py line 65 assertion |
+| T-04-02-05 | Tampering | namespace coexistence — stray __init__.py in any wheel | mitigate | Task 3 clean-venv coexistence check: install all three built wheels into a fresh venv and verify `import godoo.client, godoo.introspection, godoo.testcontainers` exits 0 — catches the actual failure scenario missed by per-wheel inspection alone |
 | T-04-02-SC | Tampering | npm/pip/cargo installs | accept | No new packages installed in this plan; all tooling already in uv.lock |
 </threat_model>
 
@@ -452,6 +465,9 @@ After all three tasks complete and committed:
 - `uv run ruff check . && uv run ruff format --check .` exits 0
 - `uv run mypy packages/godoo/src packages/godoo-introspection/src packages/godoo-testcontainers/src` exits 0
 - `unzip -l dist/godoo_client-*.whl | grep "godoo/__init__"` returns zero lines
+- `unzip -l dist/godoo_introspection-*.whl | grep "godoo/__init__"` returns zero lines
+- `unzip -l dist/godoo_testcontainers-*.whl | grep "godoo/__init__"` returns zero lines
+- Clean-venv coexistence: `import godoo.client, godoo.introspection, godoo.testcontainers` exits 0
 - `uv sync` exits 0
 - `git push origin develop` triggers CI and lint + unit-tests pass
 </verification>
@@ -460,8 +476,9 @@ After all three tasks complete and committed:
 - `from godoo.client import OdooClient` resolves correctly post-restructure
 - `from godoo.introspection import Introspector` resolves correctly
 - `from godoo.testcontainers import OdooTestContainer` resolves correctly
-- No `godoo/__init__.py` exists in any src tree or wheel
+- No `godoo/__init__.py` exists in any src tree or in any of the three wheels
 - godoo-client wheel contains only `godoo/client/*` entries
+- All three wheels coexist in a clean venv without namespace collisions
 - All unit tests pass; mypy and ruff both exit 0
 - uv workspace resolves godoo-client correctly
 </success_criteria>
