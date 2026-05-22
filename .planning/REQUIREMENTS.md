@@ -59,7 +59,7 @@ Bugs in files the parity work already touches (in-scope per the v1 scope decisio
 
 SEED §5 — org bootstrap and PyPI publication.
 
-- [ ] **RELEASE-01**: The `godoo-dev/godoo-py` GitHub repo exists and `origin` is configured
+- [x] **RELEASE-01**: The `godoo-dev/godoo-py` GitHub repo exists and `origin` is configured
 - [ ] **RELEASE-02**: The `godoo` client package is renamed to `godoo-client` for PyPI distribution
 - [ ] **RELEASE-03**: All three packages are published to PyPI
 
@@ -123,7 +123,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIXES-01 | Phase 1 | Complete |
 | FIXES-02 | Phase 1 | Complete |
 | FIXES-03 | Phase 1 | Complete |
-| RELEASE-01 | Phase 4 | Pending |
+| RELEASE-01 | Phase 4 | Complete |
 | RELEASE-02 | Phase 4 | Pending |
 | RELEASE-03 | Phase 4 | Pending |
 
