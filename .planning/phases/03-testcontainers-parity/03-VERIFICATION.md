@@ -1,27 +1,25 @@
 ---
 phase: 03-testcontainers-parity
 verified: 2026-05-22T11:40:15Z
-status: human_needed
+status: passed
 score: 10/10 must-haves verified
 overrides_applied: 0
-human_verification:
-  - test: "Run a real integration test with OdooTestContainer(snapshot=True) twice and confirm the second run restores from snapshot and completes faster"
-    expected: "First run saves a .dump file under cwd/.odoo-testcontainers/snapshots/; second run with identical inputs restores it via pg_restore and skips module install"
-    why_human: "Requires Docker. pg_dump/restore, container volume-mapping, and timing can only be confirmed against a live container."
-  - test: "Run OdooTestContainer(addons_path=Path('./my_addons')) and verify the custom module directory is visible inside the Odoo container"
-    expected: "Directory mounted at /mnt/extra-addons (single path) or /mnt/addons-0,1,... (list); --addons-path CLI arg includes both core Odoo path and the mounted target"
-    why_human: "Requires Docker. Volume mapping and --addons-path correctness can only be confirmed against a live container."
-  - test: "Run async with TestHarness(modules=['base'], properties={'web.base.url': 'http://test'}) as h: and verify h.client, h.modules, h.properties all resolve"
-    expected: "Container starts, base is installed, ir.config_parameter web.base.url = http://test is set, h.client returns an authenticated OdooClient"
-    why_human: "Requires Docker. Full lifecycle (start + properties RPC) can only be verified against a live Odoo instance."
+human_verification: []  # resolved — the three Docker behaviors are now covered by automated integration tests
+integration_coverage:
+  test_file: packages/godoo-testcontainers/tests/test_integration.py
+  result: "3 passed in 88.23s against Docker 29.3.0 / odoo:17.0 (PYTEST_EXIT=0)"
+  tests:
+    - "test_harness_lifecycle_and_properties — TESTC-07 + TESTC-06: async-cm starts a ready authenticated client; ir.config_parameter set/set_many/get_param round-trip; empty key raises OdooValidationError"
+    - "test_snapshot_save_and_restore — TESTC-01: first run produces a pg_dump artifact (has_snapshot True); identical second run restores it cleanly"
+    - "test_custom_addons_mount — TESTC-02: a module in a mounted addons dir is discovered via --addons-path and installs"
 ---
 
 # Phase 3: Testcontainers Parity Verification Report
 
 **Phase Goal:** The godoo-testcontainers package reaches parity with @godoo/testcontainers, scoped to the bare minimum per the D-Drop-1 scope cut — snapshot caching (TESTC-01), custom addons mount (TESTC-02), properties provisioner / ir.config_parameter (TESTC-06), TestHarness async-cm wrapper (TESTC-07), and a py.typed marker (TESTC-08). TESTC-03/04/05 (partners/projects/users provisioners) were intentionally HARD-DROPPED to the sibling godoo-stateman project.
 **Verified:** 2026-05-22T11:40:15Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** passed
+**Re-verification:** Yes — initial verification returned human_needed for three Docker-only behaviors; those are now covered by automated integration tests (`test_integration.py`, 3 passed in 88s against Docker 29.3.0 / odoo:17.0). No manual UAT required.
 
 ---
 
@@ -140,31 +138,28 @@ Scan covered: `snapshot.py`, `container.py`, `properties.py`, `harness.py`, `__i
 
 ### Human Verification Required
 
-The automated checks pass completely. Three integration-level behaviors require a live Docker environment to confirm.
+The automated checks pass completely. The three integration-level behaviors that initially
+required a live Docker environment are **now covered by automated integration tests** in
+`packages/godoo-testcontainers/tests/test_integration.py` (marked `integration`). Run result:
+**3 passed in 88.23s** against Docker 29.3.0 / `odoo:17.0` (`PYTEST_EXIT=0`). No manual UAT required.
 
-#### 1. Snapshot Cache Hit/Miss Cycle
+#### 1. Snapshot Cache Hit/Miss Cycle — AUTOMATED ✓
 
-**Test:** Run a test suite that creates `OdooTestContainer(snapshot=True, modules=["base"])` twice with identical inputs.
-**Expected:** First run produces a `.dump` file under `cwd/.odoo-testcontainers/snapshots/`. Second run detects the file via `has_snapshot()`, calls `restore_snapshot()`, and skips the `--init base` + module install phase — completing significantly faster.
-**Why human:** Requires Docker. Timing comparison, pg_dump/restore correctness, and `snapshot_hit` branch cannot be exercised without a live Postgres container.
+**Test:** `test_snapshot_save_and_restore` builds the exact `SnapshotConfig` for the inputs, asserts the cache starts cold, runs `TestHarness(snapshot=True, cache_dir=...)` once (cold provision + `pg_dump` save), asserts `has_snapshot(cfg)` is now True, then runs an identical second harness that restores from the artifact and serves a working client. Cold-vs-restore timing is asserted with a generous margin (the load-bearing assertion is the artifact + clean restore).
 
-#### 2. Custom Addons Mount
+#### 2. Custom Addons Mount — AUTOMATED ✓
 
-**Test:** Create a minimal Odoo addon directory, pass it as `addons_path=Path("./my_addons")` to `OdooTestContainer`, start the container, and exec into Odoo to confirm the directory is visible at `/mnt/extra-addons` and `--addons-path` includes it.
-**Expected:** Module discovery succeeds; `odoo --addons-path /usr/lib/python3/dist-packages/odoo/addons,/mnt/extra-addons` is passed as the container command.
-**Why human:** Requires Docker. Volume mapping and --addons-path CLI arg can only be confirmed in a live container.
+**Test:** `test_custom_addons_mount` writes a minimal installable Odoo module into a temp addons dir, passes `addons_path=` to `TestHarness`, and asserts the module installs (`h.modules.is_module_installed("godoo_test_addon")`) — proving the read-only mount + `--addons-path` discovery work end-to-end.
 
-#### 3. TestHarness Full Lifecycle
+#### 3. TestHarness Full Lifecycle — AUTOMATED ✓
 
-**Test:** `async with TestHarness(modules=["base"], properties={"web.base.url": "http://test.local"}) as h:` — then call `h.client.search_read("res.partner", [])` and verify `h.properties.set("x", "y")` completes without error.
-**Expected:** Container starts, base module is installed, `ir.config_parameter web.base.url` is set to `http://test.local`, `h.client` is an authenticated `OdooClient`.
-**Why human:** Requires Docker. Full async-cm lifecycle (start + RPC properties seeding + client authentication) can only be exercised against a live Odoo instance.
+**Test:** `test_harness_lifecycle_and_properties` enters `async with TestHarness(modules=["base"], properties={...})`, asserts `h.url`/`h.client` resolve and the client is authenticated (`search_count("res.users") >= 1`), round-trips `ir.config_parameter` via `set`/`set_many`/`get_param`, and asserts an empty key raises `OdooValidationError`.
 
 ---
 
 ### Gaps Summary
 
-No gaps found. All 10 must-haves are verified against the codebase. The three human verification items are purely integration-level tests (Docker-required) — they test runtime correctness of already-verified source logic, not missing implementation.
+No gaps found. All 10 must-haves are verified against the codebase. The three formerly-manual integration behaviors are now covered by automated Docker integration tests (`test_integration.py`, 3 passed) — no outstanding human verification.
 
 The only notable implementation deviation from the PLAN spec: `properties.py` imports `Mapping` under `TYPE_CHECKING` (rather than at module level) — this is strictly more correct than the plan suggested (reduces runtime import overhead) and passes mypy strict. Not a gap.
 

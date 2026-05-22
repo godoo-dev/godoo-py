@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
-| 3. Testcontainers Parity | 3/3 | Complete   | 2026-05-22 |
+| 3. Testcontainers Parity | 3/3 | Complete    | 2026-05-22 |
 | 4. Release | 0/? | Not started | - |
