@@ -43,27 +43,36 @@ that godoo-ts already ships.
 - ✓ Raise `OdooTimeoutError` on timeout — Phase 1
 - ✓ Request-timeout configuration on the transport — Phase 1
 
+<!-- Validated in Phase 2: Introspection (2026-05-21). -->
+
+- ✓ `Introspector` — live schema via batched `ir.model` / `ir.model.fields` queries — Phase 2
+- ✓ `IntrospectionCache` — per-instance model-keyed cache with live-bypass option — Phase 2
+- ✓ `CodeGenerator` — emits typed TypedDict Python modules from a live schema — Phase 2
+- ✓ Type mapper — all 20 Odoo field ttypes → Python type hints — Phase 2
+- ✓ Selection fields emitted as `Literal[...]` — Phase 2
+- ✓ `godoo-introspection` `py.typed` PEP 561 marker — Phase 2
+
+<!-- Validated in Phase 3: Testcontainers Parity (2026-05-22). -->
+
+- ✓ Local snapshot cache (`pg_dump`/restore, sha256-keyed) — Phase 3
+- ✓ Custom addons bind-mount (`addons_path`) — Phase 3
+- ✓ Properties provisioner (`ConfigParameterHelper`, ir.config_parameter) — Phase 3
+- ✓ `TestHarness` async-cm composing the provisioners — Phase 3
+- ✓ `godoo-testcontainers` `py.typed` PEP 561 marker — Phase 3
+
+<!-- Validated in Phase 4 + 4.1: Release (2026-05-22). -->
+
+- ✓ `godoo-dev/godoo-py` GitHub repo created, `origin` configured, CI passing — Phase 4
+- ✓ `godoo`→`godoo-client` rename; PEP 420 `godoo.*` namespace restructure — Phase 4
+- ✓ All four distributions published to PyPI (0.2.0) via OIDC trusted publishing — Phase 4
+- ✓ Client-facing READMEs wired into each `pyproject.toml`; PyPI pages render (0.2.1) — Phase 4.1
+
 ### Active
 
-<!-- v1 milestone: build introspection, fill out testcontainers, release. -->
+<!-- v1.0 shipped; no next milestone defined yet. Run /gsd-new-milestone to scope v1.1+. -->
 
-**godoo-introspection — build from scratch:**
-- [ ] `Introspector` — queries `ir.model` / `ir.model.fields` for live schema
-- [ ] `IntrospectionCache` — model-keyed cache with bypass option
-- [ ] `CodeGenerator` — emits typed Python representations from schema
-- [ ] Type mapper — Odoo field types → Python type hints
-- [ ] `godoo-introspect` CLI entry point
-- [ ] Selection fields emitted as `Literal[...]`
-
-**godoo-testcontainers — parity gaps:**
-- [ ] Local snapshot cache (`pg_dump`/restore keyed by content hash)
-- [ ] Custom addons mount (`addonsPath`)
-- [ ] Properties provisioner (ir.config_parameter k/v via ConfigParameterHelper)
-- [ ] `TestHarness` high-level fixture composing the provisioners
-- [ ] `py.typed` markers (introspection + testcontainers)
-
-**Release:**
-- [ ] Create `godoo-dev/godoo-py` repo, rename `godoo`→`godoo-client` on PyPI, publish
+_None — v1.0 (Parity & Release) is complete. The next milestone has not been scoped yet.
+Candidate work lives in v2/backlog (see Out of Scope and the deferred items below)._
 
 ### Out of Scope
 
@@ -75,6 +84,11 @@ that godoo-ts already ships.
 
 ## Context
 
+- **v1.0 shipped (2026-05-22).** All three packages reached TS parity and were published
+  to PyPI: `godoo-client`, `godoo-introspection`, `godoo-testcontainers` (plus a `godoo`
+  placeholder dist) on a PEP 420 shared `godoo.*` namespace, at package version 0.2.1 via
+  OIDC trusted publishing. 26/26 v1 requirements complete. GSD milestone tag:
+  `milestone-v1.0` (distinct from the semantic-release package tags `v0.1.0`/`v0.2.0`).
 - **Brownfield re-run.** The existing `C:\dev\godoo-py` monorepo was incorporated as this
   satellite's base — full git history merged (commit `19d54e8`), prior `.planning/`
   removed so a fresh GSD pass owns planning. The codebase was mapped 2026-05-18
@@ -103,13 +117,16 @@ that godoo-ts already ships.
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Incorporate existing repo via full-history merge | SEED §6(a); preserves provenance | ✓ Good |
-| `godoo` client package → `godoo-client` on PyPI; introspection/testcontainers keep names | SEED §6(b); PyPI name clarity | — Pending |
+| `godoo` client package → `godoo-client` on PyPI; introspection/testcontainers keep names | SEED §6(b); PyPI name clarity | ✓ Good — shipped 0.2.0 with PEP 420 `godoo.*` namespace |
 | Test framework inherited unchanged (pytest-asyncio, respx, ruff, strict mypy) | SEED §6(c); existing config is sound | ✓ Good |
-| v1 scope = SEED §2 gaps + bugs in the same files | Adjacent bugs are cheap to fix in the same blast radius | — Pending |
-| Keep the Python 3.14 floor for v1 | SEED is silent; hold charter scope, revisit post-v1 | — Pending |
-| Include a release phase (repo create + PyPI publish) | SEED §5 deliverable; the satellite owns publish | — Pending |
+| v1 scope = SEED §2 gaps + bugs in the same files | Adjacent bugs are cheap to fix in the same blast radius | ✓ Good — all 26 v1 requirements shipped |
+| Keep the Python 3.14 floor for v1 | SEED is silent; hold charter scope, revisit post-v1 | ✓ Held — revisit via COMPAT-01 post-v1 |
+| Include a release phase (repo create + PyPI publish) | SEED §5 deliverable; the satellite owns publish | ✓ Good — published via OIDC trusted publishing |
 | Drop CLIENT-09 (`OAuthProxyClient`) from v1; amend SEED §2/§4 | Owner decision — never implemented, not a real parity gap | ✓ Good |
 | Drop TESTC-03/04/05 (partners/projects/users provisioners) from v1 | Declarative seeding belongs to godoo-stateman; testcontainers does bare minimum | D-Drop-1 |
+| Drop INTRO-05 (`godoo-introspect` CLI) from v1 | Library is the v1 deliverable; no CLI surface yet | D-CLI-1 |
+| Insert Phase 4.1 (package READMEs) after release | PyPI pages rendered empty — only the `godoo` meta package shipped a README | ✓ Good — fixed in 0.2.1 |
+| Tag GSD milestone as `milestone-v1.0`, not `v1.0` | Bare `v1.0` collides with semantic-release's `vX.Y.Z` tag namespace and would force a 1.0 package bump | ✓ Good |
 
 ## Evolution
 
@@ -129,4 +146,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-22 — Phase 04.1 (Package READMEs) complete; PyPI pages wired for 0.2.1 (packaging defect fix, no requirement IDs)*
+*Last updated: 2026-05-22 after v1.0 (Parity & Release) milestone — all 26 v1 requirements validated; three packages published to PyPI*

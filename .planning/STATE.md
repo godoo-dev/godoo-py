@@ -1,36 +1,33 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: milestone_complete
-last_updated: 2026-05-22T16:56:10.947Z
-last_activity: 2026-05-22 -- Phase 04.1 execution started
+milestone_name: Parity & Release
+status: Awaiting next milestone
+last_updated: "2026-05-22T18:54:23.117Z"
+last_activity: 2026-05-22 — Milestone v1.0 completed and archived
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
   completed_plans: 14
-  percent: 80
-stopped_at: Milestone complete (Phase 04.1 was final phase)
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-18)
+See: .planning/PROJECT.md (updated 2026-05-22)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone (v1.0 Parity & Release shipped — three packages live on PyPI)
 
 ## Current Position
 
-Phase: 04.1
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-22
-
-Progress: [█████████░] 92%
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-22 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
@@ -85,8 +82,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Init]: `godoo-introspection` is currently an empty placeholder package — Phase 2 builds it from scratch
-- [Init]: PyPI package rename (`godoo` → `godoo-client`) is a breaking change; RELEASE-02 must handle migration docs/deprecation notice
+None — v1.0 blockers resolved (introspection package built in Phase 2; `godoo`→`godoo-client` rename shipped in Phase 4).
 
 ## Deferred Items
 
@@ -96,9 +92,16 @@ None yet.
 | Client | CLIENT-V2-01: Auto re-auth on session expiry | Deferred to v2 | Init |
 | Performance | PERF-01: `read_group` SUM for cash balance | Deferred to backlog | Init |
 | Performance | PERF-02: CDC two-round-trip optimization | Deferred to backlog | Init |
+| UAT | Phase 03 03-HUMAN-UAT.md | Resolved, 0 pending scenarios — acknowledged non-blocking | v1.0 close |
+| Seed | SEED-001: browser/Pyodide compatibility | Dormant — future idea, never in v1 scope | v1.0 close |
+| Tech debt | release.yml Node 20 actions (checkout/setup-uv) emit deprecation warnings | Needs version bump | v1.0 close |
+| Tech debt | snapshot.py partial snapshot key for direct OdooTestContainer users | Documented limitation (plan 03-02) | v1.0 close |
 
 ## Session Continuity
 
-Last session: 2026-05-22T16:26:44.378Z
-Stopped at: Phase 04.1 context gathered
-Resume file: .planning/phases/04.1-package-readmes-add-a-short-client-facing-readme-md-to-godoo/04.1-CONTEXT.md
+Last session: 2026-05-22 — v1.0 milestone closed and archived
+Stopped at: Milestone complete; awaiting /gsd-new-milestone
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
