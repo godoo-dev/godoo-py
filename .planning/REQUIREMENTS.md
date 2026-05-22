@@ -43,8 +43,8 @@ godoo-testcontainers — parity with `@godoo/testcontainers`.
 - ~~**TESTC-03**: A partners provisioner seeds `res.partner` records into the test database~~ *(dropped — D-Drop-1: declarative seeding belongs to godoo-stateman)*
 - ~~**TESTC-04**: A projects provisioner seeds `project.project` + `project.task.type` records~~ *(dropped — D-Drop-1)*
 - ~~**TESTC-05**: A users provisioner seeds `res.users` records with configurable groups~~ *(dropped — D-Drop-1)*
-- [ ] **TESTC-06**: A properties provisioner sets `ir.config_parameter` key/value pairs
-- [ ] **TESTC-07**: A `TestHarness` fixture composes the provisioners and exposes a clean test API
+- [x] **TESTC-06**: A properties provisioner sets `ir.config_parameter` key/value pairs
+- [x] **TESTC-07**: A `TestHarness` fixture composes the provisioners and exposes a clean test API
 - [x] **TESTC-08**: The `godoo-testcontainers` package ships a `py.typed` PEP 561 marker
 
 ### Fixes
@@ -117,8 +117,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ~~TESTC-03~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
 | ~~TESTC-04~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
 | ~~TESTC-05~~ | ~~Phase 3~~ | ~~Dropped (D-Drop-1)~~ |
-| TESTC-06 | Phase 3 | Pending |
-| TESTC-07 | Phase 3 | Pending |
+| TESTC-06 | Phase 3 | Complete |
+| TESTC-07 | Phase 3 | Complete |
 | TESTC-08 | Phase 3 | Complete |
 | FIXES-01 | Phase 1 | Complete |
 | FIXES-02 | Phase 1 | Complete |

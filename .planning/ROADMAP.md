@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Client Parity** - Close all godoo client gaps and fix in-scope transport/service bugs (completed 2026-05-19)
 - [x] **Phase 2: Introspection** - Build godoo-introspection from scratch (Introspector, cache, codegen, library) (completed 2026-05-21)
-- [ ] **Phase 3: Testcontainers Parity** - Close all godoo-testcontainers gaps (snapshot cache, addons, provisioners, harness)
+- [x] **Phase 3: Testcontainers Parity** - Close all godoo-testcontainers gaps (snapshot cache, addons, provisioners, harness) (completed 2026-05-22)
 - [ ] **Phase 4: Release** - Create the GitHub repo, rename godoo→godoo-client on PyPI, publish all three packages
 
 ## Phase Details
@@ -103,7 +103,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-03-PLAN.md — Properties helper (ConfigParameterHelper) + TestHarness async-cm + barrel exports (TESTC-06, TESTC-07)
+- [x] 03-03-PLAN.md — Properties helper (ConfigParameterHelper) + TestHarness async-cm + barrel exports (TESTC-06, TESTC-07)
 
 ### Phase 4: Release
 
@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
-| 3. Testcontainers Parity | 2/3 | In Progress|  |
+| 3. Testcontainers Parity | 3/3 | Complete   | 2026-05-22 |
 | 4. Release | 0/? | Not started | - |
