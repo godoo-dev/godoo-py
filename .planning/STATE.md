@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-02 namespace restructure plan
-last_updated: "2026-05-22T15:47:14.803Z"
+last_updated: "2026-05-22T16:26:44.384Z"
 last_activity: 2026-05-22 -- Phase 04 marked complete
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 13
   completed_plans: 13
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -21,7 +20,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 04 — release
+**Current focus:** Phase 04.1 — package READMEs (inserted)
 
 ## Current Position
 
@@ -60,6 +59,10 @@ Progress: [█████████░] 92%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 04.1 inserted after Phase 4: Package READMEs to fix empty PyPI pages; publish 0.2.1 (URGENT)
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22T14:21:18.795Z
-Stopped at: Completed 04-02 namespace restructure plan
-Resume file: None
+Last session: 2026-05-22T16:26:44.378Z
+Stopped at: Phase 04.1 context gathered
+Resume file: .planning/phases/04.1-package-readmes-add-a-short-client-facing-readme-md-to-godoo/04.1-CONTEXT.md
