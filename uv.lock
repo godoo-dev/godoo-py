@@ -4,7 +4,7 @@ requires-python = ">=3.14"
 
 [manifest]
 members = [
-    "godoo",
+    "godoo-client",
     "godoo-introspection",
     "godoo-testcontainers",
 ]
@@ -260,7 +260,7 @@ wheels = [
 ]
 
 [[package]]
-name = "godoo"
+name = "godoo-client"
 version = "0.1.1"
 source = { editable = "packages/godoo" }
 dependencies = [
@@ -275,24 +275,24 @@ name = "godoo-introspection"
 version = "0.1.1"
 source = { editable = "packages/godoo-introspection" }
 dependencies = [
-    { name = "godoo" },
+    { name = "godoo-client" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "godoo", editable = "packages/godoo" }]
+requires-dist = [{ name = "godoo-client", editable = "packages/godoo" }]
 
 [[package]]
 name = "godoo-testcontainers"
 version = "0.1.1"
 source = { editable = "packages/godoo-testcontainers" }
 dependencies = [
-    { name = "godoo" },
+    { name = "godoo-client" },
     { name = "testcontainers" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "godoo", editable = "packages/godoo" },
+    { name = "godoo-client", editable = "packages/godoo" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4" },
 ]
 

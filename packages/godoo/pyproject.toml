@@ -1,5 +1,5 @@
 [project]
-name = "godoo"
+name = "godoo-client"
 version = "0.1.1"
 description = "Async Python client for Odoo JSON-RPC"
 license = "LGPL-3.0-or-later"
@@ -17,12 +17,13 @@ classifiers = [
 
 [project.urls]
 Documentation = "https://www.marcfargas.com/~odoopy/"
-Repository = "https://github.com/marcfargas/godoo"
-Issues = "https://github.com/marcfargas/godoo/issues"
+Repository = "https://github.com/godoo-dev/godoo-py"
+Issues = "https://github.com/godoo-dev/godoo-py/issues"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/godoo"]
+sources = ["src"]
+only-include = ["src/godoo/client"]

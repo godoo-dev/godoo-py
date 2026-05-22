@@ -15,7 +15,7 @@ dev-dependencies = [
 members = ["packages/*"]
 
 [tool.uv.sources]
-godoo = { workspace = true }
+godoo-client = { workspace = true }
 
 [tool.ruff]
 target-version = "py314"
@@ -51,7 +51,7 @@ markers = [
 addopts = "--tb=short -q"
 
 [tool.coverage.run]
-source_pkgs = ["godoo", "godoo_testcontainers", "godoo_introspection"]
+source_pkgs = ["godoo.client", "godoo.testcontainers", "godoo.introspection"]
 branch = true
 
 [tool.coverage.report]
@@ -69,7 +69,7 @@ major_on_zero = false
 branch = "main"
 commit_parser = "conventional"
 build_command = """
-    uv build --package godoo && \
+    uv build --package godoo-client && \
     uv build --package godoo-testcontainers && \
     uv build --package godoo-introspection
 """

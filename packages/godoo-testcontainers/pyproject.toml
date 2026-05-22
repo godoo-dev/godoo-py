@@ -4,7 +4,7 @@ version = "0.1.1"
 description = "Docker-based Odoo instances for integration testing"
 license = "LGPL-3.0-or-later"
 requires-python = ">=3.14"
-dependencies = ["godoo>=0.1.0", "testcontainers[postgres]>=4"]
+dependencies = ["godoo-client>=0.1.0", "testcontainers[postgres]>=4"]
 authors = [{ name = "Marc Fargas", email = "marc@marcfargas.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -17,11 +17,13 @@ classifiers = [
 
 [project.urls]
 Documentation = "https://www.marcfargas.com/~odoopy/"
-Repository = "https://github.com/marcfargas/godoo"
+Repository = "https://github.com/godoo-dev/godoo-py"
+Issues = "https://github.com/godoo-dev/godoo-py/issues"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/godoo_testcontainers"]
+sources = ["src"]
+only-include = ["src/godoo/testcontainers"]
