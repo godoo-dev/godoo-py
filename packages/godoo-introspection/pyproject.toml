@@ -1,6 +1,6 @@
 [project]
 name = "godoo-introspection"
-version = "0.1.1"
+version = "0.2.0"
 description = "Schema discovery and codegen for Odoo models"
 license = "LGPL-3.0-or-later"
 requires-python = ">=3.14"
