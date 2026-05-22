@@ -95,7 +95,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Charter amendments (strike TESTC-03/04/05 per D-Drop-1, fix snapshot path text) + py.typed marker (TESTC-08)
+- [x] 03-01-PLAN.md — Charter amendments (strike TESTC-03/04/05 per D-Drop-1, fix snapshot path text) + py.typed marker (TESTC-08)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 |-------|----------------|--------|-----------|
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
-| 3. Testcontainers Parity | 0/3 | Not started | - |
+| 3. Testcontainers Parity | 1/3 | In Progress|  |
 | 4. Release | 0/? | Not started | - |

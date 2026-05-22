@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-22T11:11:59.554Z"
-last_activity: 2026-05-22 -- Phase 03 planning complete
+last_updated: "2026-05-22T11:17:19.988Z"
+last_activity: 2026-05-22
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 50
 ---
 
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 2 — introspection
+**Current focus:** Phase 03 — testcontainers-parity
 
 ## Current Position
 
-Phase: 02 — COMPLETE
-Plan: Not started
+Phase: 03 (testcontainers-parity) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 03 planning complete
+Last activity: 2026-05-22
 
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [██████████] 100%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 03 P01 | 2 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Recent decisions affecting current work:
 - [Init]: `godoo` package → `godoo-client` on PyPI; other package names unchanged
 - [Init]: v1 scope = SEED §2 parity gaps + adjacent bugs in the same files (FIXES-01/02/03)
 - [Init]: Phases 2 and 3 may run in parallel after Phase 1 completes (packages are independent)
+- [Phase ?]: Drop TESTC-03/04/05 (partners/projects/users provisioners) from v1 — declarative seeding belongs to godoo-stateman (D-Drop-1)
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-21T16:39:39.373Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-testcontainers-parity/03-CONTEXT.md
+Last session: 2026-05-22T11:17:19.980Z
+Stopped at: Completed Phase 03-01 charter amendments + py.typed
+Resume file: .planning/phases/03-testcontainers-parity/03-02-PLAN.md
