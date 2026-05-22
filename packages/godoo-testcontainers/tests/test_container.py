@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from godoo_testcontainers.container import OdooTestContainer
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestOdooTestContainerDefaults:
@@ -36,3 +41,34 @@ class TestOdooTestContainerDefaults:
         c2 = OdooTestContainer()
         c1._modules.append("crm")
         assert c2._modules == []
+
+
+class TestOdooTestContainerNewParams:
+    def test_addons_path_default_none(self) -> None:
+        c = OdooTestContainer()
+        assert c._addons_path is None
+
+    def test_snapshot_default_true(self) -> None:
+        c = OdooTestContainer()
+        assert c._snapshot_enabled is True
+
+    def test_snapshot_false(self) -> None:
+        c = OdooTestContainer(snapshot=False)
+        assert c._snapshot_enabled is False
+
+    def test_cache_dir_default_none(self) -> None:
+        c = OdooTestContainer()
+        assert c._cache_dir is None
+
+    def test_addons_path_single(self, tmp_path: Path) -> None:
+        c = OdooTestContainer(addons_path=tmp_path)
+        assert c._addons_path == tmp_path
+
+    def test_addons_path_list(self, tmp_path: Path) -> None:
+        paths = [tmp_path / "a", tmp_path / "b"]
+        c = OdooTestContainer(addons_path=paths)
+        assert c._addons_path == paths
+
+    def test_cache_dir_custom(self, tmp_path: Path) -> None:
+        c = OdooTestContainer(cache_dir=tmp_path)
+        assert c._cache_dir == tmp_path
