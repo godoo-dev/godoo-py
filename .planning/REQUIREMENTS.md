@@ -61,7 +61,7 @@ SEED §5 — org bootstrap and PyPI publication.
 
 - [x] **RELEASE-01**: The `godoo-dev/godoo-py` GitHub repo exists and `origin` is configured
 - [x] **RELEASE-02**: The `godoo` client package is renamed to `godoo-client` for PyPI distribution
-- [ ] **RELEASE-03**: All three packages are published to PyPI
+- [x] **RELEASE-03**: All three packages are published to PyPI
 
 ## v2 Requirements
 
@@ -125,7 +125,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIXES-03 | Phase 1 | Complete |
 | RELEASE-01 | Phase 4 | Complete |
 | RELEASE-02 | Phase 4 | Complete |
-| RELEASE-03 | Phase 4 | Pending |
+| RELEASE-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 26 total (INTRO-05, TESTC-03, TESTC-04, TESTC-05 dropped)
