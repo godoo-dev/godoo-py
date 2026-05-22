@@ -125,7 +125,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-namespace-restructure-PLAN.md — Restructure all three packages into shared godoo.* namespace, rename godoo→godoo-client, migrate all imports (RELEASE-02)
+- [x] 04-02-namespace-restructure-PLAN.md — Restructure all three packages into shared godoo.* namespace, rename godoo→godoo-client, migrate all imports (RELEASE-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -141,4 +141,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (Phases 2 and 3 may run in 
 | 1. Client Parity | 5/5 | Complete    | 2026-05-19 |
 | 2. Introspection | 2/2 | Complete   | 2026-05-21 |
 | 3. Testcontainers Parity | 3/3 | Complete    | 2026-05-22 |
-| 4. Release | 1/3 | In Progress|  |
+| 4. Release | 2/3 | In Progress|  |

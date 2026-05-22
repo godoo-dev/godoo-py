@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-22T13:55:04.628Z"
+last_updated: "2026-05-22T14:21:18.803Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 75
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 ## Current Position
 
 Phase: 04 (release) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-22
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [█████████░] 85%
 | Phase 03 P01 | 2 | 2 tasks | 3 files |
 | Phase 03-testcontainers-parity P2 | 30m | 3 tasks | 4 files |
 | Phase 03-testcontainers-parity P3 | 4 | 3 tasks | 6 files |
+| Phase 04-release P02 | 45 | 3 tasks | 92 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [Init]: v1 scope = SEED §2 parity gaps + adjacent bugs in the same files (FIXES-01/02/03)
 - [Init]: Phases 2 and 3 may run in parallel after Phase 1 completes (packages are independent)
 - [Phase ?]: Drop TESTC-03/04/05 (partners/projects/users provisioners) from v1 — declarative seeding belongs to godoo-stateman (D-Drop-1)
+- [Phase ?]: Namespace invariant established
+- [Phase ?]: PyPI names: godoo-client, godoo-introspection, godoo-testcontainers
+- [Phase ?]: from godoo.client.*, godoo.introspection.*, godoo.testcontainers.*
 
 ### Pending Todos
 
@@ -89,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-22T13:55:04.622Z
-Stopped at: Phase 4 context gathered
+Last session: 2026-05-22T14:21:18.795Z
+Stopped at: Completed 04-02 namespace restructure plan
 Resume file: None
