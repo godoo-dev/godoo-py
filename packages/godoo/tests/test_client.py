@@ -9,9 +9,9 @@ import json
 import httpx
 import pytest
 import respx
-from godoo.client import OdooClient, OdooClientConfig, _ambient_context
-from godoo.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
-from godoo.safety import OperationInfo, SafetyContext
+from godoo.client.client import OdooClient, OdooClientConfig, _ambient_context
+from godoo.client.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
+from godoo.client.safety import OperationInfo, SafetyContext
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"
@@ -539,7 +539,7 @@ async def test_read_binary_malformed_base64(auth_client):
         with pytest.raises(OdooValidationError) as exc_info:
             await auth_client.read_binary("ir.attachment", 42, "datas")
     # Must be an OdooError subclass — not a bare ValueError/binascii.Error
-    from godoo.errors import OdooError
+    from godoo.client.errors import OdooError
 
     assert isinstance(exc_info.value, OdooError)
     assert "datas" in str(exc_info.value)

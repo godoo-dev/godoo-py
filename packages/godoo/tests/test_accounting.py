@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.services.accounting import (
+from godoo.client.services.accounting import (
     AccountingService,
     _m2o_id,
     _m2o_name,

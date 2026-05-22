@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 import pytest
 import respx
-from godoo.errors import (
+from godoo.client.errors import (
     OdooAccessError,
     OdooAuthError,
     OdooMissingError,
@@ -14,7 +14,7 @@ from godoo.errors import (
     OdooTimeoutError,
     OdooValidationError,
 )
-from godoo.rpc import JsonRpcTransport, OdooSessionInfo
+from godoo.client.rpc import JsonRpcTransport, OdooSessionInfo
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"

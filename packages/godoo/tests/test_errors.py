@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from godoo.errors import (
+from godoo.client.errors import (
     OdooAccessError,
     OdooAuthError,
     OdooError,
@@ -11,7 +11,7 @@ from godoo.errors import (
     OdooTimeoutError,
     OdooValidationError,
 )
-from godoo.safety import OperationInfo
+from godoo.client.safety import OperationInfo
 
 # ---------------------------------------------------------------------------
 # OdooError (base)

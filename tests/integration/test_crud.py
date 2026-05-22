@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from godoo import OdooClient
+    from godoo.client import OdooClient
 
 
 @pytest.mark.integration

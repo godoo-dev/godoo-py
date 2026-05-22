@@ -3,8 +3,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from godoo.errors import OdooValidationError
-from godoo_testcontainers.properties import ConfigParameterHelper
+from godoo.client.errors import OdooValidationError
+from godoo.testcontainers.properties import ConfigParameterHelper
 
 
 class TestConfigParameterHelper:

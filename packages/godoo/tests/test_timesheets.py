@@ -8,8 +8,8 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.errors import OdooValidationError
-from godoo.services.timesheets import LogTimeOptions, TimesheetsService, stop_timer
+from godoo.client.errors import OdooValidationError
+from godoo.client.services.timesheets import LogTimeOptions, TimesheetsService, stop_timer
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"

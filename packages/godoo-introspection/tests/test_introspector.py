@@ -5,11 +5,11 @@ from __future__ import annotations
 import httpx
 import pytest
 import respx
-from godoo.client import OdooClient, OdooClientConfig
-from godoo.errors import OdooMissingError, OdooValidationError
-from godoo_introspection.introspector import IntrospectionCache, Introspector
-from godoo_introspection.markers import FieldMeta
-from godoo_introspection.types import FieldSchema, ModelSchema
+from godoo.client.client import OdooClient, OdooClientConfig
+from godoo.client.errors import OdooMissingError, OdooValidationError
+from godoo.introspection.introspector import IntrospectionCache, Introspector
+from godoo.introspection.markers import FieldMeta
+from godoo.introspection.types import FieldSchema, ModelSchema
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"

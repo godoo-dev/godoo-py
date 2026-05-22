@@ -8,7 +8,7 @@ import pytest
 # name matching python_classes pattern (default: Test*), but TestHarness has an
 # __init__ and is not a test class. Using the alias keeps the import out of the
 # collection scan without affecting runtime behaviour.
-from godoo_testcontainers.harness import TestHarness as Harness
+from godoo.testcontainers.harness import TestHarness as Harness
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -17,10 +17,10 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from godoo.errors import OdooValidationError
-from godoo_testcontainers import TestHarness
-from godoo_testcontainers.seed_resolver import normalise_odoo_version
-from godoo_testcontainers.snapshot import has_snapshot, make_snapshot_config
+from godoo.client.errors import OdooValidationError
+from godoo.testcontainers import TestHarness
+from godoo.testcontainers.seed_resolver import normalise_odoo_version
+from godoo.testcontainers.snapshot import has_snapshot, make_snapshot_config
 
 if TYPE_CHECKING:
     from pathlib import Path

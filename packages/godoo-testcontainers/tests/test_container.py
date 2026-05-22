@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from godoo_testcontainers.container import OdooTestContainer
+from godoo.testcontainers.container import OdooTestContainer
 
 if TYPE_CHECKING:
     from pathlib import Path

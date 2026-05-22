@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest_asyncio
-from godoo_testcontainers import OdooTestContainer
+from godoo.testcontainers import OdooTestContainer
 
 
 @pytest_asyncio.fixture(scope="session")

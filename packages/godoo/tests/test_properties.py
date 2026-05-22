@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.services.properties import PropertiesService, properties_to_write_format
+from godoo.client.services.properties import PropertiesService, properties_to_write_format
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"
@@ -78,7 +78,7 @@ async def test_update_safely_merges(auth_client):
 @pytest.mark.asyncio
 async def test_update_safely_batch(auth_client):
     """Batch update applies to multiple records (sequential to avoid race)."""
-    from godoo.services.properties.functions import update_safely
+    from godoo.client.services.properties.functions import update_safely
 
     # Run sequentially to have deterministic mock order
     respx.post(f"{BASE_URL}/jsonrpc").mock(

@@ -8,9 +8,9 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.services.cdc import CdcService, clear_cache, get_cached, set_cached
-from godoo.services.cdc.resolver import resolve_values
-from godoo.services.cdc.types import FieldMeta
+from godoo.client.services.cdc import CdcService, clear_cache, get_cached, set_cached
+from godoo.client.services.cdc.resolver import resolve_values
+from godoo.client.services.cdc.types import FieldMeta
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"

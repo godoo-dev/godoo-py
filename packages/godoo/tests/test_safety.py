@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from godoo.safety import (
+from godoo.client.safety import (
     OperationInfo,
     SafetyContext,
     get_default_safety_context,

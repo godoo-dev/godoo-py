@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from godoo_testcontainers.snapshot import (
+from godoo.testcontainers.snapshot import (
     SnapshotConfig,
     _build_addons_cmd,
     compute_snapshot_key,

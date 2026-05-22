@@ -7,8 +7,8 @@ import typing
 from pathlib import Path
 
 import pytest
-from godoo_introspection.codegen import CodeGenerator, _model_to_classname, _model_to_filename
-from godoo_introspection.types import FieldSchema, ModelSchema
+from godoo.introspection.codegen import CodeGenerator, _model_to_classname, _model_to_filename
+from godoo.introspection.types import FieldSchema, ModelSchema
 
 
 def _schema(model_name: str = "res.partner", **fields: FieldSchema) -> ModelSchema:
@@ -62,7 +62,7 @@ def test_generate_field_meta_import() -> None:
     schema = _schema()
     result = gen.generate(schema)
     # Must be a RUNTIME import, not under TYPE_CHECKING
-    assert "from godoo_introspection.markers import FieldMeta" in result
+    assert "from godoo.introspection.markers import FieldMeta" in result
     assert "TYPE_CHECKING" not in result
 
 

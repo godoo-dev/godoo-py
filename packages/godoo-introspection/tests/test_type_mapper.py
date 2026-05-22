@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from godoo_introspection.type_mapper import python_type_str
-from godoo_introspection.types import FieldSchema
+from godoo.introspection.type_mapper import python_type_str
+from godoo.introspection.types import FieldSchema
 
 if TYPE_CHECKING:
     import pytest

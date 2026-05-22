@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from godoo_testcontainers.seed_resolver import (
+from godoo.testcontainers.seed_resolver import (
     SeedInfo,
     normalise_odoo_version,
     read_seed_config,

@@ -6,8 +6,8 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.errors import OdooValidationError
-from godoo.services.attendance import AttendanceService, resolve_employee_id
+from godoo.client.errors import OdooValidationError
+from godoo.client.services.attendance import AttendanceService, resolve_employee_id
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"

@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 from godoo.client import OdooClient, OdooClientConfig
-from godoo.services.modules import ModuleManager
+from godoo.client.services.modules import ModuleManager
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"
