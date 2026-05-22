@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 import httpx
 from godoo import OdooClient, OdooClientConfig
+from godoo.errors import OdooNetworkError, OdooTimeoutError
 from godoo.services.modules import ModuleManager
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
@@ -44,7 +45,13 @@ class StartedOdooContainer:
 
     async def cleanup(self) -> None:
         logger.info("Cleaning up...")
-        self.client.logout()
+        with contextlib.suppress(Exception):
+            self.client.logout()
+        # CR-02: logout() only clears the in-memory session; aclose() releases the
+        # underlying httpx.AsyncClient pool. OdooClient exposes no __aexit__, so the
+        # harness is the only place that can close it — otherwise sockets/fds leak.
+        with contextlib.suppress(Exception):
+            await self.client.aclose()
         for c in [self.odoo_container, self.postgres_container]:
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(c.stop)
@@ -78,6 +85,14 @@ class OdooTestContainer:
         # Stored for snapshot key accuracy only — the container does NOT call set_param.
         # TestHarness passes its properties dict here so different properties produce
         # a different snapshot key (D-Snap-1), ensuring correct cache invalidation.
+        #
+        # WR-03: `properties` is a KEY-ONLY input. It influences the snapshot key but is
+        # NOT seeded into the database by `start()`, so a saved dump does NOT contain the
+        # advertised ir.config_parameter rows. TestHarness reconciles this by calling
+        # `properties.set_many()` after `start()` returns on every entry (including cache
+        # hits). Direct `OdooTestContainer` users who pass `properties` therefore get a
+        # snapshot keyed on properties they must seed themselves — the container will not
+        # apply them. Use TestHarness if you want properties seeded automatically.
         self._properties_for_key: dict[str, str] = properties if properties is not None else {}
 
     async def start(self) -> StartedOdooContainer:
@@ -110,7 +125,10 @@ class OdooTestContainer:
                 # the cache dir into the Postgres container (rw — pg_dump writes there).
                 snapshot_cfg: SnapshotConfig | None = None
                 if snapshot_enabled:
-                    snapshot_cfg = make_snapshot_config(
+                    # WR-04: _hash_addons_path walks the filesystem synchronously, so
+                    # build the config off the event loop.
+                    snapshot_cfg = await asyncio.to_thread(
+                        make_snapshot_config,
                         snapshot_enabled=True,
                         cache_dir=self._cache_dir,
                         odoo_version=odoo_ver,
@@ -122,10 +140,14 @@ class OdooTestContainer:
                         env=self._env,
                         properties=self._properties_for_key,
                     )
-                    # Cache dir must exist BEFORE pg.start() — Docker volume mapping
-                    # does not create the host dir on Windows (and creates root-owned
-                    # dirs on Linux), so we create it explicitly.
-                    snapshot_cfg.cache_dir.mkdir(parents=True, exist_ok=True)
+                    # CR-01: gate every snapshot side effect on the resolved cfg.enabled,
+                    # not the local snapshot_enabled flag — make_snapshot_config honours
+                    # ODOO_TESTCONTAINERS_SNAPSHOT=disabled, which the local flag misses.
+                    if snapshot_cfg.enabled:
+                        # Cache dir must exist BEFORE pg.start() — Docker volume mapping
+                        # does not create the host dir on Windows (and creates root-owned
+                        # dirs on Linux), so we create it explicitly.
+                        snapshot_cfg.cache_dir.mkdir(parents=True, exist_ok=True)
 
                 pg_builder = (
                     PostgresContainer(
@@ -137,7 +159,7 @@ class OdooTestContainer:
                     .with_network(network)
                     .with_network_aliases("db")
                 )
-                if snapshot_cfg is not None:
+                if snapshot_cfg is not None and snapshot_cfg.enabled:
                     pg_builder = pg_builder.with_volume_mapping(
                         str(snapshot_cfg.cache_dir), "/snapshot-cache", "rw"
                     )
@@ -189,8 +211,12 @@ class OdooTestContainer:
             port = odoo.get_exposed_port(8069)
             url = f"http://{host}:{port}"
 
+            # WR-01: derive the readiness attempt budget from startup_timeout (the
+            # readiness poll sleeps 2s between attempts), so raising startup_timeout
+            # for slow CI actually extends the wait.
+            ready_attempts = max(1, self._startup_timeout // 2)
             try:
-                await self._wait_for_odoo_ready(url, self._database)
+                await self._wait_for_odoo_ready(url, self._database, max_attempts=ready_attempts)
             except TimeoutError:
                 # Dump Odoo container logs for debugging
                 try:
@@ -218,16 +244,21 @@ class OdooTestContainer:
                     logger.info("Installing module: %s", mod)
                     try:
                         await mm.install_module(mod)
-                    except Exception:
-                        # Module install can restart Odoo — wait for it to come back and retry
-                        logger.info("Module install failed (server may have restarted), waiting...")
-                        await self._wait_for_odoo_ready(url, self._database, max_attempts=60)
+                    except (OdooNetworkError, OdooTimeoutError) as exc:
+                        # WR-02: only restart-shaped errors (network drop / timeout) are
+                        # retried — a genuine install failure (bad module, ACL/dependency
+                        # error) is a different exception type and propagates immediately
+                        # instead of being swallowed and retried after a long delay.
+                        # The original error is logged/chained so failures are not opaque.
+                        logger.info("Module install interrupted (server may have restarted): %s", exc)
+                        # WR-01: budget the post-install readiness wait off startup_timeout.
+                        await self._wait_for_odoo_ready(url, self._database, max_attempts=ready_attempts)
                         await client.authenticate()
                         await mm.install_module(mod)
 
             # TESTC-01: save snapshot after module install completes (snapshot miss path).
             # Save failure is non-fatal — tests continue without snapshot benefit.
-            if snapshot_enabled and snapshot_cfg is not None and not snapshot_hit:
+            if snapshot_cfg is not None and snapshot_cfg.enabled and not snapshot_hit:
                 logger.info("Snapshot miss — saving to %s", snapshot_cfg.host_path)
                 try:
                     await save_snapshot(pg, snapshot_cfg, self._database, pg_user)
