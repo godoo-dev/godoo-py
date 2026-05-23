@@ -31,3 +31,19 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 | 3. Testcontainers Parity | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
+
+## Backlog
+
+### Phase 999.1: Rename packages/godoo to packages/godoo-client for dist consistency (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Context: the PyPI dist is already named `godoo-client` (`packages/godoo/pyproject.toml`),
+but the workspace directory is still `packages/godoo`. Rename the directory to
+`packages/godoo-client` to close the directory↔dist-name gap. The import module name
+(`godoo`) is a separate decision — clarify whether it stays `godoo` or also changes.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
