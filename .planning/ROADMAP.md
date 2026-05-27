@@ -42,7 +42,10 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
   3. CI passes: ruff, mypy, and pytest all resolve source paths correctly from the renamed location without manual path patching
   4. A guard test asserts `godoo.__file__ is None` (PEP 420 namespace intact, no stray `__init__.py` promoted godoo to a regular package)
   5. All seven hardcoded `packages/godoo/` references are updated (root `pyproject.toml`: `mypy_path`, `version_toml`, `build_command`; `.github/workflows/test.yml` mypy invocation; `mkdocs.yml` mkdocstrings paths)
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 05-01-PLAN.md — git mv rename + uv sync + update all path references (PKG-01, PKG-02)
+- [ ] 05-02-PLAN.md — PEP 420 guard test + D-04 local done-gate (PKG-03)
 
 ### Phase 6: Transport Seam & Typed Models Core
 **Goal**: Developers can perform type-safe Odoo reads (`client.read(ResPartner, ids)` → `list[ResPartner]`) using instance-generated models, while the raw string path is unchanged and a default install with no Pydantic installed never imports Pydantic
@@ -90,7 +93,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 | 3. Testcontainers Parity | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
-| 5. Directory Rename | v1.1 | 0/? | Not started | - |
+| 5. Directory Rename | v1.1 | 0/2 | Not started | - |
 | 6. Transport Seam & Typed Models Core | v1.1 | 0/? | Not started | - |
 | 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
