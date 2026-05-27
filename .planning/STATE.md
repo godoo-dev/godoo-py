@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: Parity & Release
-status: Awaiting next milestone
-last_updated: "2026-05-22T18:54:23.117Z"
-last_activity: 2026-05-22 — Milestone v1.0 completed and archived
+milestone: v1.1
+milestone_name: Typed Models & Browser Reach
+status: planning
+last_updated: "2026-05-27T18:02:53.391Z"
+last_activity: 2026-05-27
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-22)
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-22 — Milestone v1.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-05-27 — Milestone v1.1 started
 
 ## Performance Metrics
 
@@ -89,7 +89,6 @@ None — v1.0 blockers resolved (introspection package built in Phase 2; `godoo`
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | Compatibility | COMPAT-01: Relax Python floor to 3.11/3.12 | Deferred to post-v1 | Init |
-| Client | CLIENT-V2-01: Auto re-auth on session expiry | Deferred to v2 | Init |
 | Performance | PERF-01: `read_group` SUM for cash balance | Deferred to backlog | Init |
 | Performance | PERF-02: CDC two-round-trip optimization | Deferred to backlog | Init |
 | UAT | Phase 03 03-HUMAN-UAT.md | Resolved, 0 pending scenarios — acknowledged non-blocking | v1.0 close |

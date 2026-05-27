@@ -14,6 +14,25 @@ The Python family member reaches feature parity with the TypeScript core-3 libra
 a Python developer gets the same client, introspection, and testcontainers capabilities
 that godoo-ts already ships.
 
+## Current Milestone: v1.1 Typed Models & Browser Reach
+
+**Goal:** Sharpen developer ergonomics with instance-derived typed models, and de-risk
+running godoo in the browser — without breaking the existing API.
+
+**Target features:**
+- Rename `packages/godoo` → `packages/godoo-client` to close the directory↔dist-name gap
+  (import namespace stays `godoo.*` — no user breakage)
+- Instance-specific typed models: a `godoo-introspection` CLI that emits a Pydantic model
+  package from the live schema, plus a polymorphic typed-read layer in core behind a
+  `godoo[typed]` extra (`client.read(ResPartner, …)` → `list[ResPartner]`; raw `str` path
+  unchanged; relational fields type as typed `Ref[Model]` / id, no nested fetch)
+- Pyodide/browser spike: prove whether httpx works in Pyodide (or needs a custom transport
+  adapter), then decide whether to commit to a browser-compatible build
+
+**Version note:** v1.1 is additive (typed reads dispatch on `read()`'s first arg; default
+install stays httpx-only). If the Pyodide spike surfaces required breaking changes, revisit
+and bump to v2.0.
+
 ## Requirements
 
 ### Validated
@@ -69,15 +88,15 @@ that godoo-ts already ships.
 
 ### Active
 
-<!-- v1.0 shipped; no next milestone defined yet. Run /gsd-new-milestone to scope v1.1+. -->
+<!-- v1.1 Typed Models & Browser Reach — scoping in progress. REQ-IDs land in REQUIREMENTS.md. -->
 
-_None — v1.0 (Parity & Release) is complete. The next milestone has not been scoped yet.
-Candidate work lives in v2/backlog (see Out of Scope and the deferred items below)._
+_Milestone v1.1 is being scoped (see Current Milestone above). Requirements with REQ-IDs are
+defined in `.planning/REQUIREMENTS.md`._
 
 ### Out of Scope
 
 - Python version floor relaxation (3.11/3.12) — SEED is silent; the 3.14 floor holds for v1, revisit post-v1
-- Automatic re-authentication on session expiry — flagged by the map but not a SEED parity gap; deferred
+- Automatic re-authentication on session expiry (was CLIENT-V2-01) — struck: godoo authenticates with API keys / passwords, which do not expire; there is no session to re-establish, so this solves a non-problem
 - Performance refactors (`read_group` aggregation, CDC two-round-trip) — not parity gaps; backlog
 - Full CONCERNS.md test-coverage backfill — v1 covers only new and changed code, not the pre-existing gaps
 - godoo-adoption branch protocol — no separate source repo to shed; does not apply (SEED §3)
@@ -146,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-22 after v1.0 (Parity & Release) milestone — all 26 v1 requirements validated; three packages published to PyPI*
+*Last updated: 2026-05-27 — milestone v1.1 (Typed Models & Browser Reach) started*
