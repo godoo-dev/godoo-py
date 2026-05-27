@@ -28,7 +28,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 - [ ] **Phase 5: Directory Rename** — Rename `packages/godoo` → `packages/godoo-client`; update all tool-config paths; guard the PEP 420 namespace in CI
 - [ ] **Phase 6: Transport Seam & Typed Models Core** — Add transport-injection seam on `OdooClientConfig`; build the stdlib-only `godoo.client.typed` module; implement wire transforms; add `@overload` dispatch on `client.read`/`search_read`; enforce import isolation via `godoo[typed]` extra
 - [ ] **Phase 7: Pydantic CLI Generator** — Extend `godoo-introspection` with a Pydantic model emitter and a `godoo-introspect` CLI entrypoint; generated files import from `godoo.client.typed` and carry `__odoo_model__`
-- [ ] **Phase 8: Pyodide Spike** — Run a real in-browser HTTP call against an Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision
+- [ ] **Phase 8: Pyodide Spike** — Run a real in-browser HTTPS call against a real TLS-terminated Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision
 
 ## Phase Details
 
@@ -73,7 +73,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 **Depends on**: Phase 6 (transport seam from BROWSER-01 is a prerequisite; no other Phase 7 dependency)
 **Requirements**: BROWSER-02, BROWSER-03
 **Success Criteria** (what must be TRUE):
-  1. The spike executes an actual Odoo JSON-RPC call (not just an import check) from within a Pyodide runtime (Marimo, JupyterLite, or equivalent); the call is cross-origin and exercises real HTTP I/O
+  1. The spike executes an actual Odoo JSON-RPC call (not just an import check) from within a Pyodide runtime (Marimo, JupyterLite, or equivalent); the call is cross-origin and made **over HTTPS** against a real TLS-terminated Odoo endpoint, exercising browser TLS-via-fetch, CORS, and mixed-content behaviour — a plain-HTTP or localhost call does NOT satisfy this criterion
   2. A written verdict documents which of the three transport strategies was tested (stock httpx via Pyodide-bundled Fetch adapter / `pyodide-httpx` 0.2.0 / custom `pyfetch`-backed `AsyncTransport`) and which worked or failed, with error output for failures
   3. The verdict includes a Python-floor recommendation: "drop `requires-python` to `>=3.12` for a browser-specific build" OR "defer until Pyodide ships CPython ≥3.14" — with the rationale stated
   4. An explicit go/no-go decision is recorded: a "go" with required breaking changes escalates to v2.0 planning; a "no-go" defers BROWSER-F1/F2 to the backlog
