@@ -33,9 +33,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 | ID | Decision | Options | Notes |
 |----|----------|---------|-------|
-| OD-1 | Partial-read strategy when a model class is passed with `fields=[...]` | All-Optional generated fields · `model_construct` (skip validation) · force partial reads onto the raw path | Precision vs ergonomics. Research leans All-Optional; affects TYPED-02/03 codegen |
-| OD-2 | Boolean `False`-coercion exception in the wire transform | Emit boolean fields as plain `bool` so the validator skips them · inspect `FieldMeta` at runtime | Affects TYPED-06; "emit as plain bool" is the simpler candidate |
-| OD-3 | httpx-in-Pyodide verdict | Stock httpx via Fetch adapter · custom `AsyncTransport` via `pyfetch` · replace httpx in a browser variant | Researchers conflicted; BROWSER-02 resolves it empirically |
+| OD-1 | Partial-read strategy when a model class is passed with `fields=[...]` | All-Optional generated fields · `model_construct` (skip validation) · force partial reads onto the raw path | Precision vs ergonomics. Research leans All-Optional; affects TYPED-02/03 codegen. Settle before Phase 6 planning. |
+| OD-2 | Boolean `False`-coercion exception in the wire transform | Emit boolean fields as plain `bool` so the validator skips them · inspect `FieldMeta` at runtime | Affects TYPED-06; "emit as plain bool" is the simpler candidate. Settle before Phase 6 planning. |
+| OD-3 | httpx-in-Pyodide verdict | Stock httpx via Fetch adapter · custom `AsyncTransport` via `pyfetch` · replace httpx in a browser variant | Researchers conflicted; BROWSER-02 resolves it empirically. Does not block Phases 5-7. |
 
 ## Future Requirements
 
@@ -67,25 +67,25 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PKG-01 | TBD | Pending |
-| PKG-02 | TBD | Pending |
-| PKG-03 | TBD | Pending |
-| TYPED-01 | TBD | Pending |
-| TYPED-02 | TBD | Pending |
-| TYPED-03 | TBD | Pending |
-| TYPED-04 | TBD | Pending |
-| TYPED-05 | TBD | Pending |
-| TYPED-06 | TBD | Pending |
-| TYPED-07 | TBD | Pending |
-| BROWSER-01 | TBD | Pending |
-| BROWSER-02 | TBD | Pending |
-| BROWSER-03 | TBD | Pending |
+| PKG-01 | Phase 5 | Pending |
+| PKG-02 | Phase 5 | Pending |
+| PKG-03 | Phase 5 | Pending |
+| TYPED-01 | Phase 7 | Pending |
+| TYPED-02 | Phase 7 | Pending |
+| TYPED-03 | Phase 6 | Pending |
+| TYPED-04 | Phase 6 | Pending |
+| TYPED-05 | Phase 6 | Pending |
+| TYPED-06 | Phase 6 | Pending |
+| TYPED-07 | Phase 6 | Pending |
+| BROWSER-01 | Phase 6 | Pending |
+| BROWSER-02 | Phase 8 | Pending |
+| BROWSER-03 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 13 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13 (Phase 5: 3, Phase 6: 6, Phase 7: 2, Phase 8: 2)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-27*
-*Last updated: 2026-05-27 after initial v1.1 definition*
+*Last updated: 2026-05-27 — traceability filled after roadmap creation*

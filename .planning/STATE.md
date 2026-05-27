@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
-status: planning
-last_updated: "2026-05-27T18:02:53.391Z"
+status: roadmap_ready
+last_updated: "2026-05-27"
 last_activity: 2026-05-27
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,90 +17,99 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-22)
+See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Planning next milestone (v1.0 Parity & Release shipped — three packages live on PyPI)
+**Current focus:** Milestone v1.1 — Typed Models & Browser Reach (roadmap defined; ready for Phase 5 planning)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 5 — Directory Rename (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-27 — Milestone v1.1 started
+Status: Roadmap ready — awaiting `/gsd:plan-phase 5`
+Last activity: 2026-05-27 — v1.1 roadmap created (Phases 5-8)
+
+```
+Progress: [░░░░░░░░░░] 0% — 0/4 phases complete
+```
 
 ## Performance Metrics
 
-**Velocity:**
+**Velocity (v1.0 reference):**
 
-- Total plans completed: 9
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed (v1.0): 14 across 5 phases
+- Average phase duration: ~1 day
+- Total execution time: ~5 days (2026-05-19 to 2026-05-22)
 
-**By Phase:**
+**By Phase (v1.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
+| 02 | 2 | - | - |
 | 03 | 3 | - | - |
+| 04 | 3 | - | - |
 | 04.1 | 1 | - | - |
 
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 03 P01 | 2 | 2 tasks | 3 files |
-| Phase 03-testcontainers-parity P2 | 30m | 3 tasks | 4 files |
-| Phase 03-testcontainers-parity P3 | 4 | 3 tasks | 6 files |
-| Phase 04-release P02 | 45 | 3 tasks | 92 files |
+*v1.1 metrics will populate as phases complete.*
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
-- Phase 04.1 inserted after Phase 4: Package READMEs to fix empty PyPI pages; publish 0.2.1 (URGENT)
+- v1.1 Phases 5-8 created 2026-05-27 from research/SUMMARY.md build order
+- Phase 999.1 backlog item (dir rename) superseded by Phase 5
+- Build order validated by research: rename → transport seam + typed-models core → Pydantic CLI generator → Pyodide spike
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
+
 Recent decisions affecting current work:
 
-- [Init]: Incorporate existing repo via full-history merge — preserves provenance
-- [Init]: `godoo` package → `godoo-client` on PyPI; other package names unchanged
-- [Init]: v1 scope = SEED §2 parity gaps + adjacent bugs in the same files (FIXES-01/02/03)
-- [Init]: Phases 2 and 3 may run in parallel after Phase 1 completes (packages are independent)
-- [Phase ?]: Drop TESTC-03/04/05 (partners/projects/users provisioners) from v1 — declarative seeding belongs to godoo-stateman (D-Drop-1)
-- [Phase ?]: Namespace invariant established
-- [Phase ?]: PyPI names: godoo-client, godoo-introspection, godoo-testcontainers
-- [Phase ?]: from godoo.client.*, godoo.introspection.*, godoo.testcontainers.*
+- [v1.1-init]: Phase 5 = standalone dir rename; must be atomic and go first (7 config locations affected)
+- [v1.1-init]: BROWSER-01 (transport seam) rides with typed-models core in Phase 6 — purely additive, establishes seam for spike
+- [v1.1-init]: BROWSER-02/03 (Pyodide spike) is a *decision artifact*, not a build — Phase 8 success criteria are written verdict + go/no-go, not shipped code
+- [v1.1-init]: Phase 8 depends only on Phase 6 (transport seam), not Phase 7 (CLI generator)
+- [v1.1-init]: OD-1 (partial-read strategy) and OD-2 (boolean False-coercion) must be settled before Phase 6 implementation; research recommends All-Optional + OD-2 Option A
+- [v1.1-init]: OD-3 (httpx-in-Pyodide) resolved empirically during Phase 8 spike; does not block Phases 5-7
+
+### Open Decisions (settle before relevant phase)
+
+| ID | Settle Before | Decision | Research Recommendation |
+|----|---------------|----------|------------------------|
+| OD-1 | Phase 6 | Partial-read strategy when `fields=[...]` is passed with a model class | All-Optional generated fields; `model_construct()` only as documented escape hatch |
+| OD-2 | Phase 6 | Boolean `False`-coercion in wire transform | Emit boolean fields as plain `bool` (non-optional); `@model_validator` skips coercion for `bool`-annotated fields |
+| OD-3 | Phase 8 | httpx vs POSIX socket in Pyodide | Empirical spike only — conflicting researcher findings; must run actual HTTP call |
 
 ### Pending Todos
 
-None yet.
+- Settle OD-1 and OD-2 before planning Phase 6
 
 ### Blockers/Concerns
 
-None — v1.0 blockers resolved (introspection package built in Phase 2; `godoo`→`godoo-client` rename shipped in Phase 4).
+None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint, not a blocker.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | Compatibility | COMPAT-01: Relax Python floor to 3.11/3.12 | Deferred to post-v1 | Init |
-| Performance | PERF-01: `read_group` SUM for cash balance | Deferred to backlog | Init |
-| Performance | PERF-02: CDC two-round-trip optimization | Deferred to backlog | Init |
-| UAT | Phase 03 03-HUMAN-UAT.md | Resolved, 0 pending scenarios — acknowledged non-blocking | v1.0 close |
-| Seed | SEED-001: browser/Pyodide compatibility | Dormant — future idea, never in v1 scope | v1.0 close |
-| Tech debt | release.yml Node 20 actions (checkout/setup-uv) emit deprecation warnings | Needs version bump | v1.0 close |
-| Tech debt | snapshot.py partial snapshot key for direct OdooTestContainer users | Documented limitation (plan 03-02) | v1.0 close |
+| Performance | PERF-01: `read_group` SUM for cash balance | Backlog | Init |
+| Performance | PERF-02: CDC two-round-trip optimization | Backlog | Init |
+| Browser (conditional) | BROWSER-F1: `godoo[browser]` extra | Gated on Phase 8 go verdict | v1.1 scope |
+| Browser (conditional) | BROWSER-F2: Relax Python floor for Pyodide | Gated on Phase 8 go verdict | v1.1 scope |
+| Typed models | TYPED-F1: Nested relational model fetch | Deferred to v2+ | v1.1 scope |
+| Typed models | TYPED-F2: Typed write/create paths | Deferred to v2+ | v1.1 scope |
+| Tech debt | release.yml Node 20 actions deprecation warnings | Needs version bump | v1.0 close |
+| Tech debt | snapshot.py partial snapshot key for direct container users | Documented limitation | v1.0 close |
 
 ## Session Continuity
 
-Last session: 2026-05-22 — v1.0 milestone closed and archived
-Stopped at: Milestone complete; awaiting /gsd-new-milestone
+Last session: 2026-05-27 — v1.1 roadmap created
+Stopped at: Roadmap written; awaiting `/gsd:plan-phase 5`
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Settle OD-1 and OD-2 (can do at planning time for Phase 6, not needed for Phase 5)
+- Run `/gsd:plan-phase 5` to plan the directory rename
