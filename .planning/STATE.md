@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
-status: ready_to_plan
-last_updated: 2026-05-28T06:07:50.843Z
+status: planning
+last_updated: "2026-05-28T06:57:35.389Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 5
@@ -11,7 +11,6 @@ progress:
   total_plans: 2
   completed_plans: 2
   percent: 20
-stopped_at: Phase 05 complete (2/2) — ready to discuss Phase 6
 ---
 
 # Project State
@@ -108,8 +107,8 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 
 ## Session Continuity
 
-Last session: 2026-05-28T05:42:44.338Z
-Stopped at: Phase 05 Plan 02 complete (PEP 420 guard test + D-04 done-gate; branch push-ready)
+Last session: 2026-05-28T06:57:35.376Z
+Stopped at: Phase 6 context gathered
 
 ## Operator Next Steps
 
