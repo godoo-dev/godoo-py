@@ -26,7 +26,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 ### v1.1 Typed Models & Browser Reach
 
 - [x] **Phase 5: Directory Rename** — Rename `packages/godoo` → `packages/godoo-client`; update all tool-config paths; guard the PEP 420 namespace in CI (completed 2026-05-28)
-- [ ] **Phase 6: Transport Seam & Typed Models Core** — Add transport-injection seam on `OdooClientConfig`; build the stdlib-only `godoo.client.typed` module; implement wire transforms; add `@overload` dispatch on `client.read`/`search_read`; enforce import isolation via `godoo[typed]` extra
+- [x] **Phase 6: Transport Seam & Typed Models Core** — Add transport-injection seam on `OdooClientConfig`; build the stdlib-only `godoo.client.typed` module; implement wire transforms; add `@overload` dispatch on `client.read`/`search_read`; enforce import isolation via `godoo[typed]` extra (completed 2026-05-28)
 - [ ] **Phase 7: Pydantic CLI Generator** — Extend `godoo-introspection` with a Pydantic model emitter and a `godoo-introspect` CLI entrypoint; generated files import from `godoo.client.typed` and carry `__odoo_model__`
 - [ ] **Phase 8: Pyodide Spike** — Run a real in-browser HTTPS call against a real TLS-terminated Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision
 
@@ -80,7 +80,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 06-03-PLAN.md — @overload pairs on read/search_read with lazy _pydantic_transform import, [typed] optional extra in pyproject.toml, subprocess isolation test, dispatch unit tests (TYPED-03, TYPED-04, TYPED-05)
+- [x] 06-03-PLAN.md — @overload pairs on read/search_read with lazy _pydantic_transform import, [typed] optional extra in pyproject.toml, subprocess isolation test, dispatch unit tests (TYPED-03, TYPED-04, TYPED-05)
 
 **Open Decisions**: OD-1 (partial-read strategy) and OD-2 (boolean False-coercion) resolved in 06-CONTEXT.md as D-01 (All-Optional via Pydantic create_model with __base__=) and D-02 (bool annotation skips False→None coercion).
 
@@ -124,7 +124,7 @@ Plans:
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
-| 6. Transport Seam & Typed Models Core | v1.1 | 2/3 | In Progress|  |
+| 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
 
