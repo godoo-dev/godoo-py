@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
-status: executing
-last_updated: "2026-05-28T00:30:00.000Z"
-last_activity: 2026-05-28 -- Phase 05 Plan 01 complete (rename + reference updates)
+status: verifying
+last_updated: "2026-05-28T05:42:44.345Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 20
 ---
 
 # Project State
@@ -24,13 +24,13 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 ## Current Position
 
-Phase: 05 (directory-rename) — EXECUTING
-Plan: 2 of 2 (plan 01 complete; plan 02 next)
-Status: Executing Phase 05
-Last activity: 2026-05-28 -- Plan 05-01 complete (git mv + reference updates + D-01/D-02)
+Phase: 05 (directory-rename) — COMPLETE
+Plan: 2 of 2 (both plans complete)
+Status: Phase 05 complete — push develop to trigger CI; then settle OD-1 and OD-2 before planning Phase 06
+Last activity: 2026-05-28 -- Plan 05-02 complete (PEP 420 guard test + D-04 done-gate; branch push-ready)
 
 ```
-Progress: [█░░░░░░░░░] 50% — 1/2 phase 05 plans complete (0/4 v1.1 phases complete)
+Progress: [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -106,10 +106,10 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 
 ## Session Continuity
 
-Last session: 2026-05-28T00:30:00.000Z
-Stopped at: Phase 05 Plan 01 complete — 05-01-SUMMARY.md committed at 1c0f045
+Last session: 2026-05-28T05:42:44.338Z
+Stopped at: Phase 05 Plan 02 complete (PEP 420 guard test + D-04 done-gate; branch push-ready)
 
 ## Operator Next Steps
 
-- Run plan 05-02 to add PEP 420 guard test (packages/godoo-client/tests/test_namespace.py)
-- After Phase 05 completes: settle OD-1 and OD-2 before planning Phase 06
+- Push `develop` branch to trigger CI (ruff / mypy / pytest / build from packages/godoo-client/)
+- After CI is green: settle OD-1 and OD-2 before planning Phase 06 (typed models)

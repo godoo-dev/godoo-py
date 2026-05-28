@@ -11,7 +11,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 - [ ] **PKG-01**: Workspace directory `packages/godoo` is renamed to `packages/godoo-client` (via `git mv`); the import namespace stays `godoo.*` (PEP 420), so no consumer import breaks
 - [ ] **PKG-02**: All path references are updated and CI stays green — root `pyproject.toml` (`mypy_path`, `[tool.semantic_release] version_toml`, `build_command`), `.github/workflows/test.yml` mypy invocation, and `mkdocs.yml` mkdocstrings paths
-- [ ] **PKG-03**: A CI guard test asserts the PEP 420 namespace remains intact after the rename (`godoo.__file__ is None`; no stray `__init__.py`)
+- [x] **PKG-03**: A CI guard test asserts the PEP 420 namespace remains intact after the rename (`godoo.__file__ is None`; no stray `__init__.py`)
 
 ### Typed Models
 
@@ -69,7 +69,7 @@ Populated during roadmap creation.
 |-------------|-------|--------|
 | PKG-01 | Phase 5 | Pending |
 | PKG-02 | Phase 5 | Pending |
-| PKG-03 | Phase 5 | Pending |
+| PKG-03 | Phase 5 | Complete |
 | TYPED-01 | Phase 7 | Pending |
 | TYPED-02 | Phase 7 | Pending |
 | TYPED-03 | Phase 6 | Pending |

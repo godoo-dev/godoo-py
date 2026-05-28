@@ -25,7 +25,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 
 ### v1.1 Typed Models & Browser Reach
 
-- [ ] **Phase 5: Directory Rename** — Rename `packages/godoo` → `packages/godoo-client`; update all tool-config paths; guard the PEP 420 namespace in CI
+- [x] **Phase 5: Directory Rename** — Rename `packages/godoo` → `packages/godoo-client`; update all tool-config paths; guard the PEP 420 namespace in CI (completed 2026-05-28)
 - [ ] **Phase 6: Transport Seam & Typed Models Core** — Add transport-injection seam on `OdooClientConfig`; build the stdlib-only `godoo.client.typed` module; implement wire transforms; add `@overload` dispatch on `client.read`/`search_read`; enforce import isolation via `godoo[typed]` extra
 - [ ] **Phase 7: Pydantic CLI Generator** — Extend `godoo-introspection` with a Pydantic model emitter and a `godoo-introspect` CLI entrypoint; generated files import from `godoo.client.typed` and carry `__odoo_model__`
 - [ ] **Phase 8: Pyodide Spike** — Run a real in-browser HTTPS call against a real TLS-terminated Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision
@@ -53,7 +53,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-02-PLAN.md — PEP 420 guard test + D-04 local done-gate (PKG-03)
+- [x] 05-02-PLAN.md — PEP 420 guard test + D-04 local done-gate (PKG-03)
 
 ### Phase 6: Transport Seam & Typed Models Core
 
@@ -110,7 +110,7 @@ Plans:
 | 3. Testcontainers Parity | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
-| 5. Directory Rename | v1.1 | 1/2 | In progress | - |
+| 5. Directory Rename | v1.1 | 2/2 | Complete   | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 0/? | Not started | - |
 | 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
