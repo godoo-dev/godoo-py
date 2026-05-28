@@ -17,15 +17,15 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 - [ ] **TYPED-01**: A developer can generate a Pydantic model package from their live Odoo instance via a `godoo-introspection` CLI command (output path is the consuming project's choice)
 - [ ] **TYPED-02**: Generated models reflect instance-specific schema — custom fields, selection values emitted as `Literal`, relational fields typed as `Ref[Model]` (many2one) / `list[int]` (one2many/many2many); no nested fetch
-- [ ] **TYPED-03**: A developer can call `client.read(ModelClass, ids)` (and `search_read(ModelClass, ...)`) and receive validated, transformed `list[ModelClass]` instances
-- [ ] **TYPED-04**: The raw string-keyed path (`client.read("res.partner", ids)`) is unchanged and still returns `list[dict[str, Any]]`
-- [ ] **TYPED-05**: Typed support is opt-in via the `godoo[typed]` extra; the default install stays httpx-only, enforced by a CI test asserting `import godoo` pulls in no pydantic
-- [ ] **TYPED-06**: A bidirectional wire transform handles Odoo's quirks declaratively — empty `False` → `None`, many2one `[id, "Name"]` → `Ref`, date/datetime strings → `date`/`datetime`, selection → `Literal`
-- [ ] **TYPED-07**: `Ref[Model]` and the model dispatch `Protocol` (`__odoo_model__`) live in a stdlib-only `godoo.client.typed` module, importable without pydantic; runtime dispatch duck-types (`hasattr`), never `isinstance(BaseModel)`
+- [x] **TYPED-03**: A developer can call `client.read(ModelClass, ids)` (and `search_read(ModelClass, ...)`) and receive validated, transformed `list[ModelClass]` instances
+- [x] **TYPED-04**: The raw string-keyed path (`client.read("res.partner", ids)`) is unchanged and still returns `list[dict[str, Any]]`
+- [x] **TYPED-05**: Typed support is opt-in via the `godoo[typed]` extra; the default install stays httpx-only, enforced by a CI test asserting `import godoo` pulls in no pydantic
+- [x] **TYPED-06**: A bidirectional wire transform handles Odoo's quirks declaratively — empty `False` → `None`, many2one `[id, "Name"]` → `Ref`, date/datetime strings → `date`/`datetime`, selection → `Literal`
+- [x] **TYPED-07**: `Ref[Model]` and the model dispatch `Protocol` (`__odoo_model__`) live in a stdlib-only `godoo.client.typed` module, importable without pydantic; runtime dispatch duck-types (`hasattr`), never `isinstance(BaseModel)`
 
 ### Browser Reach
 
-- [ ] **BROWSER-01**: A `Transport` `Protocol` plus a `transport_factory` hook on `OdooClientConfig` allows an alternative transport implementation to be injected without changing core (additive infra; ships regardless of the spike verdict)
+- [x] **BROWSER-01**: A `Transport` `Protocol` plus a `transport_factory` hook on `OdooClientConfig` allows an alternative transport implementation to be injected without changing core (additive infra; ships regardless of the spike verdict)
 - [ ] **BROWSER-02**: A spike runs an actual in-browser (Pyodide) HTTP call **over HTTPS** against a real TLS-terminated Odoo endpoint — exercising browser TLS-via-fetch, CORS, and mixed-content constraints (plain HTTP / localhost does not satisfy this) — and produces a written verdict on whether stock httpx works or a custom fetch-backed transport is required
 - [ ] **BROWSER-03**: The spike delivers a Python-floor recommendation (drop `requires-python` to `>=3.12` for a browser build, or defer until Pyodide ships CPython ≥3.14) and an explicit go/no-go decision for committing browser support; a "go" with required breaking changes escalates the milestone to v2.0
 
@@ -72,12 +72,12 @@ Populated during roadmap creation.
 | PKG-03 | Phase 5 | Complete |
 | TYPED-01 | Phase 7 | Pending |
 | TYPED-02 | Phase 7 | Pending |
-| TYPED-03 | Phase 6 | Pending |
-| TYPED-04 | Phase 6 | Pending |
-| TYPED-05 | Phase 6 | Pending |
-| TYPED-06 | Phase 6 | Pending |
-| TYPED-07 | Phase 6 | Pending |
-| BROWSER-01 | Phase 6 | Pending |
+| TYPED-03 | Phase 6 | Complete |
+| TYPED-04 | Phase 6 | Complete |
+| TYPED-05 | Phase 6 | Complete |
+| TYPED-06 | Phase 6 | Complete |
+| TYPED-07 | Phase 6 | Complete |
+| BROWSER-01 | Phase 6 | Complete |
 | BROWSER-02 | Phase 8 | Pending |
 | BROWSER-03 | Phase 8 | Pending |
 
