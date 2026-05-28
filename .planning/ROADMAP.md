@@ -120,3 +120,12 @@ Plans:
 ### Phase 999.1: Rename packages/godoo to packages/godoo-client for dist consistency (SUPERSEDED)
 
 > **Superseded by Phase 5** (Directory Rename) in milestone v1.1. Backlog item promoted to active roadmap.
+
+### Phase 999.2: Update godoo-testcontainers PostgreSQL to v18 (latest stable) (BACKLOG)
+
+**Goal:** [Captured for future planning] Bump the PostgreSQL image pinned by `godoo-testcontainers` to v18 (currently the latest stable). Validate that the Odoo versions exercised in integration tests (17/18/19) start cleanly against PG 18; update any version pin in `packages/godoo-testcontainers/src/godoo_testcontainers/container.py` and related fixtures.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
