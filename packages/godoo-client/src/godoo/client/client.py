@@ -19,8 +19,9 @@ from godoo.client.safety import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
 
+    from godoo.client.rpc.protocol import Transport
     from godoo.client.services.accounting.service import AccountingService
     from godoo.client.services.attendance.service import AttendanceService
     from godoo.client.services.cdc.service import CdcService
@@ -82,6 +83,7 @@ class OdooClientConfig:
     password: str
     safety: SafetyContext | None = field(default=None)
     timeout: float | None = field(default=None)
+    transport_factory: Callable[[OdooClientConfig], Transport] | None = field(default=None)
 
 
 class OdooClient:
@@ -89,7 +91,10 @@ class OdooClient:
 
     def __init__(self, config: OdooClientConfig) -> None:
         self._config = config
-        self._transport = JsonRpcTransport(config.url, config.database, timeout=config.timeout)
+        if config.transport_factory is not None:
+            self._transport: Transport = config.transport_factory(config)
+        else:
+            self._transport = JsonRpcTransport(config.url, config.database, timeout=config.timeout)
         # _safety_context:
         #   _UNDEFINED  → use config.safety (which may be None)
         #   None        → explicitly disabled
