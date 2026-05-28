@@ -36,7 +36,7 @@ ODOO_VERSION=18.0 uv run pytest -m integration -v
 ```bash
 uv run ruff check .
 uv run ruff format .
-uv run mypy packages/godoo/src packages/godoo-testcontainers/src
+uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src
 ```
 
 All three must pass before committing.
@@ -65,13 +65,13 @@ The container is session-scoped — one Odoo instance shared across all integrat
 
 ## Adding a New Service
 
-1. Create `packages/godoo/src/godoo/services/{name}/`
+1. Create `packages/godoo-client/src/godoo/services/{name}/`
 2. Add four files following the pattern:
    - `types.py` — dataclasses for service types
    - `functions.py` — standalone async functions (take `client` as first arg)
    - `service.py` — service class delegating to functions
    - `__init__.py` — re-export public symbols
 3. Add `@cached_property` accessor in `client.py` (lazy import inside the property)
-4. Add re-export in `packages/godoo/src/godoo/__init__.py`
-5. Add tests in `packages/godoo/tests/test_{name}.py`
+4. Add re-export in `packages/godoo-client/src/godoo/__init__.py`
+5. Add tests in `packages/godoo-client/tests/test_{name}.py`
 6. Add docs page in `docs/services/{name}.md`

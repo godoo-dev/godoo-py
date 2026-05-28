@@ -9,7 +9,7 @@ godoo — Async Python SDK for Odoo JSON-RPC. LGPL-3.0-or-later.
 ## Structure
 
 uv workspace with 3 packages:
-- `packages/godoo` → `godoo` (core client + 8 services)
+- `packages/godoo-client` → `godoo` (core client + 8 services)
 - `packages/godoo-testcontainers` → `godoo_testcontainers` (Docker test infra)
 - `packages/godoo-introspection` → `godoo_introspection` (schema discovery, placeholder)
 
@@ -25,7 +25,7 @@ uv workspace with 3 packages:
 
 - ruff: line-length 120, select `[E, F, W, I, UP, B, SIM, TCH, RUF]`
 - mypy --strict on all `src/` directories
-- Run: `uv run ruff check . && uv run ruff format . && uv run mypy packages/godoo/src packages/godoo-testcontainers/src packages/godoo-introspection/src`
+- Run: `uv run ruff check . && uv run ruff format . && uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src`
 
 ## Testing
 
@@ -89,7 +89,7 @@ that godoo-ts already ships.
 - uv (workspace mode, `astral-sh/setup-uv@v6` in CI)
 - Lockfile: `uv.lock` present and committed
 ## Frameworks
-- `httpx>=0.27` - Async HTTP client for all Odoo JSON-RPC transport (`packages/godoo/src/godoo/rpc/transport.py`)
+- `httpx>=0.27` - Async HTTP client for all Odoo JSON-RPC transport (`packages/godoo-client/src/godoo/rpc/transport.py`)
 - asyncio (stdlib) - Concurrency model; all public APIs are `async def`
 - `pytest>=8` - Test runner
 - `pytest-asyncio>=0.24` - Async test support (mode: `auto`, session-scoped event loop)
@@ -107,12 +107,12 @@ that godoo-ts already ships.
 - `testcontainers[postgres]>=4` - Has a sync-only API; all calls must be wrapped in `asyncio.to_thread()` (enforced pattern in `packages/godoo-testcontainers/src/godoo_testcontainers/container.py`)
 - `godoo>=0.1.0` - Both `godoo-testcontainers` and `godoo-introspection` depend on the core `godoo` package (workspace dependency)
 ## Configuration
-- Runtime config via `config_from_env()` in `packages/godoo/src/godoo/config.py`
+- Runtime config via `config_from_env()` in `packages/godoo-client/src/godoo/config.py`
 - Required env vars (configurable prefix, default `ODOO`):
 - Integration test env var: `ODOO_VERSION` (e.g., `"17.0"`, `"18.0"`, `"19.0"`)
 - Optional seed image env var: `ODOO_SEED_IMAGE` (Docker image with pre-seeded Odoo DB)
 - Root `pyproject.toml` — workspace config, shared tool settings (ruff, mypy, pytest, coverage, semantic-release)
-- `packages/godoo/pyproject.toml` — package metadata, `hatchling` build target
+- `packages/godoo-client/pyproject.toml` — package metadata, `hatchling` build target
 - `packages/godoo-testcontainers/pyproject.toml` — package metadata, `hatchling` build target
 - `packages/godoo-introspection/pyproject.toml` — package metadata, `hatchling` build target
 ## Platform Requirements
@@ -182,7 +182,7 @@ that godoo-ts already ships.
 - Return typed dataclasses or primitives — never raw `dict` from service functions
 - Async generators use `AsyncIterator[T]` return type
 ## Module Design
-- Every `__init__.py` defines `__all__` explicitly: `packages/godoo/src/godoo/__init__.py`
+- Every `__init__.py` defines `__all__` explicitly: `packages/godoo-client/src/godoo/__init__.py`
 - Service `__init__.py` barrel-exports both the service class, all functions, and all types
 - `client.py` imports service classes inside `@cached_property` bodies (lazy imports)
 - Services import `OdooClient` only under `TYPE_CHECKING`
@@ -200,15 +200,15 @@ that godoo-ts already ships.
 ## Component Responsibilities
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| `OdooClientConfig` | Value object: URL, DB, credentials, optional safety context | `packages/godoo/src/godoo/client.py` |
-| `OdooClient` | Auth lifecycle, safety guard enforcement, CRUD helpers, lazy service accessors | `packages/godoo/src/godoo/client.py` |
-| `JsonRpcTransport` | HTTP wire protocol — builds JSON-RPC payloads, maps error types, manages session | `packages/godoo/src/godoo/rpc/transport.py` |
-| `OdooSessionInfo` | Immutable auth token: uid, session_id, db | `packages/godoo/src/godoo/rpc/types.py` |
-| `SafetyContext` | Pluggable async confirm callback that gates mutating operations | `packages/godoo/src/godoo/safety/__init__.py` |
-| `config_from_env` | Reads `ODOO_URL/DB/USER/PASSWORD` from env, returns config | `packages/godoo/src/godoo/config.py` |
-| `create_client` | Combines `config_from_env` + authenticate; one-liner async factory | `packages/godoo/src/godoo/config.py` |
-| Service functions | Domain-level async functions taking `OdooClient` as first arg | `packages/godoo/src/godoo/services/{name}/functions.py` |
-| Service classes | Thin wrappers that hold `self._client` and delegate to functions | `packages/godoo/src/godoo/services/{name}/service.py` |
+| `OdooClientConfig` | Value object: URL, DB, credentials, optional safety context | `packages/godoo-client/src/godoo/client.py` |
+| `OdooClient` | Auth lifecycle, safety guard enforcement, CRUD helpers, lazy service accessors | `packages/godoo-client/src/godoo/client.py` |
+| `JsonRpcTransport` | HTTP wire protocol — builds JSON-RPC payloads, maps error types, manages session | `packages/godoo-client/src/godoo/rpc/transport.py` |
+| `OdooSessionInfo` | Immutable auth token: uid, session_id, db | `packages/godoo-client/src/godoo/rpc/types.py` |
+| `SafetyContext` | Pluggable async confirm callback that gates mutating operations | `packages/godoo-client/src/godoo/safety/__init__.py` |
+| `config_from_env` | Reads `ODOO_URL/DB/USER/PASSWORD` from env, returns config | `packages/godoo-client/src/godoo/config.py` |
+| `create_client` | Combines `config_from_env` + authenticate; one-liner async factory | `packages/godoo-client/src/godoo/config.py` |
+| Service functions | Domain-level async functions taking `OdooClient` as first arg | `packages/godoo-client/src/godoo/services/{name}/functions.py` |
+| Service classes | Thin wrappers that hold `self._client` and delegate to functions | `packages/godoo-client/src/godoo/services/{name}/service.py` |
 | `OdooTestContainer` | Provisions Docker Postgres + Odoo containers for integration tests | `packages/godoo-testcontainers/src/godoo_testcontainers/container.py` |
 ## Pattern Overview
 - Every service exposes two equivalent APIs: standalone functions (take `client` as first arg) and a class wrapper that closes over `self._client`. Callers may use either.
@@ -218,22 +218,22 @@ that godoo-ts already ships.
 - Transport errors are categorized at the lowest layer (`JsonRpcTransport._categorize_error`) and surface as typed subclasses of `OdooRpcError`.
 ## Layers
 - Purpose: HTTP wire protocol — POST to `/jsonrpc`, parse response, raise typed exceptions
-- Location: `packages/godoo/src/godoo/rpc/`
+- Location: `packages/godoo-client/src/godoo/rpc/`
 - Contains: `JsonRpcTransport`, `OdooSessionInfo`
 - Depends on: `httpx`, `godoo.errors`
 - Used by: `OdooClient` only
 - Purpose: Auth lifecycle, safety guard, CRUD convenience helpers, service registry
-- Location: `packages/godoo/src/godoo/client.py`, `packages/godoo/src/godoo/safety/__init__.py`
+- Location: `packages/godoo-client/src/godoo/client.py`, `packages/godoo-client/src/godoo/safety/__init__.py`
 - Contains: `OdooClient`, `OdooClientConfig`, `SafetyContext`, `OperationInfo`, `infer_safety_level`
 - Depends on: `rpc/transport.py`, `safety/`, `errors.py`
 - Used by: all callers; services call back into `OdooClient`
 - Purpose: Domain-specific operations against Odoo models
-- Location: `packages/godoo/src/godoo/services/{name}/`
+- Location: `packages/godoo-client/src/godoo/services/{name}/`
 - Contains: `functions.py` (business logic), `service.py` (class wrapper), `types.py` (dataclasses)
 - Depends on: `OdooClient` (via TYPE_CHECKING import to avoid circular), peer service functions when composing (e.g. `timesheets.functions` imports `attendance.functions.resolve_employee_id`)
 - Used by: user code via `client.{service_name}`
 - Purpose: Environment-variable bootstrapping
-- Location: `packages/godoo/src/godoo/config.py`
+- Location: `packages/godoo-client/src/godoo/config.py`
 - Contains: `config_from_env`, `create_client`
 - Depends on: `OdooClient`, `OdooClientConfig`
 - Used by: top-level user entry points
@@ -253,22 +253,22 @@ that godoo-ts already ships.
 - No other global mutable state; services are stateless
 ## Key Abstractions
 - Purpose: Single entry point for all Odoo interactions; abstracts transport + safety + service registry
-- Examples: `packages/godoo/src/godoo/client.py`
+- Examples: `packages/godoo-client/src/godoo/client.py`
 - Pattern: Facade + service locator via `@cached_property`
 - Purpose: Separates business logic (functions) from object API (service class) from data shapes (types)
-- Examples: `packages/godoo/src/godoo/services/accounting/`, `packages/godoo/src/godoo/services/cdc/`
+- Examples: `packages/godoo-client/src/godoo/services/accounting/`, `packages/godoo-client/src/godoo/services/cdc/`
 - Pattern: Functions-first with class wrapper; functions are independently callable for testing
 - Purpose: Pluggable async gate for write/delete operations; callers inject a `confirm` callback
-- Examples: `packages/godoo/src/godoo/safety/__init__.py`
+- Examples: `packages/godoo-client/src/godoo/safety/__init__.py`
 - Pattern: Dataclass wrapping an async callable; module-level default + per-client override
 - Purpose: Typed exception tree from HTTP errors down to ACL/validation/missing errors
-- Examples: `packages/godoo/src/godoo/errors.py`
+- Examples: `packages/godoo-client/src/godoo/errors.py`
 - Pattern: `OdooError` → `OdooRpcError` → {Auth, Network, Timeout, Validation, Access, Missing}; plus `OdooSafetyError` (local, not from RPC)
 ## Entry Points
-- Location: `packages/godoo/src/godoo/config.py`
+- Location: `packages/godoo-client/src/godoo/config.py`
 - Triggers: User code startup; reads env vars
 - Responsibilities: Build config, construct client, authenticate, return ready client
-- Location: `packages/godoo/src/godoo/client.py`
+- Location: `packages/godoo-client/src/godoo/client.py`
 - Triggers: Direct instantiation when caller has explicit config
 - Responsibilities: Construct transport, hold config; `authenticate()` performs JSON-RPC auth
 - Location: `packages/godoo-testcontainers/src/godoo_testcontainers/container.py`
@@ -284,7 +284,7 @@ that godoo-ts already ships.
 ### Importing OdooClient at module level in services
 ### Using sync testcontainers calls in async tests
 ## Error Handling
-- `JsonRpcTransport._categorize_error()` maps Odoo's `exception_type` / `data.name` strings to typed `OdooRpcError` subclasses (`packages/godoo/src/godoo/rpc/transport.py:136`)
+- `JsonRpcTransport._categorize_error()` maps Odoo's `exception_type` / `data.name` strings to typed `OdooRpcError` subclasses (`packages/godoo-client/src/godoo/rpc/transport.py:136`)
 - `OdooClient._guard()` raises `OdooSafetyError` (a local, non-RPC error) when a safety callback returns `False`
 - Services raise `OdooValidationError` for domain-level precondition failures (e.g. employee not found in `attendance/functions.py`)
 - All error classes expose `.to_json()` for structured serialization

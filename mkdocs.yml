@@ -45,7 +45,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [packages/godoo/src, packages/godoo-testcontainers/src]
+          paths: [packages/godoo-client/src, packages/godoo-testcontainers/src]
           options:
             show_source: false
             show_root_heading: true

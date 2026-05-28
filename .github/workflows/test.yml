@@ -21,7 +21,7 @@ jobs:
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy packages/godoo/src packages/godoo-testcontainers/src packages/godoo-introspection/src
+      - run: uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src
 
   unit-tests:
     runs-on: ubuntu-latest
