@@ -49,7 +49,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — git mv rename + uv sync + update all path references (PKG-01, PKG-02)
+- [x] 05-01-PLAN.md — git mv rename + uv sync + update all path references (PKG-01, PKG-02) — DONE 2026-05-28
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -110,7 +110,7 @@ Plans:
 | 3. Testcontainers Parity | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
-| 5. Directory Rename | v1.1 | 0/2 | Not started | - |
+| 5. Directory Rename | v1.1 | 1/2 | In progress | - |
 | 6. Transport Seam & Typed Models Core | v1.1 | 0/? | Not started | - |
 | 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |

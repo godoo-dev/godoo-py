@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
 status: executing
-last_updated: "2026-05-27T21:03:46.785Z"
-last_activity: 2026-05-27 -- Phase 05 planning complete
+last_updated: "2026-05-28T00:30:00.000Z"
+last_activity: 2026-05-28 -- Phase 05 Plan 01 complete (rename + reference updates)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Milestone v1.1 — Typed Models & Browser Reach (roadmap defined; ready for Phase 5 planning)
+**Current focus:** Phase 05 — directory-rename
 
 ## Current Position
 
-Phase: Phase 5 — Directory Rename (not started)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 05 planning complete
+Phase: 05 (directory-rename) — EXECUTING
+Plan: 2 of 2 (plan 01 complete; plan 02 next)
+Status: Executing Phase 05
+Last activity: 2026-05-28 -- Plan 05-01 complete (git mv + reference updates + D-01/D-02)
 
 ```
-Progress: [░░░░░░░░░░] 0% — 0/4 phases complete
+Progress: [█░░░░░░░░░] 50% — 1/2 phase 05 plans complete (0/4 v1.1 phases complete)
 ```
 
 ## Performance Metrics
@@ -106,10 +106,10 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 
 ## Session Continuity
 
-Last session: 2026-05-27T20:46:01.983Z
-Stopped at: Phase 5 context gathered
+Last session: 2026-05-28T00:30:00.000Z
+Stopped at: Phase 05 Plan 01 complete — 05-01-SUMMARY.md committed at 1c0f045
 
 ## Operator Next Steps
 
-- Settle OD-1 and OD-2 (can do at planning time for Phase 6, not needed for Phase 5)
-- Run `/gsd:plan-phase 5` to plan the directory rename
+- Run plan 05-02 to add PEP 420 guard test (packages/godoo-client/tests/test_namespace.py)
+- After Phase 05 completes: settle OD-1 and OD-2 before planning Phase 06
