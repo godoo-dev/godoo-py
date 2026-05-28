@@ -76,7 +76,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion per D-11)*
 
-- [ ] 06-02-PLAN.md — godoo.client.typed (OdooModel Protocol + Ref[T] dataclass, stdlib-only) and godoo.client._pydantic_transform (OdooBaseModel + wire transforms + derive_partial_model) with unit tests (TYPED-06, TYPED-07)
+- [x] 06-02-PLAN.md — godoo.client.typed (OdooModel Protocol + Ref[T] dataclass, stdlib-only) and godoo.client._pydantic_transform (OdooBaseModel + wire transforms + derive_partial_model) with unit tests (TYPED-06, TYPED-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -124,7 +124,7 @@ Plans:
 | 4. Release | v1.0 | 3/3 | Complete | 2026-05-22 |
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
-| 6. Transport Seam & Typed Models Core | v1.1 | 1/3 | In Progress|  |
+| 6. Transport Seam & Typed Models Core | v1.1 | 2/3 | In Progress|  |
 | 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
 
