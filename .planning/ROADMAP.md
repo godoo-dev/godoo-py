@@ -68,8 +68,21 @@ Plans:
   4. In a virtualenv with pydantic not installed, `python -c "import godoo.client"` completes without `ImportError`; pydantic import is only triggered at runtime when the typed dispatch branch is entered
   5. `godoo[typed]` is declared as an optional extra in `packages/godoo-client/pyproject.toml`; `godoo.client.typed` (`OdooModel` Protocol, `Ref` dataclass) is importable without pydantic — no Pydantic import at module load time anywhere in the `godoo.client` tree
 
-**Plans**: TBD
-**Open Decisions**: OD-1 (partial-read strategy) and OD-2 (boolean False-coercion) must be settled before implementation begins; research recommends All-Optional fields and OD-2 Option A (emit boolean as plain `bool`, skip coercion in `@model_validator`)
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Transport seam: rpc/protocol.py Transport Protocol, OdooClientConfig.transport_factory field, OdooClient.__init__ injection branch, structural-conformance test (BROWSER-01)
+
+**Wave 2** *(blocked on Wave 1 completion per D-11)*
+
+- [ ] 06-02-PLAN.md — godoo.client.typed (OdooModel Protocol + Ref[T] dataclass, stdlib-only) and godoo.client._pydantic_transform (OdooBaseModel + wire transforms + derive_partial_model) with unit tests (TYPED-06, TYPED-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-03-PLAN.md — @overload pairs on read/search_read with lazy _pydantic_transform import, [typed] optional extra in pyproject.toml, subprocess isolation test, dispatch unit tests (TYPED-03, TYPED-04, TYPED-05)
+
+**Open Decisions**: OD-1 (partial-read strategy) and OD-2 (boolean False-coercion) resolved in 06-CONTEXT.md as D-01 (All-Optional via Pydantic create_model with __base__=) and D-02 (bool annotation skips False→None coercion).
 
 ### Phase 7: Pydantic CLI Generator
 
