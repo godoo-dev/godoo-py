@@ -7,7 +7,7 @@ import contextvars
 import logging
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Final, cast, overload
+from typing import TYPE_CHECKING, Any, Final, TypeVar, cast, overload
 
 from godoo.client.errors import OdooAuthError, OdooMissingError, OdooSafetyError, OdooValidationError
 from godoo.client.rpc import JsonRpcTransport, OdooSessionInfo
@@ -17,6 +17,7 @@ from godoo.client.safety import (
     infer_safety_level,
     resolve_safety_context,
 )
+from godoo.client.typed import OdooModel
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
@@ -32,6 +33,10 @@ if TYPE_CHECKING:
     from godoo.client.services.urls.service import UrlService
 
 logger = logging.getLogger("godoo.client")
+
+# TypeVar bound to OdooModel Protocol — used for typed read/search_read overloads (D-05).
+# OdooModel is imported from the stdlib-only typed module, safe at module load time.
+T = TypeVar("T", bound=OdooModel)
 
 # Sentinel — means "no safety context was explicitly set by the caller"
 
@@ -184,18 +189,70 @@ class OdooClient:
     ) -> list[int]:
         return cast("list[int]", await self.call(model, "search", [domain or []], kwargs))
 
+    @overload
+    async def read(
+        self,
+        model: type[T],
+        ids: int | list[int],
+        fields: list[str] | None = None,
+        **kwargs: Any,
+    ) -> list[T]: ...
+
+    @overload
     async def read(
         self,
         model: str,
         ids: int | list[int],
         fields: list[str] | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]]: ...
+
+    async def read(
+        self,
+        model: str | type[T],
+        ids: int | list[int],
+        fields: list[str] | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]] | list[T]:
         id_list = [ids] if isinstance(ids, int) else ids
+
+        # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
+        if hasattr(model, "__odoo_model__"):
+            try:
+                from godoo.client._pydantic_transform import derive_partial_model
+            except ModuleNotFoundError as exc:
+                raise OdooValidationError(
+                    "Typed reads require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
+                ) from exc
+            typed_model = cast("type[Any]", model)
+            odoo_name: str = typed_model.__odoo_model__
+            if fields is not None:
+                kwargs["fields"] = fields
+                target: type[Any] = derive_partial_model(typed_model, fields)
+            else:
+                target = typed_model
+            raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
+            return cast("list[T]", [target.model_validate(r) for r in raw])
+
+        # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         if fields is not None:
             kwargs["fields"] = fields
         return cast("list[dict[str, Any]]", await self.call(model, "read", [id_list], kwargs))
 
+    @overload
+    async def search_read(
+        self,
+        model: type[T],
+        domain: list[Any] | None = None,
+        *,
+        fields: list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> list[T]: ...
+
+    @overload
     async def search_read(
         self,
         model: str,
@@ -206,7 +263,19 @@ class OdooClient:
         offset: int | None = None,
         order: str | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]]: ...
+
+    async def search_read(
+        self,
+        model: str | type[T],
+        domain: list[Any] | None = None,
+        *,
+        fields: list[str] | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        order: str | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]] | list[T]:
         if fields is not None:
             kwargs["fields"] = fields
         if limit is not None:
@@ -215,6 +284,25 @@ class OdooClient:
             kwargs["offset"] = offset
         if order is not None:
             kwargs["order"] = order
+
+        # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
+        if hasattr(model, "__odoo_model__"):
+            try:
+                from godoo.client._pydantic_transform import derive_partial_model
+            except ModuleNotFoundError as exc:
+                raise OdooValidationError(
+                    "Typed reads require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
+                ) from exc
+            typed_model = cast("type[Any]", model)
+            odoo_name: str = typed_model.__odoo_model__
+            if fields is not None:
+                target: type[Any] = derive_partial_model(typed_model, fields)
+            else:
+                target = typed_model
+            raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "search_read", [domain or []], kwargs))
+            return cast("list[T]", [target.model_validate(r) for r in raw])
+
+        # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         return cast("list[dict[str, Any]]", await self.call(model, "search_read", [domain or []], kwargs))
 
     async def search_count(self, model: str, domain: list[Any] | None = None, **kwargs: Any) -> int:

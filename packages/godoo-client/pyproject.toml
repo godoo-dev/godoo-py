@@ -16,6 +16,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.optional-dependencies]
+typed = ["pydantic>=2.13"]
+
 [project.urls]
 Documentation = "https://www.marcfargas.com/~odoopy/"
 Repository = "https://github.com/godoo-dev/godoo-py"
