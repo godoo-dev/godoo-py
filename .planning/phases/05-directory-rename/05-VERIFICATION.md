@@ -1,21 +1,22 @@
 ---
 phase: 05-directory-rename
 verified: 2026-05-28T00:00:00Z
-status: human_needed
+status: passed
 score: 10/10 must-haves verified
 overrides_applied: 0
-human_verification:
+human_verification_resolved:
   - test: "Push `develop` to origin and confirm CI is green (ruff, mypy, pytest) resolving all paths from `packages/godoo-client/`"
     expected: "All GitHub Actions jobs pass; no 'packages/godoo/src not found' or workspace-member errors in any step"
-    why_human: "CI runs only on push; all local gate commands (D-04) exit 0, but CI-green from the new path cannot be confirmed without an actual push to the remote"
+    result: "PASSED — develop@cc4c50f triggered Test workflow run 26557993479; all 5 jobs green (lint, unit-tests, integration 17.0/18.0/19.0)"
+    confirmed: 2026-05-28
 ---
 
 # Phase 5: Directory Rename Verification Report
 
 **Phase Goal:** The workspace directory `packages/godoo` is renamed to `packages/godoo-client`, every tool-config path reference is updated, and the PEP 420 `godoo.*` namespace invariant is enforced by a CI guard test.
 **Verified:** 2026-05-28
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** passed (post-push CI confirmed green)
+**Re-verification:** No — initial verification, CI-green confirmed inline
 
 ## Goal Achievement
 
