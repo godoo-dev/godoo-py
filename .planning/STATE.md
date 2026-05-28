@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
-status: verifying
-last_updated: "2026-05-28T05:42:44.345Z"
+status: ready_to_plan
+last_updated: 2026-05-28T06:07:50.843Z
 last_activity: 2026-05-28
 progress:
   total_phases: 5
@@ -11,6 +11,7 @@ progress:
   total_plans: 2
   completed_plans: 2
   percent: 20
+stopped_at: Phase 05 complete (2/2) — ready to discuss Phase 6
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 05 — directory-rename
+**Current focus:** Phase 6 — transport seam & typed models core
 
 ## Current Position
 
-Phase: 05 (directory-rename) — COMPLETE
-Plan: 2 of 2 (both plans complete)
-Status: Phase 05 complete — push develop to trigger CI; then settle OD-1 and OD-2 before planning Phase 06
-Last activity: 2026-05-28 -- Plan 05-02 complete (PEP 420 guard test + D-04 done-gate; branch push-ready)
+Phase: 6
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-28
 
 ```
 Progress: [██████████] 100%
@@ -50,6 +51,7 @@ Progress: [██████████] 100%
 | 03 | 3 | - | - |
 | 04 | 3 | - | - |
 | 04.1 | 1 | - | - |
+| 05 | 2 | - | - |
 
 *v1.1 metrics will populate as phases complete.*
 
