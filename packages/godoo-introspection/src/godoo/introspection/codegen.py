@@ -1,45 +1,19 @@
-"""Code generator: transforms ModelSchema into a valid Python TypedDict module string."""
+"""Pydantic model emitter: transforms ModelSchema into a valid Python OdooBaseModel module string."""
 
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
-from godoo.introspection.type_mapper import python_type_str
+from godoo.introspection.type_mapper import pydantic_field_str
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from godoo.introspection.introspector import Introspector
-    from godoo.introspection.types import FieldSchema, ModelSchema
+    from godoo.introspection.types import ModelSchema
 
 logger = logging.getLogger("godoo_introspection.codegen")
-
-# ------------------------------------------------------------------
-# FieldMeta attribute defaults — used to suppress default-valued kwargs
-# in the generated FieldMeta(...) constructor string.
-# ------------------------------------------------------------------
-
-_FIELD_META_DEFAULTS: dict[str, object] = {
-    "field_description": "",
-    "relation": None,
-    "relation_field": None,
-    "required": False,
-    "readonly": False,
-    "store": True,
-    "index": False,
-    "copy": True,
-    "translate": False,
-    "help": "",
-    "compute": None,
-    "depends": (),
-    "modules": (),
-    "on_delete": None,
-    "size": None,
-    "digits": None,
-    "original_ttype": None,
-    "dynamic_selection": False,
-}
 
 
 # ------------------------------------------------------------------
@@ -57,126 +31,148 @@ def _model_to_filename(model: str) -> str:
     return model.replace(".", "_") + ".py"
 
 
-def _annotated_field_meta_str(field: FieldSchema) -> str:
-    """Build the FieldMeta(...) constructor call string for embedding in generated code.
-
-    Always emits ttype=. Omits kwargs whose values match FieldMeta defaults to
-    keep generated output readable. Uses repr() for string / None values so
-    special characters (quotes, backslashes) are safely escaped (T-02-07, T-02-08).
-    """
-    parts = [f"ttype={field.ttype!r}"]
-
-    def _emit(key: str, value: object) -> None:
-        if value != _FIELD_META_DEFAULTS.get(key):
-            parts.append(f"{key}={value!r}")
-
-    _emit("field_description", field.field_description)
-    _emit("relation", field.relation)
-    _emit("relation_field", field.relation_field)
-    _emit("required", field.required)
-    _emit("readonly", field.readonly)
-    _emit("store", field.store)
-    _emit("index", field.index)
-    _emit("copy", field.copy)
-    _emit("translate", field.translate)
-    _emit("help", field.help)
-    _emit("compute", field.compute)
-    _emit("depends", field.depends)
-    _emit("modules", field.modules)
-    _emit("on_delete", field.on_delete)
-    _emit("size", field.size)
-    _emit("digits", field.digits)
-
-    # Codegen-specific: emit original_ttype when ttype is unmapped
-    if field.ttype not in {
-        "char",
-        "text",
-        "html",
-        "image",
-        "integer",
-        "float",
-        "monetary",
-        "boolean",
-        "date",
-        "datetime",
-        "binary",
-        "serialized",
-        "many2one",
-        "one2many",
-        "many2many",
-        "reference",
-        "selection",
-        "json",
-        "properties",
-    }:
-        # Unknown ttype: emit original_ttype and override ttype to '<unknown>'
-        # We produce FieldMeta(ttype='<unknown>', original_ttype=...) per D-Mapping-3
-        parts[0] = "ttype='<unknown>'"
-        parts.append(f"original_ttype={field.ttype!r}")
-    else:
-        _emit("original_ttype", None)  # no-op: default is None
-
-    # dynamic_selection flag — set by codegen when ttype=selection and selection is empty
-    if field.ttype == "selection" and not field.selection:
-        parts.append("dynamic_selection=True")
-
-    return f"FieldMeta({', '.join(parts)})"
-
-
 # ------------------------------------------------------------------
 # CodeGenerator
 # ------------------------------------------------------------------
 
 
 class CodeGenerator:
-    """Transforms ModelSchema objects into valid Python TypedDict module strings.
+    """Transforms ModelSchema objects into valid Python OdooBaseModel module strings.
 
     Usage::
 
-        gen = CodeGenerator(introspector)
+        gen = CodeGenerator(introspector, in_set=frozenset(model_names))
         source = gen.generate(schema)           # string
         gen.write([schema1, schema2], out_dir)  # write files
+
+    The ``in_set`` argument is a frozenset of Odoo model names that will be
+    generated. many2one fields whose target is in ``in_set`` emit
+    ``Optional[Ref[TargetClass]]`` with a cross-import; those whose target is
+    not in ``in_set`` degrade to ``Optional[Ref[int]]`` with a trailing comment.
+
+    Note on circular imports: all in-set many2one relations are emitted as
+    regular imports (not ``TYPE_CHECKING`` guards). This is safe because
+    ``from __future__ import annotations`` defers all annotation evaluation,
+    so circular regular imports are safe at class-definition time for the
+    annotation use case. A full circular-detection second pass is out of scope
+    for Phase 7.
     """
 
-    def __init__(self, introspector: Introspector) -> None:
+    def __init__(self, introspector: Introspector, in_set: frozenset[str] = frozenset()) -> None:
         self._introspector = introspector
+        self._in_set = in_set
 
     def generate(self, schema: ModelSchema) -> str:
         """Return a valid Python module string for one model.
 
-        The output contains a TypedDict class with ``total=False``.
-        The ``id`` field is ``Required[int]``; all other fields are
-        ``NotRequired[Annotated[T, FieldMeta(...)]]``.
+        The output subclasses ``OdooBaseModel`` and carries:
+        - ``__odoo_model__: ClassVar[str]`` set to the Odoo technical name
+        - ``id: int`` always (no Optional, no default)
+        - Per non-id field: ``Optional[T] = None`` or appropriate Pydantic form
         """
         class_name = _model_to_classname(schema.name)
 
-        lines = [
-            "# AUTOGENERATED by godoo-introspection - do not edit manually.",
-            f"# Model: {schema.name}",
-            "",
-            "from typing import Annotated, Any, Literal, NotRequired, Required, TypedDict",
-            "",
-            "from godoo.introspection.markers import FieldMeta",
-            "",
-            "",
-            f"class {class_name}(TypedDict, total=False):",
-            "    id: Required[int]",
-        ]
+        # -- Track which imports are needed as we process fields --
+        need_date = False
+        need_datetime = False
+        need_literal = False
+        need_any = False
+        need_ref = False
+        cross_imports: list[tuple[str, str]] = []  # (stem, classname) for in-set m2o targets
 
-        # Emit one line per field, skipping 'id' (already emitted as Required[int])
+        # Collect non-id field lines
+        field_lines: list[str] = []
         non_id_fields = [(fn, fs) for fn, fs in schema.fields.items() if fn != "id"]
 
         for field_name, fs in non_id_fields:
-            # Security: validate field_name is a valid Python identifier (T-02-06)
+            # Security: validate field_name is a valid Python identifier (T-07-01)
             if not field_name.isidentifier():
                 logger.warning("Field name %r is not a valid Python identifier — skipping", field_name)
                 continue
-            type_str = python_type_str(fs)
-            meta_str = _annotated_field_meta_str(fs)
-            lines.append(f"    {field_name}: NotRequired[Annotated[{type_str}, {meta_str}]]")
 
-        # If only id or no fields at all, emit pass so the class body is not empty
-        if not non_id_fields:
+            annotation, default = pydantic_field_str(fs, self._in_set, _model_to_classname)
+            field_lines.append(f"    {field_name}: {annotation} = {default}")
+
+            # Track imports needed
+            if "date]" in annotation and "datetime]" not in annotation:
+                need_date = True
+            if "datetime]" in annotation:
+                need_datetime = True
+            if "Literal[" in annotation:
+                need_literal = True
+            if "Any]" in annotation or "Any," in annotation:
+                need_any = True
+            if "Ref[" in annotation:
+                need_ref = True
+                # Track cross-imports for in-set m2o targets
+                if fs.ttype == "many2one" and fs.relation and fs.relation in self._in_set:
+                    stem = _model_to_filename(fs.relation)[:-3]
+                    target_class = _model_to_classname(fs.relation)
+                    entry = (stem, target_class)
+                    if entry not in cross_imports:
+                        cross_imports.append(entry)
+
+        # -- Assemble the file --
+        lines: list[str] = []
+
+        # Header comments
+        lines.append("# AUTOGENERATED by godoo-introspection - do not edit manually.")
+        lines.append(f"# Model: {schema.name}")
+        lines.append("")
+
+        # Future imports
+        lines.append("from __future__ import annotations")
+        lines.append("")
+
+        # Stdlib imports (date/datetime)
+        if need_date and need_datetime:
+            lines.append("from datetime import date, datetime")
+            lines.append("")
+        elif need_datetime:
+            lines.append("from datetime import datetime")
+            lines.append("")
+        elif need_date:
+            lines.append("from datetime import date")
+            lines.append("")
+
+        # typing imports — always ClassVar, Optional; conditionally Literal, Any
+        typing_names = ["ClassVar", "Optional"]
+        if need_literal:
+            typing_names.append("Literal")
+        if need_any:
+            typing_names.append("Any")
+        lines.append(f"from typing import {', '.join(typing_names)}")
+        lines.append("")
+
+        # godoo imports
+        lines.append("from godoo.client._pydantic_transform import OdooBaseModel")
+        if need_ref:
+            lines.append("from godoo.client.typed import Ref")
+
+        # Cross-imports for in-set many2one targets
+        if cross_imports:
+            lines.append("")
+            for stem, target_class in cross_imports:
+                lines.append(f"from .{stem} import {target_class}")
+
+        # Two blank lines before class
+        lines.append("")
+        lines.append("")
+
+        # Class definition
+        lines.append(f"class {class_name}(OdooBaseModel):")
+        lines.append(f'    __odoo_model__: ClassVar[str] = "{schema.name}"')
+        lines.append("")
+
+        # id field — always emitted first, no Optional, no default
+        lines.append("    id: int")
+
+        # Non-id fields
+        for fl in field_lines:
+            lines.append(fl)
+
+        # If no non-id fields, emit pass
+        if not field_lines:
             lines.append("    pass")
 
         lines.append("")
@@ -187,7 +183,7 @@ class CodeGenerator:
 
         Raises ValueError if output_dir is not an existing directory.
         """
-        # Security: validate output_dir before any write (T-02-05)
+        # Security: validate output_dir before any write (T-07-01)
         if not output_dir.is_dir():
             raise ValueError(f"output_dir {output_dir!r} is not a directory")
 

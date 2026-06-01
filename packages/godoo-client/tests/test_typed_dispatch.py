@@ -142,9 +142,7 @@ async def test_dispatch_via_hasattr_takes_typed_branch(auth_client: OdooClient) 
     class Marker:
         __odoo_model__: ClassVar[str] = "x.y"
 
-    respx.post(f"{BASE_URL}/jsonrpc").mock(
-        return_value=httpx.Response(200, json=_jsonrpc_result([{"id": 1}]))
-    )
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([{"id": 1}])))
     with pytest.raises((AttributeError, TypeError)):
         await auth_client.read(Marker, [1])
 
