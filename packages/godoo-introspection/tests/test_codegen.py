@@ -80,7 +80,7 @@ def test_generate_id_plain_int() -> None:
     assert "    id: int" in result
     # Must NOT have Optional[int] or default for id
     lines = result.splitlines()
-    id_lines = [l for l in lines if l.strip().startswith("id:")]
+    id_lines = [ln for ln in lines if ln.strip().startswith("id:")]
     assert len(id_lines) == 1
     assert "Optional" not in id_lines[0]
     assert "=" not in id_lines[0]

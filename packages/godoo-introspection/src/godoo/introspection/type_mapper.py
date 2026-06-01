@@ -16,9 +16,7 @@ logger = logging.getLogger("godoo_introspection.codegen")
 # ttype groups sharing the same output annotation
 # ------------------------------------------------------------------
 
-_OPTIONAL_STR_TTYPES = frozenset(
-    {"char", "text", "html", "image", "binary", "serialized", "reference"}
-)
+_OPTIONAL_STR_TTYPES = frozenset({"char", "text", "html", "image", "binary", "serialized", "reference"})
 _OPTIONAL_FLOAT_TTYPES = frozenset({"float", "monetary"})
 _LIST_INT_TTYPES = frozenset({"one2many", "many2many"})
 _DICT_ANY_TTYPES = frozenset({"json", "properties"})
