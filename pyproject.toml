@@ -9,6 +9,7 @@ dev-dependencies = [
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.27",
     "python-semantic-release>=9",
+    "typer>=0.26.5",
 ]
 
 [tool.uv.workspace]
