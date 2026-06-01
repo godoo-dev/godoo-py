@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
 status: ready_to_plan
-last_updated: 2026-06-01T20:43:35.318Z
-last_activity: 2026-06-01 -- Phase 07 execution started
+last_updated: 2026-06-01T21:05:55.980Z
+last_activity: 2026-06-01 -- Completed quick task 260601-w2x: phase 06/07 code-review fixes
 progress:
   total_phases: 6
   completed_phases: 2
@@ -93,6 +93,12 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint, not a blocker.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260601-w2x | Fix 10 phase 06/07 code-review findings (pydantic transform, typed dispatch, codegen, cli) | 2026-06-01 | b21e35c | [260601-w2x-fix-phase-06-07-code-review-findings-pyd](./quick/260601-w2x-fix-phase-06-07-code-review-findings-pyd/) |
 
 ## Deferred Items
 
