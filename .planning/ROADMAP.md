@@ -96,7 +96,15 @@ Plans:
   3. Every generated model carries `__odoo_model__: ClassVar[str]` set to the Odoo technical name (e.g. `"res.partner"`), enabling `client.read(ResPartner, …)` dispatch without pydantic at dispatch time
   4. `pydantic>=2.13` and `typer>=0.26` are declared as runtime deps of `godoo-introspection` (not extras); the Pydantic emitter **replaces** the TypedDict emitter — the existing TypedDict codegen path and its tests are removed and `type_mapper.py` is migrated to Pydantic type forms; this is a breaking change to the v0.2.0 public API (INTRO-03) and must be changelog-noted at release
 
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Delete TypedDict artifacts; migrate type_mapper.py to Pydantic forms; replace CodeGenerator.generate() with Pydantic emitter; rewrite test_type_mapper.py and test_codegen.py (TYPED-01, TYPED-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-02-PLAN.md — pyproject.toml deps + uv.lock; create cli.py typer entrypoint; create test_cli.py (TYPED-01, TYPED-02)
 
 ### Phase 8: Pyodide Spike
 
@@ -125,7 +133,7 @@ Plans:
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
-| 7. Pydantic CLI Generator | v1.1 | 0/? | Not started | - |
+| 7. Pydantic CLI Generator | v1.1 | 0/2 | Not started | - |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
 
 ## Backlog
