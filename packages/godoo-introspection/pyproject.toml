@@ -5,7 +5,11 @@ description = "Schema discovery and codegen for Odoo models"
 readme = "README.md"
 license = "LGPL-3.0-or-later"
 requires-python = ">=3.14"
-dependencies = ["godoo-client>=0.1.0"]
+dependencies = [
+    "godoo-client>=0.1.0",
+    "pydantic>=2.13",
+    "typer>=0.26",
+]
 authors = [{ name = "Marc Fargas", email = "marc@marcfargas.com" }]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -19,6 +23,9 @@ classifiers = [
 Documentation = "https://www.marcfargas.com/~odoopy/"
 Repository = "https://github.com/godoo-dev/godoo-py"
 Issues = "https://github.com/godoo-dev/godoo-py/issues"
+
+[project.scripts]
+godoo-introspect = "godoo.introspection.cli:app"
 
 [build-system]
 requires = ["hatchling"]

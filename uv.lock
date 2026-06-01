@@ -344,10 +344,16 @@ version = "0.2.0"
 source = { editable = "packages/godoo-introspection" }
 dependencies = [
     { name = "godoo-client" },
+    { name = "pydantic" },
+    { name = "typer" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "godoo-client", editable = "packages/godoo-client" }]
+requires-dist = [
+    { name = "godoo-client", editable = "packages/godoo-client" },
+    { name = "pydantic", specifier = ">=2.13" },
+    { name = "typer", specifier = ">=0.26" },
+]
 
 [[package]]
 name = "godoo-testcontainers"
