@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import keyword
 import logging
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,29 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("godoo_introspection.codegen")
 
+# ------------------------------------------------------------------
+# Module-level constants
+# ------------------------------------------------------------------
+
+# Pydantic reserved names that must not be used as field names in OdooBaseModel subclasses.
+# Using any of these as a field name shadows Pydantic's own class-level API and causes
+# silent or fatal misbehaviour (Finding #4).
+_PYDANTIC_RESERVED_NAMES: frozenset[str] = frozenset(
+    {
+        "model_config",
+        "model_fields",
+        "model_validate",
+        "model_dump",
+        "model_rebuild",
+        "model_post_init",
+        "model_json_schema",
+        "schema",
+        "copy",
+        "dict",
+        "json",
+    }
+)
+
 
 # ------------------------------------------------------------------
 # Private helpers
@@ -22,8 +46,16 @@ logger = logging.getLogger("godoo_introspection.codegen")
 
 
 def _model_to_classname(model: str) -> str:
-    """Convert 'res.partner' → 'ResPartner', 'account.move.line' → 'AccountMoveLine'."""
-    return "".join(part.capitalize() for part in model.replace(".", "_").split("_"))
+    """Convert 'res.partner' → 'ResPartner', 'account.move.line' → 'AccountMoveLine'.
+
+    Raises:
+        ValueError: if the resulting name is not a valid Python identifier
+                    (e.g. '3d.model' → '3DModel' starts with a digit).
+    """
+    result = "".join(part.capitalize() for part in model.replace(".", "_").split("_"))
+    if not result.isidentifier():
+        raise ValueError(f"Model name {model!r} produces invalid Python identifier {result!r}")
+    return result
 
 
 def _model_to_filename(model: str) -> str:
@@ -69,6 +101,9 @@ class CodeGenerator:
         - ``__odoo_model__: ClassVar[str]`` set to the Odoo technical name
         - ``id: int`` always (no Optional, no default)
         - Per non-id field: ``Optional[T] = None`` or appropriate Pydantic form
+
+        Raises:
+            ValueError: if the model name produces an invalid Python class name.
         """
         class_name = _model_to_classname(schema.name)
 
@@ -90,27 +125,34 @@ class CodeGenerator:
                 logger.warning("Field name %r is not a valid Python identifier — skipping", field_name)
                 continue
 
-            annotation, default = pydantic_field_str(fs, self._in_set, _model_to_classname)
+            # Finding #5: skip Python keywords (e.g. 'class', 'return', 'import')
+            if keyword.iskeyword(field_name):
+                logger.warning("Field name %r is a Python keyword — skipping", field_name)
+                continue
+
+            # Finding #4: skip Pydantic reserved names (e.g. 'model_config', 'schema')
+            if field_name in _PYDANTIC_RESERVED_NAMES:
+                logger.warning("Field name %r is a Pydantic reserved name — skipping", field_name)
+                continue
+
+            # Finding #10: structural import detection — unpack 3-tuple from type_mapper
+            annotation, default, imports = pydantic_field_str(fs, self._in_set, _model_to_classname)
             field_lines.append(f"    {field_name}: {annotation} = {default}")
 
-            # Track imports needed
-            if "date]" in annotation and "datetime]" not in annotation:
-                need_date = True
-            if "datetime]" in annotation:
-                need_datetime = True
-            if "Literal[" in annotation:
-                need_literal = True
-            if "Any]" in annotation or "Any," in annotation:
-                need_any = True
-            if "Ref[" in annotation:
-                need_ref = True
-                # Track cross-imports for in-set m2o targets
-                if fs.ttype == "many2one" and fs.relation and fs.relation in self._in_set:
-                    stem = _model_to_filename(fs.relation)[:-3]
-                    target_class = _model_to_classname(fs.relation)
-                    entry = (stem, target_class)
-                    if entry not in cross_imports:
-                        cross_imports.append(entry)
+            # Track imports needed — set-membership checks on the imports frozenset
+            need_date |= "date" in imports
+            need_datetime |= "datetime" in imports
+            need_literal |= "Literal" in imports
+            need_any |= "Any" in imports
+            need_ref |= "Ref" in imports
+
+            # Track cross-imports for in-set m2o targets (structural, reads fs.ttype directly)
+            if fs.ttype == "many2one" and fs.relation and fs.relation in self._in_set:
+                stem = _model_to_filename(fs.relation)[:-3]
+                target_class = _model_to_classname(fs.relation)
+                entry = (stem, target_class)
+                if entry not in cross_imports:
+                    cross_imports.append(entry)
 
         # -- Assemble the file --
         lines: list[str] = []
@@ -194,7 +236,8 @@ class CodeGenerator:
             filename = _model_to_filename(schema.name)
             stem = filename[:-3]  # remove .py
             class_name = _model_to_classname(schema.name)
-            (output_dir / filename).write_text(source, encoding="utf-8")
+            # Finding #9: always write LF line endings (newline="\n") on all platforms
+            (output_dir / filename).write_text(source, encoding="utf-8", newline="\n")
             class_names.append((stem, class_name))
             logger.debug("Wrote %s → %s", schema.name, filename)
 
@@ -212,5 +255,6 @@ class CodeGenerator:
         barrel_lines.append("]")
         barrel_lines.append("")
 
-        (output_dir / "__init__.py").write_text("\n".join(barrel_lines), encoding="utf-8")
+        # Finding #9: always write LF line endings (newline="\n") on all platforms
+        (output_dir / "__init__.py").write_text("\n".join(barrel_lines), encoding="utf-8", newline="\n")
         logger.debug("Wrote __init__.py barrel with %d exports", len(class_names))
