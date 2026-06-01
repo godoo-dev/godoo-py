@@ -768,22 +768,25 @@ def test_generate_pydantic_importlib(tmp_path: Path) -> None:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`CodeGenerator.generate()` signature extension**
    - What we know: current signature is `generate(self, schema: ModelSchema) -> str`; Pydantic emitter needs the in-set relation set to resolve Ref[TargetClass] vs Ref[int].
    - What's unclear: should `in_set` be passed per `generate()` call or stored on the `CodeGenerator` instance at construction?
    - Recommendation: store on instance — `CodeGenerator(introspector, in_set=frozenset(names))` mirrors how `write()` already loops all schemas with knowledge of the full set.
+   - **RESOLVED:** `in_set` is stored on the `CodeGenerator` instance at construction (`CodeGenerator(introspector, in_set=frozenset(...))`); `generate(self, schema) -> str` takes no `in_set` argument. This is the authoritative signature.
 
 2. **`__init__.py` barrel: remove `FieldMeta` and `CodeGenerator` or update them?**
    - What we know: current `__init__.py` exports `CodeGenerator`, `FieldMeta`, `FieldSchema`, `IntrospectionCache`, `Introspector`, `ModelSchema`.
    - What's unclear: `FieldMeta` is deleted; `CodeGenerator` stays (new implementation); the public API is a breaking change regardless.
    - Recommendation: remove `FieldMeta` from `__all__`; keep `CodeGenerator` (renamed in body, same import path). Changelog notes the removal.
+   - **RESOLVED:** Remove the `FieldMeta` export; keep/repurpose `CodeGenerator` under the same import path.
 
 3. **`--models` with zero matches**
    - What we know: user might give a pattern that matches nothing (e.g. typo).
    - What's unclear: hard error (exit 1) vs warning + empty output?
    - Recommendation: exit 1 with clear message ("no models matched pattern X"). Generating an empty package with only an `__init__.py` is confusing.
+   - **RESOLVED:** Exit 1 with a clear message when no models match the given patterns.
 
 ---
 
