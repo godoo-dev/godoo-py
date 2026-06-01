@@ -41,9 +41,7 @@ def generate(
     url: Annotated[str | None, typer.Option(envvar="ODOO_URL", help="Odoo URL")] = None,
     db: Annotated[str | None, typer.Option(envvar="ODOO_DB", help="Odoo database name")] = None,
     user: Annotated[str | None, typer.Option(envvar="ODOO_USER", help="Odoo username")] = None,
-    password: Annotated[
-        str | None, typer.Option(envvar="ODOO_PASSWORD", hide_input=True, help="Odoo password")
-    ] = None,
+    password: Annotated[str | None, typer.Option(envvar="ODOO_PASSWORD", hide_input=True, help="Odoo password")] = None,
 ) -> None:
     """Generate Pydantic model files from a live Odoo instance schema."""
     # -- Validation: mutual exclusion --
@@ -67,21 +65,27 @@ def generate(
     from godoo.client.config import config_from_env  # deferred import
     from godoo.client.errors import OdooError  # deferred import
 
-    try:
-        config = config_from_env()
-    except OdooError as exc:
-        # Echo the error message — it names missing variable names, not values (safe per T-07-07)
-        typer.echo(f"Error: {exc}", err=True)
-        raise typer.Exit(code=1) from exc
+    # If all four credentials are supplied as explicit flags, use them directly —
+    # no need to call config_from_env() (which would require env vars to be set).
+    if url is not None and db is not None and user is not None and password is not None:
+        config = OdooClientConfig(url=url, database=db, username=user, password=password)
+    else:
+        # Fall back to env vars, then override any explicitly-provided flag values
+        try:
+            config = config_from_env()
+        except OdooError as exc:
+            # Echo the error message — it names missing variable names, not values (safe per T-07-07)
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
 
-    # Override with explicit flag values when provided
-    if url is not None or db is not None or user is not None or password is not None:
-        config = OdooClientConfig(
-            url=url if url is not None else config.url,
-            database=db if db is not None else config.database,
-            username=user if user is not None else config.username,
-            password=password if password is not None else config.password,
-        )
+        # Override with any explicit flag values
+        if url is not None or db is not None or user is not None or password is not None:
+            config = OdooClientConfig(
+                url=url if url is not None else config.url,
+                database=db if db is not None else config.database,
+                username=user if user is not None else config.username,
+                password=password if password is not None else config.password,
+            )
 
     # -- Async execution bridge --
     try:
