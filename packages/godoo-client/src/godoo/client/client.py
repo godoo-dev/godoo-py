@@ -227,8 +227,12 @@ class OdooClient:
             typed_model = cast("type[Any]", model)
             odoo_name: str = typed_model.__odoo_model__
             if fields is not None:
+                # read() always returns id from Odoo regardless of fields — no injection needed.
                 kwargs["fields"] = fields
-                target: type[Any] = derive_partial_model(typed_model, fields)
+                try:
+                    target: type[Any] = derive_partial_model(typed_model, fields)
+                except ValueError as exc:
+                    raise OdooValidationError(str(exc)) from exc
             else:
                 target = typed_model
             raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
@@ -296,7 +300,14 @@ class OdooClient:
             typed_model = cast("type[Any]", model)
             odoo_name: str = typed_model.__odoo_model__
             if fields is not None:
-                target: type[Any] = derive_partial_model(typed_model, fields)
+                # Inject 'id' into the fields sent to Odoo — search_read does NOT auto-include id.
+                # Use dict.fromkeys to deduplicate while preserving order (id first).
+                effective_fields = list(dict.fromkeys(["id", *fields]))
+                kwargs["fields"] = effective_fields
+                try:
+                    target: type[Any] = derive_partial_model(typed_model, effective_fields)
+                except ValueError as exc:
+                    raise OdooValidationError(str(exc)) from exc
             else:
                 target = typed_model
             raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "search_read", [domain or []], kwargs))

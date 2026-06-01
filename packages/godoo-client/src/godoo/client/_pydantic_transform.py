@@ -107,20 +107,35 @@ class OdooBaseModel(BaseModel):
                 continue
             annotation = field_info.annotation
 
+            # Finding #1: list-origin check — False for any list-annotated field
+            # (bare list[T] or list[T] | None) maps to [] BEFORE the generic False->None rule.
+            # This also handles x2many Odoo fields that return False for empty sets.
+            _origin = get_origin(annotation)
+            if _origin is not list:
+                # Handle Optional[list[T]] / Union types — scan args for a list origin
+                for _arg in get_args(annotation):
+                    if get_origin(_arg) is list:
+                        _origin = list
+                        break
+            if value is False and _origin is list:
+                out[name] = []
+                continue
+
             # D-02: preserve False for bool-annotated fields (bare bool AND bool | None)
             if value is False and not _annotation_is(annotation, bool):
                 out[name] = None
                 continue
 
-            # m2o tuple [id, "Name"] → Ref(id, name)
+            # m2o tuple [id, "Name"] or [id, False] → Ref(id, name)
+            # Finding #3: accept False as value[1] for restricted display names
             if (
                 isinstance(value, list)
                 and len(value) == 2
                 and isinstance(value[0], int)
-                and isinstance(value[1], str)
+                and (isinstance(value[1], str) or value[1] is False)
                 and _annotation_mentions_ref(annotation)
             ):
-                out[name] = Ref(id=value[0], name=value[1])
+                out[name] = Ref(id=value[0], name=None if value[1] is False else value[1])
                 continue
 
             # ISO datetime BEFORE date (datetime is a subclass of date — order matters)

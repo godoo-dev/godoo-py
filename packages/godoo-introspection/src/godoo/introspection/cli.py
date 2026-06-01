@@ -88,9 +88,13 @@ def generate(
             )
 
     # -- Async execution bridge --
+    # Finding #6: catch OdooError (auth, network) in addition to ValueError so
+    # auth failures and connection errors produce a clean stderr message + exit 1
+    # instead of a raw traceback. str(exc) for OdooError never includes the password
+    # (the message is "invalid login" etc.) — safe per T-w2x-02.
     try:
         asyncio.run(_generate_async(output_path, models, all, config))
-    except ValueError as exc:
+    except (ValueError, OdooError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
 

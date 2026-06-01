@@ -216,3 +216,124 @@ def test_write_invalid_dir_raises(tmp_path: Path) -> None:
     schema = _schema()
     with pytest.raises(ValueError, match="not a directory"):
         gen.write([schema], Path("/nonexistent/path"))
+
+
+# ---------------------------------------------------------------------------
+# Finding #4 — Reserved Pydantic names guard
+# ---------------------------------------------------------------------------
+
+
+def test_generate_reserved_name_skipped() -> None:
+    """Fields named after Pydantic reserved names (e.g. 'model_config') are skipped."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", model_config=_char_field("model_config"))
+    result = gen.generate(schema)
+    # The field should NOT appear as a field declaration
+    lines = result.splitlines()
+    field_lines = [ln for ln in lines if ln.strip().startswith("model_config:")]
+    assert len(field_lines) == 0, f"'model_config' field should be skipped, got lines: {field_lines}"
+
+
+# ---------------------------------------------------------------------------
+# Finding #5 — Python keyword guard
+# ---------------------------------------------------------------------------
+
+
+def test_generate_keyword_field_skipped() -> None:
+    """Fields named after Python keywords (e.g. 'class') are skipped."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", **{"class": _char_field("class")})
+    result = gen.generate(schema)
+    # The field 'class' must not appear as a field declaration
+    assert "class:" not in result, f"'class:' field should be skipped in:\n{result}"
+
+
+# ---------------------------------------------------------------------------
+# Finding #8 — Class name validation
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_classname_raises() -> None:
+    """_model_to_classname raises ValueError for model names producing invalid identifiers."""
+    with pytest.raises(ValueError, match="invalid Python identifier"):
+        _model_to_classname("3d.model")
+
+
+def test_generate_invalid_classname_propagates() -> None:
+    """CodeGenerator.generate propagates ValueError for a model with an invalid class name."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("3d.model")
+    with pytest.raises(ValueError, match="invalid Python identifier"):
+        gen.generate(schema)
+
+
+# ---------------------------------------------------------------------------
+# Finding #9 — LF newlines on all platforms
+# ---------------------------------------------------------------------------
+
+
+def test_write_newline_lf(tmp_path: Path) -> None:
+    """Written .py files use LF line endings on all platforms (no CRLF bytes)."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", name=_char_field("name"))
+    gen.write([schema], tmp_path)
+    content = (tmp_path / "res_partner.py").read_bytes()
+    assert b"\r\n" not in content, "File must not contain CRLF line endings"
+    init_content = (tmp_path / "__init__.py").read_bytes()
+    assert b"\r\n" not in init_content, "__init__.py must not contain CRLF line endings"
+
+
+# ---------------------------------------------------------------------------
+# Finding #10 — Structural imports from type_mapper
+# ---------------------------------------------------------------------------
+
+
+def _date_field(fname: str = "create_date") -> FieldSchema:
+    return FieldSchema(name=fname, ttype="date")
+
+
+def _datetime_field(fname: str = "write_date") -> FieldSchema:
+    return FieldSchema(name=fname, ttype="datetime")
+
+
+def _json_field(fname: str = "metadata") -> FieldSchema:
+    return FieldSchema(name=fname, ttype="json")
+
+
+def test_type_mapper_returns_imports_set() -> None:
+    """pydantic_field_str returns a 3-tuple (annotation, default, imports_set)."""
+    from godoo.introspection.type_mapper import pydantic_field_str
+
+    # date field
+    _ann, _default, imports = pydantic_field_str(_date_field(), frozenset(), _model_to_classname)
+    assert "date" in imports, f"date field should have 'date' in imports, got {imports}"
+
+    # datetime field
+    _ann, _default, imports = pydantic_field_str(_datetime_field(), frozenset(), _model_to_classname)
+    assert "datetime" in imports, f"datetime field should have 'datetime' in imports, got {imports}"
+
+    # selection field with static values
+    _ann, _default, imports = pydantic_field_str(_selection_field(), frozenset(), _model_to_classname)
+    assert "Literal" in imports, f"selection field should have 'Literal' in imports, got {imports}"
+
+    # json field
+    _ann, _default, imports = pydantic_field_str(_json_field(), frozenset(), _model_to_classname)
+    assert "Any" in imports, f"json field should have 'Any' in imports, got {imports}"
+
+    # many2one field
+    _ann, _default, imports = pydantic_field_str(
+        _m2o_field("partner_id", "res.partner"), frozenset(), _model_to_classname
+    )
+    assert "Ref" in imports, f"m2o field should have 'Ref' in imports, got {imports}"
+
+    # char field — no special imports
+    _ann, _default, imports = pydantic_field_str(_char_field(), frozenset(), _model_to_classname)
+    assert len(imports) == 0, f"char field should have empty imports, got {imports}"
+
+
+def test_generate_date_import_via_structural(tmp_path: Path) -> None:
+    """Schema with a date field generates 'from datetime import date' in source (structural import)."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", create_date=_date_field("create_date"))
+    result = gen.generate(schema)
+    assert "from datetime import date" in result, f"Expected 'from datetime import date' in:\n{result}"

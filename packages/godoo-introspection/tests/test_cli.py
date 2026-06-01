@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import httpx
 import respx
+from godoo.client.errors import OdooAuthError, OdooNetworkError
 from godoo.introspection.cli import app
 from typer.testing import CliRunner
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 runner = CliRunner()
 
@@ -69,6 +73,104 @@ def test_generate_password_not_in_output(tmp_path: Path) -> None:
     )
     # Password must not appear in any output even if the call fails
     assert secret not in (result.output or "")
+
+
+# ------------------------------------------------------------------
+# Network-mocked happy-path test
+# ------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------
+# Finding #6: OdooError (auth/network) caught in CLI generate sync wrapper
+# ------------------------------------------------------------------
+
+
+def test_generate_auth_error_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """OdooAuthError raised inside asyncio.run is caught and exits with code 1."""
+    exc_instance = OdooAuthError("bad creds")
+
+    def _raise(*_: object) -> None:
+        raise exc_instance
+
+    monkeypatch.setattr(asyncio, "run", _raise)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--output",
+            str(tmp_path),
+            "--all",
+            "--url",
+            "http://fake",
+            "--db",
+            "fake",
+            "--user",
+            "admin",
+            "--password",
+            "admin",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "bad creds" in (result.output or "")
+
+
+def test_generate_network_error_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """OdooNetworkError raised inside asyncio.run is caught and exits with code 1."""
+    exc_instance = OdooNetworkError("connection refused")
+
+    def _raise(*_: object) -> None:
+        raise exc_instance
+
+    monkeypatch.setattr(asyncio, "run", _raise)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--output",
+            str(tmp_path),
+            "--all",
+            "--url",
+            "http://fake",
+            "--db",
+            "fake",
+            "--user",
+            "admin",
+            "--password",
+            "admin",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "connection refused" in (result.output or "")
+
+
+def test_generate_odoo_error_password_not_in_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Password must not appear in CLI output even when OdooAuthError is raised (T-w2x-02)."""
+    secret_password = "super_secret_password_xyz"
+    exc_instance = OdooAuthError("invalid login")
+
+    def _raise(*_: object) -> None:
+        raise exc_instance
+
+    monkeypatch.setattr(asyncio, "run", _raise)
+    result = runner.invoke(
+        app,
+        [
+            "generate",
+            "--output",
+            str(tmp_path),
+            "--all",
+            "--url",
+            "http://fake",
+            "--db",
+            "fake",
+            "--user",
+            "admin",
+            "--password",
+            secret_password,
+        ],
+    )
+    assert result.exit_code == 1
+    assert secret_password not in (result.output or ""), "Password must never appear in CLI output"
 
 
 # ------------------------------------------------------------------
