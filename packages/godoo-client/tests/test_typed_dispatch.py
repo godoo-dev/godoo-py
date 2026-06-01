@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from typing import TYPE_CHECKING, ClassVar
 
@@ -145,6 +146,112 @@ async def test_dispatch_via_hasattr_takes_typed_branch(auth_client: OdooClient) 
     respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([{"id": 1}])))
     with pytest.raises((AttributeError, TypeError)):
         await auth_client.read(Marker, [1])
+
+
+# ------------------------------------------------------------------
+# Finding #2: search_read typed path injects 'id' into fields sent to Odoo
+# ------------------------------------------------------------------
+
+
+def _extract_rpc_fields(request: httpx.Request) -> list[str] | None:
+    """Extract the 'fields' value from a JSON-RPC execute_kw request body.
+
+    The body structure is: params.args[6] = the kwargs dict passed to execute_kw.
+    Returns None if no 'fields' key is present.
+    """
+    body = json.loads(request.content)
+    rpc_args: list[object] = body.get("params", {}).get("args", [])
+    # execute_kw args: [db, uid, password, model, method, positional_args, kwargs]
+    if len(rpc_args) >= 7 and isinstance(rpc_args[6], dict):
+        rpc_kwargs: dict[str, object] = rpc_args[6]  # type: ignore[assignment]
+        fields = rpc_kwargs.get("fields")
+        if isinstance(fields, list):
+            return fields  # type: ignore[return-value]
+    return None
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_search_read_typed_id_injected_into_fields(auth_client: OdooClient) -> None:
+    """search_read typed path with fields=['name'] injects 'id' into the RPC payload."""
+    captured_fields: list[list[str]] = []
+
+    def _capture(request: httpx.Request, route: respx.Route) -> httpx.Response:
+        fields = _extract_rpc_fields(request)
+        if fields is not None:
+            captured_fields.append(fields)
+        return httpx.Response(200, json=_jsonrpc_result([{"id": 1, "name": "Foo"}]))
+
+    respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=_capture)
+    result = await auth_client.search_read(TinyPartner, [], fields=["name"])
+    assert len(result) == 1
+    assert result[0].name == "Foo"
+    assert len(captured_fields) == 1, "Expected exactly one RPC call with fields"
+    assert "id" in captured_fields[0], f"'id' should be injected, got: {captured_fields[0]}"
+    assert "name" in captured_fields[0]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_search_read_typed_id_already_present_not_duplicated(auth_client: OdooClient) -> None:
+    """search_read typed path does not duplicate 'id' when already in fields."""
+    captured_fields: list[list[str]] = []
+
+    def _capture(request: httpx.Request, route: respx.Route) -> httpx.Response:
+        fields = _extract_rpc_fields(request)
+        if fields is not None:
+            captured_fields.append(fields)
+        return httpx.Response(200, json=_jsonrpc_result([{"id": 1, "name": "Foo"}]))
+
+    respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=_capture)
+    await auth_client.search_read(TinyPartner, [], fields=["id", "name"])
+    assert len(captured_fields) == 1
+    assert captured_fields[0].count("id") == 1, f"'id' should appear exactly once, got: {captured_fields[0]}"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_typed_id_not_injected(auth_client: OdooClient) -> None:
+    """read() typed path does NOT inject 'id' — Odoo read() always returns id."""
+    captured_fields: list[list[str]] = []
+
+    def _capture(request: httpx.Request, route: respx.Route) -> httpx.Response:
+        fields = _extract_rpc_fields(request)
+        if fields is not None:
+            captured_fields.append(fields)
+        return httpx.Response(200, json=_jsonrpc_result([{"id": 1, "name": "Foo"}]))
+
+    respx.post(f"{BASE_URL}/jsonrpc").mock(side_effect=_capture)
+    await auth_client.read(TinyPartner, [1], fields=["name"])
+    # read() passes fields as-is (no injection); Odoo read() always returns id
+    assert len(captured_fields) == 1
+    # No double-injection: fields list should be exactly ["name"]
+    assert captured_fields[0] == ["name"]
+
+
+# ------------------------------------------------------------------
+# Finding #7: ValueError from derive_partial_model -> OdooValidationError
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_typed_dispatch_unknown_field_raises_odoo_validation_search_read(
+    auth_client: OdooClient,
+) -> None:
+    """search_read typed path wraps ValueError from derive_partial_model as OdooValidationError."""
+    with pytest.raises(OdooValidationError, match="nonexistent_field"):
+        await auth_client.search_read(TinyPartner, [], fields=["nonexistent_field"])
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_typed_dispatch_unknown_field_raises_odoo_validation_read(
+    auth_client: OdooClient,
+) -> None:
+    """read() typed path wraps ValueError from derive_partial_model as OdooValidationError."""
+    with pytest.raises(OdooValidationError, match="nonexistent_field"):
+        await auth_client.read(TinyPartner, [1], fields=["nonexistent_field"])
 
 
 # ------------------------------------------------------------------
