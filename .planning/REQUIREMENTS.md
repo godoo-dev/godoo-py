@@ -17,8 +17,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 > **Note (v1.1 / Phase 7):** TYPED-01 and TYPED-02 **supersede INTRO-03** from milestone v1.0. The TypedDict generator shipped as INTRO-03 is replaced by the Pydantic generator in Phase 7 (breaking change; changelog-noted at release).
 
-- [ ] **TYPED-01**: A developer can generate a Pydantic model package from their live Odoo instance via a `godoo-introspection` CLI command (output path is the consuming project's choice)
-- [ ] **TYPED-02**: Generated models reflect instance-specific schema — custom fields, selection values emitted as `Literal`, relational fields typed as `Ref[Model]` (many2one) / `list[int]` (one2many/many2many); no nested fetch
+- [x] **TYPED-01**: A developer can generate a Pydantic model package from their live Odoo instance via a `godoo-introspection` CLI command (output path is the consuming project's choice)
+- [x] **TYPED-02**: Generated models reflect instance-specific schema — custom fields, selection values emitted as `Literal`, relational fields typed as `Ref[Model]` (many2one) / `list[int]` (one2many/many2many); no nested fetch
 - [x] **TYPED-03**: A developer can call `client.read(ModelClass, ids)` (and `search_read(ModelClass, ...)`) and receive validated, transformed `list[ModelClass]` instances
 - [x] **TYPED-04**: The raw string-keyed path (`client.read("res.partner", ids)`) is unchanged and still returns `list[dict[str, Any]]`
 - [x] **TYPED-05**: Typed support is opt-in via the `godoo[typed]` extra; the default install stays httpx-only, enforced by a CI test asserting `import godoo` pulls in no pydantic
@@ -72,8 +72,8 @@ Populated during roadmap creation.
 | PKG-01 | Phase 5 | Complete |
 | PKG-02 | Phase 5 | Complete |
 | PKG-03 | Phase 5 | Complete |
-| TYPED-01 | Phase 7 | Pending |
-| TYPED-02 | Phase 7 | Pending |
+| TYPED-01 | Phase 7 | Complete |
+| TYPED-02 | Phase 7 | Complete |
 | TYPED-03 | Phase 6 | Complete |
 | TYPED-04 | Phase 6 | Complete |
 | TYPED-05 | Phase 6 | Complete |

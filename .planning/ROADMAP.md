@@ -133,7 +133,7 @@ Plans:
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
-| 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete   | 2026-06-01 |
+| 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete    | 2026-06-01 |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
 
 ## Backlog
