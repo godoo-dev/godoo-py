@@ -15,6 +15,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Typed Models
 
+> **Note (v1.1 / Phase 7):** TYPED-01 and TYPED-02 **supersede INTRO-03** from milestone v1.0. The TypedDict generator shipped as INTRO-03 is replaced by the Pydantic generator in Phase 7 (breaking change; changelog-noted at release).
+
 - [ ] **TYPED-01**: A developer can generate a Pydantic model package from their live Odoo instance via a `godoo-introspection` CLI command (output path is the consuming project's choice)
 - [ ] **TYPED-02**: Generated models reflect instance-specific schema — custom fields, selection values emitted as `Literal`, relational fields typed as `Ref[Model]` (many2one) / `list[int]` (one2many/many2many); no nested fetch
 - [x] **TYPED-03**: A developer can call `client.read(ModelClass, ids)` (and `search_read(ModelClass, ...)`) and receive validated, transformed `list[ModelClass]` instances

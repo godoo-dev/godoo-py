@@ -91,10 +91,10 @@ Plans:
 **Requirements**: TYPED-01, TYPED-02
 **Success Criteria** (what must be TRUE):
 
-  1. `godoo-introspect generate-pydantic --url … --db … --user … --password … --output ./models/` (or env-var-driven equivalent) completes and writes model files to the specified output path
-  2. Generated model files: each model has `id: int` as required; all other fields are `Optional[T] = None`; selection fields use `Literal[…]` with instance-actual registered values; many2one fields are typed as `Ref[TargetModel]`; one2many/many2many fields are typed as `list[int]`
+  1. `godoo-introspect generate --output ./models/` (credentials from `config_from_env()` by default; `--url`/`--db`/`--user`/`--password` flags override; `--models pat1,pat2,...` accepts fnmatch-style glob patterns matched against Odoo technical model names; `--all` generates every installed model) completes and writes model files to the specified output path
+  2. Generated model files: each model has `id: int` as required; all other fields are `Optional[T] = None`; selection fields use `Literal[…]` with instance-actual registered values; many2one fields typed as `Ref[TargetClass]` when the target is in the generated set (with a cross-import), degraded to `Ref[int]` with a trailing `# <odoo.model>` comment when not; one2many/many2many fields are typed as `list[int]`; all generated files must compile without errors
   3. Every generated model carries `__odoo_model__: ClassVar[str]` set to the Odoo technical name (e.g. `"res.partner"`), enabling `client.read(ResPartner, …)` dispatch without pydantic at dispatch time
-  4. `pydantic>=2.13` and `typer>=0.26` are declared as runtime deps of `godoo-introspection` (not extras); the existing TypedDict codegen path is unaffected
+  4. `pydantic>=2.13` and `typer>=0.26` are declared as runtime deps of `godoo-introspection` (not extras); the Pydantic emitter **replaces** the TypedDict emitter — the existing TypedDict codegen path and its tests are removed and `type_mapper.py` is migrated to Pydantic type forms; this is a breaking change to the v0.2.0 public API (INTRO-03) and must be changelog-noted at release
 
 **Plans**: TBD
 
