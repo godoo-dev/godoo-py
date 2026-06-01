@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from godoo.introspection.type_mapper import python_type_str
+from godoo.introspection.type_mapper import pydantic_field_str
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -171,9 +171,8 @@ class CodeGenerator:
             if not field_name.isidentifier():
                 logger.warning("Field name %r is not a valid Python identifier — skipping", field_name)
                 continue
-            type_str = python_type_str(fs)
-            meta_str = _annotated_field_meta_str(fs)
-            lines.append(f"    {field_name}: NotRequired[Annotated[{type_str}, {meta_str}]]")
+            annotation, default = pydantic_field_str(fs, frozenset(), _model_to_classname)
+            lines.append(f"    {field_name}: {annotation} = {default}")
 
         # If only id or no fields at all, emit pass so the class body is not empty
         if not non_id_fields:
