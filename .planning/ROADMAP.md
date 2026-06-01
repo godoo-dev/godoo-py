@@ -100,7 +100,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Delete TypedDict artifacts; migrate type_mapper.py to Pydantic forms; replace CodeGenerator.generate() with Pydantic emitter; rewrite test_type_mapper.py and test_codegen.py (TYPED-01, TYPED-02)
+- [x] 07-01-PLAN.md — Delete TypedDict artifacts; migrate type_mapper.py to Pydantic forms; replace CodeGenerator.generate() with Pydantic emitter; rewrite test_type_mapper.py and test_codegen.py (TYPED-01, TYPED-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -133,7 +133,7 @@ Plans:
 | 4.1. Package READMEs | v1.0 | 1/1 | Complete | 2026-05-22 |
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
-| 7. Pydantic CLI Generator | v1.1 | 0/2 | Not started | - |
+| 7. Pydantic CLI Generator | v1.1 | 1/2 | In Progress|  |
 | 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
 
 ## Backlog
