@@ -86,6 +86,13 @@ and bump to v2.0.
 - ✓ All four distributions published to PyPI (0.2.0) via OIDC trusted publishing — Phase 4
 - ✓ Client-facing READMEs wired into each `pyproject.toml`; PyPI pages render (0.2.1) — Phase 4.1
 
+<!-- Validated in Phase 7: Pydantic CLI Generator (2026-06-01). -->
+
+- ✓ Pydantic model emitter — `CodeGenerator` emits `OdooBaseModel` subclasses, one file per model + barrel `__init__.py`; replaces the TypedDict emitter (breaking, INTRO-03) — Phase 7 (TYPED-01)
+- ✓ `type_mapper.py` migrated to Pydantic field forms (`id: int` required, `Optional[T] = None`, `Literal[...]` selections, `Ref[TargetClass]`/`Ref[int]` m2o, `list[int]` x2many) — Phase 7 (TYPED-01)
+- ✓ `__odoo_model__: ClassVar[str]` on every generated model — pydantic-free `client.read(...)` dispatch — Phase 7 (TYPED-01)
+- ✓ `godoo-introspect generate` CLI entrypoint (typer); `pydantic>=2.13` + `typer>=0.26` as runtime deps — Phase 7 (TYPED-02)
+
 ### Active
 
 <!-- v1.1 Typed Models & Browser Reach — scoping in progress. REQ-IDs land in REQUIREMENTS.md. -->
@@ -165,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-27 — milestone v1.1 (Typed Models & Browser Reach) started*
+*Last updated: 2026-06-01 — Phase 7 (Pydantic CLI Generator) complete; milestone v1.1 (Typed Models & Browser Reach)*
