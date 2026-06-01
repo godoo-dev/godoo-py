@@ -6,7 +6,6 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import httpx
-import pytest
 import respx
 from godoo.client.errors import OdooAuthError, OdooNetworkError
 from godoo.introspection.cli import app
@@ -14,6 +13,8 @@ from typer.testing import CliRunner
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 runner = CliRunner()
 

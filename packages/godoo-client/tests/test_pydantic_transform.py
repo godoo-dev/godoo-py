@@ -8,6 +8,7 @@ from typing import ClassVar
 import pytest
 from godoo.client._pydantic_transform import OdooBaseModel, clear_partial_model_cache, derive_partial_model
 from godoo.client.typed import Ref
+from pydantic import Field
 
 # ------------------------------------------------------------------
 # Test model fixture (module-level to allow cache clearing)
@@ -26,7 +27,7 @@ class _TestPartner(OdooBaseModel):
     parent_id: Ref[object] | None = None
     create_date: datetime | None = None
     date_active: date | None = None
-    tag_ids: list[int] = []
+    tag_ids: list[int] = Field(default_factory=list)
 
 
 def setup_function(_fn: object) -> None:
