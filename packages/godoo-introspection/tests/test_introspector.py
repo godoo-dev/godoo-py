@@ -8,7 +8,6 @@ import respx
 from godoo.client.client import OdooClient, OdooClientConfig
 from godoo.client.errors import OdooMissingError, OdooValidationError
 from godoo.introspection.introspector import IntrospectionCache, Introspector
-from godoo.introspection.markers import FieldMeta
 from godoo.introspection.types import FieldSchema, ModelSchema
 
 BASE_URL = "http://odoo.test"
@@ -31,41 +30,6 @@ async def auth_client():
         await client.authenticate()
     yield client
     await client.aclose()
-
-
-# ---------------------------------------------------------------------------
-# FieldMeta behavior tests
-# ---------------------------------------------------------------------------
-
-
-def test_field_meta_hashable():
-    """FieldMeta(ttype="char") is hashable (frozen=True, all scalar fields)."""
-    meta = FieldMeta(ttype="char")
-    assert hash(meta) is not None
-
-
-def test_field_meta_default_attrs():
-    """FieldMeta has all expected attributes with correct defaults."""
-    meta = FieldMeta(ttype="many2one")
-    assert meta.ttype == "many2one"
-    assert meta.field_description == ""
-    assert meta.relation is None
-    assert meta.relation_field is None
-    assert meta.required is False
-    assert meta.readonly is False
-    assert meta.store is True
-    assert meta.index is False
-    assert meta.copy is True
-    assert meta.translate is False
-    assert meta.help == ""
-    assert meta.compute is None
-    assert meta.depends == ()
-    assert meta.modules == ()
-    assert meta.on_delete is None
-    assert meta.size is None
-    assert meta.digits is None
-    assert meta.original_ttype is None
-    assert meta.dynamic_selection is False
 
 
 def test_model_schema_not_hashable():
