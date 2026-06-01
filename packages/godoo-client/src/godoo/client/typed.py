@@ -21,10 +21,15 @@ class OdooModel(Protocol):
 
 @dataclass(frozen=True)
 class Ref[T]:
-    """Typed many2one reference: numeric id + display name."""
+    """Typed many2one reference: numeric id + display name.
+
+    ``name`` is ``str | None`` to handle restricted display names — Odoo
+    returns ``[id, False]`` when the current user cannot read the related
+    record's display name. The wire transform sets ``name=None`` in that case.
+    """
 
     id: int
-    name: str
+    name: str | None
 
 
 __all__ = ["OdooModel", "Ref"]

@@ -26,6 +26,7 @@ class _TestPartner(OdooBaseModel):
     parent_id: Ref[object] | None = None
     create_date: datetime | None = None
     date_active: date | None = None
+    tag_ids: list[int] = []
 
 
 def setup_function(_fn: object) -> None:
@@ -126,6 +127,42 @@ def test_derive_partial_model_cache_clear() -> None:
     clear_partial_model_cache()
     P2 = derive_partial_model(_TestPartner, ["name"])
     assert P1 is not P2
+
+
+# ------------------------------------------------------------------
+# Finding #1: x2many False -> [] (list-origin takes precedence over False->None)
+# ------------------------------------------------------------------
+
+
+def test_x2many_false_becomes_empty_list() -> None:
+    """False on a list[int] field coerces to [] — list-origin check fires before False→None."""
+    p = _TestPartner.model_validate({"id": 1, "tag_ids": False})
+    assert p.tag_ids == []
+
+
+def test_x2many_optional_false_becomes_empty_list() -> None:
+    """False on a list[int] | None field coerces to [] — list-origin takes precedence over Optional None."""
+
+    class _ModelWithOptionalList(OdooBaseModel):
+        __odoo_model__: ClassVar[str] = "test.optional.list"
+        id: int
+        tag_ids: list[int] | None = None
+
+    p = _ModelWithOptionalList.model_validate({"id": 1, "tag_ids": False})
+    assert p.tag_ids == []
+
+
+# ------------------------------------------------------------------
+# Finding #3: m2o [id, False] -> Ref(id, name=None)
+# ------------------------------------------------------------------
+
+
+def test_m2o_restricted_display_name() -> None:
+    """[id, False] on a Ref-annotated field produces Ref(id=id, name=None) (restricted display name)."""
+    p = _TestPartner.model_validate({"id": 1, "parent_id": [3, False]})
+    assert p.parent_id is not None
+    assert p.parent_id.id == 3
+    assert p.parent_id.name is None
 
 
 def test_derive_partial_model_inherits_validator() -> None:
