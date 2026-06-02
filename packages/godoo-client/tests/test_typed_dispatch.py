@@ -15,7 +15,7 @@ import respx
 from godoo.client._pydantic_transform import OdooBaseModel
 from godoo.client.client import OdooClient, OdooClientConfig
 from godoo.client.errors import OdooValidationError
-from godoo.client.typed import Ref
+from godoo.client.typed import Ref  # noqa: TC002  — needed at runtime for Pydantic field annotations
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"
@@ -51,6 +51,7 @@ class TinyPartner(OdooBaseModel):
     __odoo_model__: ClassVar[str] = "res.partner"
     id: int
     name: str | None = None
+    parent_id: Ref[TinyPartner] | None = None
 
 
 # ------------------------------------------------------------------
