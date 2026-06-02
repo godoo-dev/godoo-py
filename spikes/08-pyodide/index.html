@@ -75,6 +75,9 @@ logEl.textContent = "";
 log("Loading Pyodide 0.29.4 (CPython 3.13)…");
 const pyodide = await loadPyodide();
 log("Pyodide ready.", "pass");
+log("Loading micropip package…");
+await pyodide.loadPackage("micropip");
+log("micropip ready.", "pass");
 
 // ---------------------------------------------------------------------------
 // STRATEGY 1 — stock httpx (expected: FAIL — socket I/O not available)
