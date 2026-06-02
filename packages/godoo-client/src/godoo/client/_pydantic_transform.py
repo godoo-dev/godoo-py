@@ -67,7 +67,10 @@ def _ref_target_class(annotation: Any) -> type | None:
         if get_origin(arg) is Ref:
             inner = get_args(arg)
             return inner[0] if inner and isinstance(inner[0], type) else None
-        if get_args(arg):
+        # Only descend into a nested generic when its chain actually mentions Ref (WR-04).
+        # Without this guard the recursion would pull the first type out of an unrelated
+        # generic (e.g. list[_Model] | None) and stamp it onto Ref._target_cls.
+        if get_args(arg) and _annotation_mentions_ref(arg):
             result = _ref_target_class(arg)
             if result is not None:
                 return result

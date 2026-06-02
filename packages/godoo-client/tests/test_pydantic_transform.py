@@ -213,6 +213,16 @@ def test_ref_target_class_unrelated_annotation_returns_none() -> None:
     assert _ref_target_class(str) is None
 
 
+def test_ref_target_class_unrelated_generic_returns_none() -> None:
+    """_ref_target_class must not pull a type out of a non-Ref generic (WR-04)."""
+
+    class _Model:
+        pass
+
+    # list[_Model] | None mentions no Ref — the helper must NOT descend and return _Model.
+    assert _ref_target_class(list[_Model] | None) is None
+
+
 # ------------------------------------------------------------------
 # m2o tuple -> Ref with _target_cls populated — REL-01
 # ------------------------------------------------------------------
