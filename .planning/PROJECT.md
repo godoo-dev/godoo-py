@@ -14,11 +14,18 @@ The Python family member reaches feature parity with the TypeScript core-3 libra
 a Python developer gets the same client, introspection, and testcontainers capabilities
 that godoo-ts already ships.
 
-## Current Milestone
+## Current Milestone: v1.2 Typed Relations, Writes & Error Surface
 
-_No active milestone. Next milestone (v2.0) not yet scoped — run /gsd:new-milestone.
-Candidate v2.0 work: BROWSER-F1/F2 (browser build, gated on Pyodide CPython ≥3.14),
-TYPED-F1 (nested relational fetch), TYPED-F2 (typed write/create)._
+**Goal:** Complete the typed-models story — relational resolution and typed writes — and restructure the RPC error surface for safe, structured handling; close v1.1's test-coverage gaps and clear accumulated tech debt.
+
+**Target features:**
+- TYPED-F1 — Ref-driven typed relation resolution: `client.read(ref)` / `read(list[Ref])` resolves typed Refs into related models, batched, single-level (matures SEED-002)
+- TYPED-F2 — typed write/create paths: pass typed model instances into `write`/`create`
+- SEED-003 — restructured `OdooError` hierarchy: structured fields (model/field/constraint/human message), server traceback/path stripping, `.raw` escape hatch
+- 999.3 + 999.4 — codegen→typed-read round-trip test; wire-transforms-through-dispatch test
+- Tech debt — `release.yml` Node 20 bump; `run_spike.py` committed password; `test_cli.py` unawaited coroutines; `snapshot.py` partial-key limitation
+
+**Design constraints (from milestone scoping):** Python-native designs (not bound to godoo-ts API shape). Error restructure is breaking at the package level (0.x → minor semver bump). Browser work (BROWSER-F1/F2, SEED-001) is explicitly OUT of scope — blocked on Pyodide CPython ≥3.14, not yet released.
 
 ## Requirements
 
@@ -92,7 +99,7 @@ TYPED-F1 (nested relational fetch), TYPED-F2 (typed write/create)._
 
 ### Active
 
-_No active milestone. See Current Milestone above._
+_Requirements being defined for milestone v1.2 — see REQUIREMENTS.md (in progress)._
 
 ### Out of Scope
 
@@ -173,4 +180,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-02 after v1.1 milestone (Typed Models & Browser Reach)*
+*Last updated: 2026-06-02 — milestone v1.2 (Typed Relations, Writes & Error Surface) started*
