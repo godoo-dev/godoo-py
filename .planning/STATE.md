@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: verifying
-last_updated: "2026-06-02T19:43:04.669Z"
+status: ready_to_plan
+last_updated: 2026-06-02T19:51:29.640Z
 last_activity: 2026-06-02
 progress:
   total_phases: 8
@@ -11,6 +11,7 @@ progress:
   total_plans: 3
   completed_plans: 3
   percent: 25
+stopped_at: Phase 10 complete (2/2) — ready to discuss Phase 11
 ---
 
 # Project State
@@ -20,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 10 — typed-relation-resolution
+**Current focus:** Phase 11 — codegen metadata + typed writes
 
 ## Current Position
 
-Phase: 10 (typed-relation-resolution) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 11
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-02
 
 ```
@@ -55,6 +56,7 @@ Phase 12 [          ] Not started
 | 04.1 | 1 | - | - |
 | 05 | 2 | - | - |
 | 07 | 2 | - | - |
+| 10 | 2 | - | - |
 
 *v1.2 metrics will populate as phases complete.*
 | Phase 10-typed-relation-resolution P01 | 20m | 2 tasks | 5 files |
