@@ -9,14 +9,17 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Any, ClassVar, get_args, get_origin
+from weakref import WeakKeyDictionary
 
 from godoo.client.typed import Ref
 from pydantic import BaseModel, create_model, model_validator
 
-# Module-private cache keyed by (id(model_class), frozenset(fields)).
-# Unbounded — cardinality bounded by models x distinct_field_subsets used at runtime.
-# Escape hatch: clear_partial_model_cache(). Document in docstring.
-_partial_model_cache: dict[tuple[int, frozenset[str]], type[BaseModel]] = {}
+# Module-private cache keyed by the source model class itself (a WeakKeyDictionary, so entries
+# are reclaimed when the model class is garbage-collected) with an inner dict keyed by
+# frozenset(fields). Keying on the class object — not id(model) — avoids a soundness hole where
+# CPython reuses a dead class's id() for an unrelated class and returns the wrong partial (WR-03).
+# Escape hatch: clear_partial_model_cache(). Documented in derive_partial_model's docstring.
+_partial_model_cache: WeakKeyDictionary[type[BaseModel], dict[frozenset[str], type[BaseModel]]] = WeakKeyDictionary()
 
 
 # ------------------------------------------------------------------
@@ -194,17 +197,21 @@ def derive_partial_model(model: type[BaseModel], fields: list[str]) -> type[Base
     so wire transforms still apply on partial reads — D-01). All requested fields
     become `(annotation | None, None)` — All-Optional partial semantics.
 
-    Results are cached by `(id(model), frozenset(fields))`. The cache is
-    unbounded (see Pitfall 4 in RESEARCH.md). Call `clear_partial_model_cache()`
-    as an escape hatch if needed.
+    Results are cached in a `WeakKeyDictionary` keyed by the `model` class, with an
+    inner dict keyed by `frozenset(fields)`. Keying on the class object (not `id(model)`)
+    avoids a soundness hole where a GC'd model's id is reused for an unrelated class
+    (WR-03); cache entries are reclaimed when the source model is collected. Call
+    `clear_partial_model_cache()` as an escape hatch if needed.
 
     Raises:
         ValueError: if any name in `fields` is not declared on `model`.
     """
-    key = (id(model), frozenset(fields))
-    cached = _partial_model_cache.get(key)
-    if cached is not None:
-        return cached
+    field_key = frozenset(fields)
+    by_fields = _partial_model_cache.get(model)
+    if by_fields is not None:
+        cached = by_fields.get(field_key)
+        if cached is not None:
+            return cached
 
     field_defs: dict[str, Any] = {}
     for name in fields:
@@ -216,11 +223,14 @@ def derive_partial_model(model: type[BaseModel], fields: list[str]) -> type[Base
         field_defs[name] = (ann | None, None)
 
     derived = create_model(
-        f"{model.__name__}__partial__{abs(hash(key))}",
+        f"{model.__name__}__partial__{abs(hash(field_key))}",
         __base__=model,
         **field_defs,
     )
-    _partial_model_cache[key] = derived
+    if by_fields is None:
+        by_fields = {}
+        _partial_model_cache[model] = by_fields
+    by_fields[field_key] = derived
     return derived
 
 
