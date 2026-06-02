@@ -28,7 +28,7 @@ preserved in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md).
 - [x] **Phase 5: Directory Rename** — Rename `packages/godoo` → `packages/godoo-client`; update all tool-config paths; guard the PEP 420 namespace in CI (completed 2026-05-28)
 - [x] **Phase 6: Transport Seam & Typed Models Core** — Add transport-injection seam on `OdooClientConfig`; build the stdlib-only `godoo.client.typed` module; implement wire transforms; add `@overload` dispatch on `client.read`/`search_read`; enforce import isolation via `godoo[typed]` extra (completed 2026-05-28)
 - [x] **Phase 7: Pydantic CLI Generator** — Extend `godoo-introspection` with a Pydantic model emitter and a `godoo-introspect` CLI entrypoint; generated files import from `godoo.client.typed` and carry `__odoo_model__` (completed 2026-06-01)
-- [ ] **Phase 8: Pyodide Spike** — Run a real in-browser HTTPS call against a real TLS-terminated Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision
+- [x] **Phase 8: Pyodide Spike** — Run a real in-browser HTTPS call against a real TLS-terminated Odoo endpoint, record the httpx/transport verdict, and produce a Python-floor recommendation and go/no-go decision (completed 2026-06-02)
 
 ## Phase Details
 
@@ -133,7 +133,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-04-PLAN.md — Standalone go/no-go ADR (docs/adr/0001, MADR-style, applies D-10 bar) + mkdocs nav entry (BROWSER-03)
+- [x] 08-04-PLAN.md — Standalone go/no-go ADR (docs/adr/0001, MADR-style, applies D-10 bar) + mkdocs nav entry (BROWSER-03)
 
 ## Progress
 
@@ -147,7 +147,7 @@ Plans:
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete    | 2026-06-01 |
-| 8. Pyodide Spike | v1.1 | 3/4 | In Progress|  |
+| 8. Pyodide Spike | v1.1 | 4/4 | Complete   | 2026-06-02 |
 
 ## Backlog
 

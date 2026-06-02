@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
 status: executing
-last_updated: "2026-06-02T12:00:00.000Z"
+last_updated: "2026-06-02T11:27:04.487Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
-  percent: 55
+  completed_plans: 11
+  percent: 67
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 ## Current Position
 
 Phase: 8
-Plan: 3 of 4 complete (08-01, 08-02, 08-03)
-Status: Ready to execute 08-04 (ADR)
+Plan: 4 of 4 complete (08-01, 08-02, 08-03, 08-04)
+Status: Phase 8 complete — v1.1 milestone complete
 Last activity: 2026-06-02
 
 ```
-Progress: [████████░░] 82%
+Progress: [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -57,6 +57,7 @@ Progress: [████████░░] 82%
 | Phase 08-pyodide-spike P01 | 3 minutes | 2 tasks | 3 files |
 | Phase 08-pyodide-spike P02 | 4 | 2 tasks | 3 files |
 | Phase 08-pyodide-spike P03 | - | 2 tasks | 3 files (SPIKE.md, screenshot, index.html) |
+| Phase 08-pyodide-spike P04 | 2 minutes | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,7 +86,7 @@ Recent decisions affecting current work:
 |----|---------------|----------|------------------------|
 | OD-1 | Phase 6 | Partial-read strategy when `fields=[...]` is passed with a model class | All-Optional generated fields; `model_construct()` only as documented escape hatch |
 | OD-2 | Phase 6 | Boolean `False`-coercion in wire transform | Emit boolean fields as plain `bool` (non-optional); `@model_validator` skips coercion for `bool`-annotated fields |
-| OD-3 | Phase 8 | httpx vs POSIX socket in Pyodide | Empirical spike only — conflicting researcher findings; must run actual HTTP call |
+| OD-3 | ~~Phase 8~~ | ~~httpx vs POSIX socket in Pyodide~~ | **RESOLVED (08-04 ADR):** GO — Strategy 3 (PyfetchTransport) meets D-10 bar; Python floor Option A (defer to Pyodide 3.14) |
 
 ### Pending Todos
 
@@ -108,8 +109,8 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 | Compatibility | COMPAT-01: Relax Python floor to 3.11/3.12 | Deferred to post-v1 | Init |
 | Performance | PERF-01: `read_group` SUM for cash balance | Backlog | Init |
 | Performance | PERF-02: CDC two-round-trip optimization | Backlog | Init |
-| Browser (conditional) | BROWSER-F1: `godoo[browser]` extra | Gated on Phase 8 go verdict | v1.1 scope |
-| Browser (conditional) | BROWSER-F2: Relax Python floor for Pyodide | Gated on Phase 8 go verdict | v1.1 scope |
+| Browser (v2.0) | BROWSER-F1: `godoo[browser]` extra | GO verdict received (ADR-0001); escalated to v2.0 planning; gated on Pyodide CPython >=3.14 | v1.1 scope |
+| Browser (v2.0) | BROWSER-F2: Relax Python floor for Pyodide | GO verdict received (ADR-0001, Option A); gated on Pyodide 3.14 stable release | v1.1 scope |
 | Typed models | TYPED-F1: Nested relational model fetch | Deferred to v2+ | v1.1 scope |
 | Typed models | TYPED-F2: Typed write/create paths | Deferred to v2+ | v1.1 scope |
 | Tech debt | release.yml Node 20 actions deprecation warnings | Needs version bump | v1.0 close |
@@ -117,10 +118,12 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 
 ## Session Continuity
 
-Last session: 2026-06-02T12:00:00.000Z
-Stopped at: Phase 8 plan 08-03 complete — live spike run done, 08-SPIKE.md written
+Last session: 2026-06-02T11:27:04.481Z
+Stopped at: Phase 8 plan 08-04 complete — ADR written and mkdocs wired
 
 ## Operator Next Steps
 
-- Execute Plan 08-04: write go/no-go ADR (docs/adr/0001-pyodide-browser-go-no-go.md) using 08-SPIKE.md evidence
-- ADR must resolve: Python floor (Option A: defer to Pyodide >=3.14 vs Option B: drop floor to >=3.12/3.13) and formal go/no-go verdict
+- Phase 8 complete. v1.1 milestone (Typed Models & Browser Reach) all 4 phases done.
+- ADR-0001 recorded: GO verdict, Strategy 3 (PyfetchTransport), Python floor Option A (await Pyodide 3.14).
+- BROWSER-F1 and BROWSER-F2 escalated to v2.0 planning backlog.
+- Next: plan v2.0 milestone or address backlog items.

@@ -29,7 +29,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 - [x] **BROWSER-01**: A `Transport` `Protocol` plus a `transport_factory` hook on `OdooClientConfig` allows an alternative transport implementation to be injected without changing core (additive infra; ships regardless of the spike verdict)
 - [x] **BROWSER-02**: A spike runs an actual in-browser (Pyodide) HTTP call **over HTTPS** against a real TLS-terminated Odoo endpoint — exercising browser TLS-via-fetch, CORS, and mixed-content constraints (plain HTTP / localhost does not satisfy this) — and produces a written verdict on whether stock httpx works or a custom fetch-backed transport is required
-- [ ] **BROWSER-03**: The spike delivers a Python-floor recommendation (drop `requires-python` to `>=3.12` for a browser build, or defer until Pyodide ships CPython ≥3.14) and an explicit go/no-go decision for committing browser support; a "go" with required breaking changes escalates the milestone to v2.0
+- [x] **BROWSER-03**: The spike delivers a Python-floor recommendation (drop `requires-python` to `>=3.12` for a browser build, or defer until Pyodide ships CPython ≥3.14) and an explicit go/no-go decision for committing browser support; a "go" with required breaking changes escalates the milestone to v2.0
 
 ## Open Decisions (settle at plan/discuss time — do not block scope)
 
@@ -81,7 +81,7 @@ Populated during roadmap creation.
 | TYPED-07 | Phase 6 | Complete |
 | BROWSER-01 | Phase 6 | Complete |
 | BROWSER-02 | Phase 8 | Complete |
-| BROWSER-03 | Phase 8 | Pending |
+| BROWSER-03 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 13 total
