@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: roadmapped
-last_updated: "2026-06-02T13:00:00.000Z"
-last_activity: 2026-06-02
+status: completed
+last_updated: "2026-06-02T15:39:20.102Z"
+last_activity: 2026-06-02 — v1.2 roadmap created (Phases 9-12, 22 requirements mapped)
 progress:
-  total_phases: 4
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -130,8 +130,8 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-02T12:45:06.642Z
-Stopped at: v1.2 roadmap created — 4 phases (9-12), 22 requirements mapped
+Last session: 2026-06-02T15:39:20.095Z
+Stopped at: Phase 9 context gathered
 
 ## Operator Next Steps
 
