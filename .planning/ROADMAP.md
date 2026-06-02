@@ -38,7 +38,7 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 
 ### v1.2 Typed Relations, Writes & Error Surface (Phases 9-12)
 
-- [ ] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch
+- [x] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch (completed 2026-06-02)
 - [ ] **Phase 10: Typed Relation Resolution** — `Ref[T]` carries runtime target class; `client.read(ref)` / `client.read(list[Ref])` resolves typed relations, batched
 - [ ] **Phase 11: Codegen Metadata + Typed Writes** — Codegen emits readonly/store metadata; `client.write(instance)` / `client.create(instance)` typed paths with correct wire serialization
 - [ ] **Phase 12: Tech Debt Close-out** — CI action bumps, committed password removal, unawaited coroutine warnings, snapshot partial-key fix
@@ -58,7 +58,7 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 **Plans**: 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md -- Refactor OdooRpcError: structured fields, .data->.raw rename, privacy strip, test migration
+- [x] 09-01-PLAN.md -- Refactor OdooRpcError: structured fields, .data->.raw rename, privacy strip, test migration
 
 ### Phase 10: Typed Relation Resolution
 **Goal**: A caller holding a `Ref[T]` can resolve it to the related typed model instance through `client.read`, without naming the target model, using one batched RPC per distinct target model.
@@ -109,7 +109,7 @@ Plans:
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete | 2026-06-01 |
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
-| 9. Structured Error Surface | v1.2 | 0/? | Not started | - |
+| 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
 | 10. Typed Relation Resolution | v1.2 | 0/? | Not started | - |
 | 11. Codegen Metadata + Typed Writes | v1.2 | 0/? | Not started | - |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
