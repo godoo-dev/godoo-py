@@ -82,7 +82,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Add `_target_cls` to `Ref[T]`, implement `_ref_target_class()` helper, populate from wire transform, TEST-02 wire-fidelity test
+- [x] 10-01-PLAN.md — Add `_target_cls` to `Ref[T]`, implement `_ref_target_class()` helper, populate from wire transform, TEST-02 wire-fidelity test
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -132,7 +132,7 @@ Plans:
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete | 2026-06-01 |
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
-| 10. Typed Relation Resolution | v1.2 | 0/2 | Not started | - |
+| 10. Typed Relation Resolution | v1.2 | 1/2 | In Progress|  |
 | 11. Codegen Metadata + Typed Writes | v1.2 | 0/? | Not started | - |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 

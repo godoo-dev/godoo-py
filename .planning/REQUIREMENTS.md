@@ -13,7 +13,7 @@
 
 ### REL — Typed Relation Resolution (TYPED-F1)
 
-- [ ] **REL-01**: A typed `Ref[T]` carries its target model class at runtime so it resolves without the caller naming the model.
+- [x] **REL-01**: A typed `Ref[T]` carries its target model class at runtime so it resolves without the caller naming the model.
 - [ ] **REL-02**: `client.read(ref)` returns the single related typed model instance for a typed `Ref` (one RPC).
 - [ ] **REL-03**: `client.read(refs)` returns related instances for a list of typed Refs — one batched RPC per distinct target model, ids deduplicated.
 - [ ] **REL-04**: Resolving an untyped `Ref[int]` (no known target model) raises a clear, typed error.
@@ -42,7 +42,7 @@
 ### TEST — Coverage Gaps
 
 - [ ] **TEST-01** (backlog 999.3): End-to-end test feeds a codegen-generated model class through `client.read()` dispatch — codegen→typed-read round-trip.
-- [ ] **TEST-02** (backlog 999.4): Test exercises wire transforms (`Ref`/date/datetime) through the full `client.read` dispatch chain, not just `model_validate`.
+- [x] **TEST-02** (backlog 999.4): Test exercises wire transforms (`Ref`/date/datetime) through the full `client.read` dispatch chain, not just `model_validate`.
 
 ### DEBT — Tech Debt
 
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | Phase 10 | Pending |
+| REL-01 | Phase 10 | Complete |
 | REL-02 | Phase 10 | Pending |
 | REL-03 | Phase 10 | Pending |
 | REL-04 | Phase 10 | Pending |
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ERR-04 | Phase 9 | Pending |
 | ERR-05 | Phase 9 | Pending |
 | TEST-01 | Phase 11 | Pending |
-| TEST-02 | Phase 10 | Pending |
+| TEST-02 | Phase 10 | Complete |
 | DEBT-01 | Phase 12 | Pending |
 | DEBT-02 | Phase 12 | Pending |
 | DEBT-03 | Phase 12 | Pending |
