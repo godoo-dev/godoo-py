@@ -17,7 +17,7 @@ from godoo.client.safety import (
     infer_safety_level,
     resolve_safety_context,
 )
-from godoo.client.typed import OdooModel
+from godoo.client.typed import OdooModel, Ref
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
@@ -190,6 +190,12 @@ class OdooClient:
         return cast("list[int]", await self.call(model, "search", [domain or []], kwargs))
 
     @overload
+    async def read(self, ref: Ref[T]) -> T: ...
+
+    @overload
+    async def read(self, refs: list[Ref[T]]) -> list[T]: ...
+
+    @overload
     async def read(
         self,
         model: type[T],
@@ -207,14 +213,44 @@ class OdooClient:
         **kwargs: Any,
     ) -> list[dict[str, Any]]: ...
 
-    async def read(
+    async def read(  # type: ignore[misc]
         self,
-        model: str | type[T],
-        ids: int | list[int],
+        model: Any,
+        ids: int | list[int] | None = None,
         fields: list[str] | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]] | list[T]:
-        id_list = [ids] if isinstance(ids, int) else ids
+    ) -> Any:
+        # Ref / list[Ref] dispatch — D-01, D-02, D-03
+        if isinstance(model, Ref) or (isinstance(model, list) and model and isinstance(model[0], Ref)):
+            # Collect refs, validate all up front (D-03)
+            refs: list[Ref[Any]] = [model] if isinstance(model, Ref) else list(model)
+            bad = [r for r in refs if r._target_cls is None]
+            if bad:
+                raise OdooValidationError(
+                    f"Cannot resolve Ref(id={bad[0].id}): no target model known"
+                    " — it came from an untyped many2one field."
+                )
+            # Group by target class, preserving insertion order within each group (D-02)
+            from collections import defaultdict
+
+            groups: dict[type[Any], list[int]] = defaultdict(list)
+            for r in refs:
+                assert r._target_cls is not None
+                if r.id not in groups[r._target_cls]:
+                    groups[r._target_cls].append(r.id)
+            # Fire one read() per distinct target model (batched)
+            fetched: dict[tuple[type[Any], int], Any] = {}
+            for target_cls, target_ids in groups.items():
+                results = await self.read(target_cls, target_ids)
+                for record in results:
+                    fetched[(target_cls, record.id)] = record
+            # Stitch back in input order
+            ordered = [fetched[(r._target_cls, r.id)] for r in refs]  # type: ignore[index]
+            if isinstance(model, Ref):
+                return ordered[0]
+            return ordered
+
+        id_list = [ids] if isinstance(ids, int) else (ids or [])
 
         # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
         if hasattr(model, "__odoo_model__"):
@@ -236,7 +272,7 @@ class OdooClient:
             else:
                 target = typed_model
             raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
-            return cast("list[T]", [target.model_validate(r) for r in raw])
+            return [target.model_validate(r) for r in raw]
 
         # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         if fields is not None:
