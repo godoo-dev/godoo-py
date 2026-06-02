@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, ClassVar
+
 from godoo.client.errors import (
     OdooAccessError,
     OdooAuthError,
@@ -48,14 +50,15 @@ class TestOdooRpcError:
     def test_defaults(self) -> None:
         err = OdooRpcError("rpc failed")
         assert err.code is None
-        assert err.data is None
+        assert err.raw is None
+        assert not hasattr(err, "data")
         assert err.__cause__ is None
 
     def test_stores_code_and_data(self) -> None:
         data = {"debug": "traceback here"}
         err = OdooRpcError("rpc error", code=200, data=data)
         assert err.code == 200
-        assert err.data == data
+        assert err.raw is data
 
     def test_cause_sets_dunder_cause(self) -> None:
         cause = ValueError("socket error")
@@ -67,12 +70,121 @@ class TestOdooRpcError:
         result = err.to_json()
         assert result["error"] == "RPC_ERROR"
         assert result["message"] == "rpc message"
-        assert result["details"] == {"key": "val"}
+        assert "details" not in result
+        assert result["human_message"] is None
+        assert result["model_name"] is None
+        assert "raw" not in result
 
     def test_to_json_no_data(self) -> None:
         err = OdooRpcError("rpc message", code=100)
         result = err.to_json()
-        assert result["details"] is None
+        assert "details" not in result
+        assert result["human_message"] is None
+
+
+# ---------------------------------------------------------------------------
+# OdooRpcError — Phase 9 structured fields (ERR-01 … ERR-05)
+# ---------------------------------------------------------------------------
+
+
+class TestOdooRpcErrorStructuredFields:
+    """Tests for Phase 9 structured error surface (ERR-01 ... ERR-05)."""
+
+    _FAULT_DATA: ClassVar[dict[str, Any]] = {
+        "name": "odoo.exceptions.ValidationError",
+        "debug": 'Traceback (most recent call last):\n  File "/opt/odoo/addons/account/models.py", line 42',
+        "message": "The field 'name' is required.",
+        "arguments": ("The field 'name' is required.",),
+        "context": {},
+    }
+
+    # ERR-01: structured field access
+    def test_human_message_extracted(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert err.human_message == "The field 'name' is required."
+
+    def test_model_name_none_for_empty_context(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert err.model_name is None
+
+    def test_field_name_none_for_empty_context(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert err.field_name is None
+
+    def test_constraint_name_none_for_empty_context(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert err.constraint_name is None
+
+    # ERR-02: privacy gate — no paths/tracebacks in str() or to_json()
+    def test_no_server_path_in_str(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert "/opt/odoo" not in str(err)
+
+    def test_no_server_path_in_to_json(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        assert "/opt/odoo" not in str(err.to_json())
+
+    def test_windows_path_stripped(self) -> None:
+        win_data: dict[str, Any] = {
+            "name": "odoo.exceptions.ValidationError",
+            "debug": 'Traceback (most recent call last):\n  File "C:\\odoo\\addons\\x.py", line 1',
+            "message": 'Error in File "C:\\odoo\\addons\\x.py", line 1',
+            "arguments": ('Error in File "C:\\odoo\\addons\\x.py", line 1',),
+            "context": {},
+        }
+        err = OdooValidationError("Odoo Server Error", data=win_data)
+        assert "C:\\odoo" not in str(err)
+        assert "C:\\odoo" not in str(err.to_json())
+
+    # ERR-03: .raw holds full original dict including data.debug
+    def test_raw_holds_full_dict(self) -> None:
+        err = OdooRpcError("msg", data=self._FAULT_DATA)
+        assert err.raw is self._FAULT_DATA
+        assert err.raw is not None
+        assert "debug" in err.raw
+
+    # ERR-04: to_json() never emits "raw" key
+    def test_to_json_no_raw_key(self) -> None:
+        for cls in [
+            OdooRpcError,
+            OdooAuthError,
+            OdooValidationError,
+            OdooAccessError,
+            OdooMissingError,
+            OdooNetworkError,
+            OdooTimeoutError,
+        ]:
+            err = cls("test", data=self._FAULT_DATA)
+            assert "raw" not in err.to_json()
+
+    # ERR-05: .data removed; data= kwarg still accepted; .raw is the new name
+    def test_data_attribute_removed(self) -> None:
+        err = OdooRpcError("msg", data={"name": "x"})
+        assert not hasattr(err, "data")
+        assert err.raw == {"name": "x"}
+
+    # D-13: __str__ fallback when no data
+    def test_str_fallback_no_data(self) -> None:
+        err = OdooAuthError("Not authenticated")
+        assert str(err) == "Not authenticated"
+
+    # D-13: __str__ returns human_message when present
+    def test_str_returns_human_message(self) -> None:
+        err = OdooRpcError("Odoo Server Error", data=self._FAULT_DATA)
+        assert str(err) == "The field 'name' is required."
+
+    # ERR-04: to_json() flat structured keys present; no "details" key
+    def test_to_json_flat_keys(self) -> None:
+        err = OdooValidationError("Odoo Server Error", data=self._FAULT_DATA)
+        result = err.to_json()
+        assert result["error"] == "VALIDATION_ERROR"
+        assert "message" in result
+        assert "model_name" in result
+        assert "field_name" in result
+        assert "constraint_name" in result
+        assert "human_message" in result
+        assert "details" not in result
+        assert "raw" not in result
 
 
 # ---------------------------------------------------------------------------
