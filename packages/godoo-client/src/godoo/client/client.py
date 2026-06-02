@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import contextvars
 import logging
+from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Final, TypeVar, cast, overload
@@ -257,8 +258,6 @@ class OdooClient:
                     "is not a typed Odoo model (came from an untyped or Ref[object] field)."
                 )
             # Group by target class, preserving insertion order within each group (D-02)
-            from collections import defaultdict
-
             groups: dict[type[Any], list[int]] = defaultdict(list)
             for r in refs:
                 assert r._target_cls is not None
