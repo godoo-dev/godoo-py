@@ -91,6 +91,25 @@ class OdooClientConfig:
     transport_factory: Callable[[OdooClientConfig], Transport] | None = field(default=None)
 
 
+def _validate_typed(target: type[Any], raw: dict[str, Any]) -> Any:
+    """Validate a raw Odoo record dict into a typed model, mapping pydantic failures.
+
+    A projected read that omits a field required by the base model (no default) yields a
+    raw dict missing that field; pydantic then raises a ``ValidationError``. Convert it to
+    the project's typed ``OdooValidationError`` so callers see the documented error contract
+    instead of a raw pydantic exception (WR-02). pydantic is imported lazily here to honour
+    the never-import-pydantic-at-module-level rule (D-04).
+    """
+    from pydantic import ValidationError
+
+    try:
+        return target.model_validate(raw)
+    except ValidationError as exc:
+        raise OdooValidationError(
+            f"Could not validate {target.__name__} record from Odoo: {exc}"
+        ) from exc
+
+
 class OdooClient:
     """Async Odoo client wrapping JsonRpcTransport with safety checks."""
 
@@ -290,7 +309,7 @@ class OdooClient:
             else:
                 target = typed_model
             raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
-            return [target.model_validate(r) for r in raw]
+            return [_validate_typed(target, r) for r in raw]
 
         # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         if fields is not None:
@@ -365,7 +384,7 @@ class OdooClient:
             else:
                 target = typed_model
             raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "search_read", [domain or []], kwargs))
-            return cast("list[T]", [target.model_validate(r) for r in raw])
+            return cast("list[T]", [_validate_typed(target, r) for r in raw])
 
         # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         return cast("list[dict[str, Any]]", await self.call(model, "search_read", [domain or []], kwargs))
