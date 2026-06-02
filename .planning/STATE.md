@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: planning
-last_updated: "2026-06-02T12:45:06.642Z"
+status: roadmapped
+last_updated: "2026-06-02T13:00:00.000Z"
 last_activity: 2026-06-02
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Awaiting next milestone — v1.1 complete (2026-06-02)
+**Current focus:** v1.2 — Typed Relations, Writes & Error Surface (roadmap ready, Phase 9 next)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 9 — Structured Error Surface (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-02 — Milestone v1.2 started
+Status: Roadmap complete — ready for /gsd:plan-phase 9
+Last activity: 2026-06-02 — v1.2 roadmap created (Phases 9-12, 22 requirements mapped)
+
+```
+Phase 9  [          ] Not started
+Phase 10 [          ] Not started
+Phase 11 [          ] Not started
+Phase 12 [          ] Not started
+```
 
 ## Performance Metrics
 
@@ -49,11 +56,7 @@ Last activity: 2026-06-02 — Milestone v1.2 started
 | 05 | 2 | - | - |
 | 07 | 2 | - | - |
 
-*v1.1 metrics will populate as phases complete.*
-| Phase 08-pyodide-spike P01 | 3 minutes | 2 tasks | 3 files |
-| Phase 08-pyodide-spike P02 | 4 | 2 tasks | 3 files |
-| Phase 08-pyodide-spike P03 | - | 2 tasks | 3 files (SPIKE.md, screenshot, index.html) |
-| Phase 08-pyodide-spike P04 | 2 minutes | 2 tasks | 2 files |
+*v1.2 metrics will populate as phases complete.*
 
 ## Accumulated Context
 
@@ -62,6 +65,9 @@ Last activity: 2026-06-02 — Milestone v1.2 started
 - v1.1 Phases 5-8 created 2026-05-27 from research/SUMMARY.md build order
 - Phase 999.1 backlog item (dir rename) superseded by Phase 5
 - Build order validated by research: rename → transport seam + typed-models core → Pydantic CLI generator → Pyodide spike
+- v1.2 Phases 9-12 created 2026-06-02 from research/SUMMARY.md + REQUIREMENTS.md build order
+- Phase 999.3 (codegen→typed-read round-trip) promoted to Phase 11 as TEST-01
+- Phase 999.4 (wire-transforms-through-dispatch) promoted to Phase 10 as TEST-02
 
 ### Decisions
 
@@ -73,8 +79,11 @@ Recent decisions affecting current work:
 - [v1.1-init]: BROWSER-01 (transport seam) rides with typed-models core in Phase 6 — purely additive, establishes seam for spike
 - [v1.1-init]: BROWSER-02/03 (Pyodide spike) is a *decision artifact*, not a build — Phase 8 success criteria are written verdict + go/no-go, not shipped code
 - [v1.1-init]: Phase 8 depends only on Phase 6 (transport seam), not Phase 7 (CLI generator)
-- [v1.1-init]: OD-1 (partial-read strategy) and OD-2 (boolean False-coercion) must be settled before Phase 6 implementation; research recommends All-Optional + OD-2 Option A
-- [v1.1-init]: OD-3 (httpx-in-Pyodide) resolved empirically during Phase 8 spike; does not block Phases 5-7
+- [v1.2-init]: Phase 9 = standalone ERR surface; isolated to errors.py, contains the one breaking change (`.data`→`.raw`) in isolation
+- [v1.2-init]: Phase 10 = REL-01 (Ref._target_cls) + REL-02..05 dispatch + TEST-02 (wire-transforms-through-dispatch exercises the same dispatch chain being built)
+- [v1.2-init]: Phase 11 = GEN-01 (codegen metadata) must precede WRITE-04 (readonly exclusion); TEST-01 (codegen→typed-read round-trip) closes 999.3 alongside the codegen change
+- [v1.2-init]: Phase 12 = DEBT-01..04 independent cleanup; placed last so it does not block typed-layer work
+- [v1.2-init]: TEST-01/02 folded into Phases 11/10 respectively (coarse granularity; test belongs adjacent to the feature it covers)
 
 ### Open Decisions (settle before relevant phase)
 
@@ -83,14 +92,20 @@ Recent decisions affecting current work:
 | OD-1 | Phase 6 | Partial-read strategy when `fields=[...]` is passed with a model class | All-Optional generated fields; `model_construct()` only as documented escape hatch |
 | OD-2 | Phase 6 | Boolean `False`-coercion in wire transform | Emit boolean fields as plain `bool` (non-optional); `@model_validator` skips coercion for `bool`-annotated fields |
 | OD-3 | ~~Phase 8~~ | ~~httpx vs POSIX socket in Pyodide~~ | **RESOLVED (08-04 ADR):** GO — Strategy 3 (PyfetchTransport) meets D-10 bar; Python floor Option A (defer to Pyodide 3.14) |
+| ODD-1 | Phase 10 | Ref runtime target-class mechanism (`_target_cls` field name + annotation type) | Option A: `_target_cls: type \| None = field(default=None, compare=False, hash=False, repr=False)` |
+| ODD-2 | Phase 11 | x2many write default strategy (ADD / EXCLUDE / RAISE for `list[int]`) | RAISE — forces explicitness; safest vs silent-destructive REPLACE; owner must confirm |
+| ODD-3 | Phase 11 | Read-only/computed field exclusion on write (codegen metadata vs hardcoded set) | Option A (codegen metadata `json_schema_extra={"odoo_readonly": True}`); depends on GEN-01 landing first |
+| ODD-4 | Phase 9 | SEED-003 `.data`→`.raw` rename scope; `to_json()` shape; backward-compat alias for `"details"` key | Breaking rename; `data=` constructor kwarg retained; no compat alias; `to_json()` drops `"details"`, adds structured fields |
 
 ### Pending Todos
 
-- Settle OD-1 and OD-2 before planning Phase 6
+- Settle ODD-1 before planning Phase 10
+- Settle ODD-2 and ODD-3 before planning Phase 11
+- Settle ODD-4 before planning Phase 9
 
 ### Blockers/Concerns
 
-None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint, not a blocker.
+None — roadmap is clear; open design decisions require owner judgment (not research).
 
 ### Quick Tasks Completed
 
@@ -107,16 +122,19 @@ None — roadmap is clear; Pyodide/CPython 3.14 gap is a known spike constraint,
 | Performance | PERF-02: CDC two-round-trip optimization | Backlog | Init |
 | Browser (v2.0) | BROWSER-F1: `godoo[browser]` extra | GO verdict received (ADR-0001); escalated to v2.0 planning; gated on Pyodide CPython >=3.14 | v1.1 scope |
 | Browser (v2.0) | BROWSER-F2: Relax Python floor for Pyodide | GO verdict received (ADR-0001, Option A); gated on Pyodide 3.14 stable release | v1.1 scope |
-| Typed models | TYPED-F1: Nested relational model fetch | Deferred to v2+ | v1.1 scope |
-| Typed models | TYPED-F2: Typed write/create paths | Deferred to v2+ | v1.1 scope |
-| Tech debt | release.yml Node 20 actions deprecation warnings | Needs version bump | v1.0 close |
-| Tech debt | snapshot.py partial snapshot key for direct container users | Documented limitation | v1.0 close |
+| Typed models (v2+) | REL-ADV-01: Arbitrary-depth relation nesting | Single-level (v1.2) covers common case; recursion/cycle design deferred | v1.2 scope |
+| Typed models (v1.3+) | WRITE-ADV-01: x2many typed-write ergonomics (command-tuple helpers) | RAISE strategy ships v1.2; helpers deferred | v1.2 scope |
+| Typed models (v1.3+) | WRITE-ADV-02: Typed write of nested/child records | Deferred to future milestone | v1.2 scope |
+| Tech debt | release.yml Node 20 actions deprecation warnings | Addressed in Phase 12 (DEBT-01) | v1.0 close |
+| Tech debt | snapshot.py partial snapshot key for direct container users | Addressed in Phase 12 (DEBT-04) | v1.0 close |
 
 ## Session Continuity
 
-Last session: 2026-06-02T11:27:04.481Z
-Stopped at: Phase 8 plan 08-04 complete — ADR written and mkdocs wired
+Last session: 2026-06-02T12:45:06.642Z
+Stopped at: v1.2 roadmap created — 4 phases (9-12), 22 requirements mapped
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Settle ODD-4 (`.data`→`.raw` scope) then run `/gsd:plan-phase 9`
+- Settle ODD-1 before planning Phase 10
+- Settle ODD-2 + ODD-3 before planning Phase 11

@@ -83,34 +83,34 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | — | Pending |
-| REL-02 | — | Pending |
-| REL-03 | — | Pending |
-| REL-04 | — | Pending |
-| REL-05 | — | Pending |
-| GEN-01 | — | Pending |
-| WRITE-01 | — | Pending |
-| WRITE-02 | — | Pending |
-| WRITE-03 | — | Pending |
-| WRITE-04 | — | Pending |
-| WRITE-05 | — | Pending |
-| ERR-01 | — | Pending |
-| ERR-02 | — | Pending |
-| ERR-03 | — | Pending |
-| ERR-04 | — | Pending |
-| ERR-05 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| DEBT-01 | — | Pending |
-| DEBT-02 | — | Pending |
-| DEBT-03 | — | Pending |
-| DEBT-04 | — | Pending |
+| REL-01 | Phase 10 | Pending |
+| REL-02 | Phase 10 | Pending |
+| REL-03 | Phase 10 | Pending |
+| REL-04 | Phase 10 | Pending |
+| REL-05 | Phase 10 | Pending |
+| GEN-01 | Phase 11 | Pending |
+| WRITE-01 | Phase 11 | Pending |
+| WRITE-02 | Phase 11 | Pending |
+| WRITE-03 | Phase 11 | Pending |
+| WRITE-04 | Phase 11 | Pending |
+| WRITE-05 | Phase 11 | Pending |
+| ERR-01 | Phase 9 | Pending |
+| ERR-02 | Phase 9 | Pending |
+| ERR-03 | Phase 9 | Pending |
+| ERR-04 | Phase 9 | Pending |
+| ERR-05 | Phase 9 | Pending |
+| TEST-01 | Phase 11 | Pending |
+| TEST-02 | Phase 10 | Pending |
+| DEBT-01 | Phase 12 | Pending |
+| DEBT-02 | Phase 12 | Pending |
+| DEBT-03 | Phase 12 | Pending |
+| DEBT-04 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 22 total
-- Mapped to phases: 0 (roadmapper to fill)
-- Unmapped: 22 ⚠️
+- Mapped to phases: 22
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-02*
-*Last updated: 2026-06-02 after initial definition*
+*Last updated: 2026-06-02 — traceability filled by roadmapper (Phases 9-12)*
