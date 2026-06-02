@@ -118,9 +118,22 @@ Plans:
   3. The verdict includes a Python-floor recommendation: "drop `requires-python` to `>=3.12` for a browser-specific build" OR "defer until Pyodide ships CPython ≥3.14" — with the rationale stated
   4. An explicit go/no-go decision is recorded: a "go" with required breaking changes escalates to v2.0 planning; a "no-go" defers BROWSER-F1/F2 to the backlog
 
-**Plans**: TBD
-**Note**: BROWSER-02 and BROWSER-03 are a *spike* producing a decision and evidence, not a shipping feature. No `godoo[browser]` package ships this phase regardless of verdict.
+**Plans**: 4 plans
+**Note**: BROWSER-02 and BROWSER-03 are a *spike* producing a decision and evidence, not a shipping feature. No `godoo[browser]` package ships this phase regardless of verdict. All spike code is non-shipping committed evidence under `spikes/08-pyodide/` (D-09) and is exempt from the `requires-python >=3.14` gate.
 **Open Decision**: OD-3 (httpx vs POSIX socket in Pyodide) is resolved empirically during this spike; does not block Phases 5-7.
+Plans:
+**Wave 1** *(parallel — disjoint files, both autonomous)*
+
+- [ ] 08-01-PLAN.md — PyfetchTransport prototype (strategy 3) + raw Pyodide HTML page running all 3 strategies + README (BROWSER-02)
+- [ ] 08-02-PLAN.md — ACA multi-container Bicep (Odoo+Postgres, HTTPS ingress, origin-scoped CORS, minReplicas:1) + self-destruct Bicep (UAMI + RG Contributor + Logic App TTL) + deploy notes (BROWSER-02)
+
+**Wave 2** *(blocked on Waves 1; NOT autonomous — live az deployment + in-browser run)*
+
+- [ ] 08-03-PLAN.md — Deploy the endpoint, run the in-browser spike, write 08-SPIKE.md (SC-1 call + SC-2 per-strategy table + SC-3 Python-floor rec) (BROWSER-02, BROWSER-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-04-PLAN.md — Standalone go/no-go ADR (docs/adr/0001, MADR-style, applies D-10 bar) + mkdocs nav entry (BROWSER-03)
 
 ## Progress
 
@@ -134,7 +147,7 @@ Plans:
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete    | 2026-06-01 |
-| 8. Pyodide Spike | v1.1 | 0/? | Not started | - |
+| 8. Pyodide Spike | v1.1 | 0/4 | Not started | - |
 
 ## Backlog
 
