@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: executing
-last_updated: "2026-06-02T19:35:07.755Z"
+status: verifying
+last_updated: "2026-06-02T19:43:04.669Z"
 last_activity: 2026-06-02
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
-  percent: 13
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 Phase: 10 (typed-relation-resolution) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-02
 
 ```
@@ -58,6 +58,7 @@ Phase 12 [          ] Not started
 
 *v1.2 metrics will populate as phases complete.*
 | Phase 10-typed-relation-resolution P01 | 20m | 2 tasks | 5 files |
+| Phase 10-typed-relation-resolution P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,7 @@ Recent decisions affecting current work:
 - [v1.2-init]: Phase 11 = GEN-01 (codegen metadata) must precede WRITE-04 (readonly exclusion); TEST-01 (codegen→typed-read round-trip) closes 999.3 alongside the codegen change
 - [v1.2-init]: Phase 12 = DEBT-01..04 independent cleanup; placed last so it does not block typed-layer work
 - [v1.2-init]: TEST-01/02 folded into Phases 11/10 respectively (coarse granularity; test belongs adjacent to the feature it covers)
+- [Phase ?]: read() uses Any + None default for Ref overload compatibility
 
 ### Open Decisions (settle before relevant phase)
 
@@ -131,7 +133,7 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-02T19:35:07.748Z
+Last session: 2026-06-02T19:43:00.492Z
 Stopped at: Phase 10 context gathered
 
 ## Operator Next Steps

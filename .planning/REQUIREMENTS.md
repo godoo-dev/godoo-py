@@ -14,10 +14,10 @@
 ### REL — Typed Relation Resolution (TYPED-F1)
 
 - [x] **REL-01**: A typed `Ref[T]` carries its target model class at runtime so it resolves without the caller naming the model.
-- [ ] **REL-02**: `client.read(ref)` returns the single related typed model instance for a typed `Ref` (one RPC).
-- [ ] **REL-03**: `client.read(refs)` returns related instances for a list of typed Refs — one batched RPC per distinct target model, ids deduplicated.
-- [ ] **REL-04**: Resolving an untyped `Ref[int]` (no known target model) raises a clear, typed error.
-- [ ] **REL-05**: Resolution is single-level only — arbitrary-depth nesting is explicitly out of scope.
+- [x] **REL-02**: `client.read(ref)` returns the single related typed model instance for a typed `Ref` (one RPC).
+- [x] **REL-03**: `client.read(refs)` returns related instances for a list of typed Refs — one batched RPC per distinct target model, ids deduplicated.
+- [x] **REL-04**: Resolving an untyped `Ref[int]` (no known target model) raises a clear, typed error.
+- [x] **REL-05**: Resolution is single-level only — arbitrary-depth nesting is explicitly out of scope.
 
 ### GEN — Codegen Field Metadata
 
@@ -84,10 +84,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REL-01 | Phase 10 | Complete |
-| REL-02 | Phase 10 | Pending |
-| REL-03 | Phase 10 | Pending |
-| REL-04 | Phase 10 | Pending |
-| REL-05 | Phase 10 | Pending |
+| REL-02 | Phase 10 | Complete |
+| REL-03 | Phase 10 | Complete |
+| REL-04 | Phase 10 | Complete |
+| REL-05 | Phase 10 | Complete |
 | GEN-01 | Phase 11 | Pending |
 | WRITE-01 | Phase 11 | Pending |
 | WRITE-02 | Phase 11 | Pending |

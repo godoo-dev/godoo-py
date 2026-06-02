@@ -39,7 +39,7 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 ### v1.2 Typed Relations, Writes & Error Surface (Phases 9-12)
 
 - [x] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch (completed 2026-06-02)
-- [ ] **Phase 10: Typed Relation Resolution** — `Ref[T]` carries runtime target class; `client.read(ref)` / `client.read(list[Ref])` resolves typed relations, batched
+- [x] **Phase 10: Typed Relation Resolution** — `Ref[T]` carries runtime target class; `client.read(ref)` / `client.read(list[Ref])` resolves typed relations, batched (completed 2026-06-02)
 - [ ] **Phase 11: Codegen Metadata + Typed Writes** — Codegen emits readonly/store metadata; `client.write(instance)` / `client.create(instance)` typed paths with correct wire serialization
 - [ ] **Phase 12: Tech Debt Close-out** — CI action bumps, committed password removal, unawaited coroutine warnings, snapshot partial-key fix
 
@@ -86,7 +86,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-02-PLAN.md — `client.read(Ref[T])` overloads + dispatch branch (batching, fail-fast guard, order preservation), `test_rel_resolution.py`
+- [x] 10-02-PLAN.md — `client.read(Ref[T])` overloads + dispatch branch (batching, fail-fast guard, order preservation), `test_rel_resolution.py`
 
 ### Phase 11: Codegen Metadata + Typed Writes
 
@@ -132,7 +132,7 @@ Plans:
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete | 2026-06-01 |
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
-| 10. Typed Relation Resolution | v1.2 | 1/2 | In Progress|  |
+| 10. Typed Relation Resolution | v1.2 | 2/2 | Complete   | 2026-06-02 |
 | 11. Codegen Metadata + Typed Writes | v1.2 | 0/? | Not started | - |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 
