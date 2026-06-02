@@ -30,8 +30,13 @@ clarifies only HOW to run the spike.
 ### Test Endpoint & CORS (SC-1 compliance)
 - **D-02:** Provision a **throwaway Odoo + Postgres on Azure Container Apps (ACA)**.
   Postgres runs as a **container in the ACA environment — NOT Azure DB for PostgreSQL**
-  (which bills continuously and cannot scale to zero). Set `minReplicas: 0` so idle
-  cost is ≈zero.
+  (which bills continuously and cannot scale to zero).
+  - **D-02 (amended 2026-06-02):** Run Postgres at **`minReplicas: 1`** for the spike
+    window — NOT `0`. Research established that `minReplicas: 0` with ephemeral container
+    storage silently destroys the freshly-seeded test DB on scale-to-zero, breaking the
+    spike between deploy and test-run. Cost is controlled by the **Logic App TTL
+    self-destruct (D-05)** rather than scale-to-zero. This supersedes the original
+    `minReplicas: 0` choice.
 - **D-03:** **TLS via the managed cert on the default `*.azurecontainerapps.io` FQDN** —
   browser-trusted, non-localhost. This was chosen specifically to satisfy SC-1's
   explicit bar (a plain-HTTP or localhost call does NOT satisfy the criterion) while
