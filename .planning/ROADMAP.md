@@ -46,58 +46,76 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 ## Phase Details
 
 ### Phase 9: Structured Error Surface
+
 **Goal**: Callers can handle RPC errors programmatically without parsing strings, and server tracebacks never leak into logs or serialized output.
 **Depends on**: Nothing — `errors.py` has no upward dependencies; this phase is self-contained.
 **Requirements**: ERR-01, ERR-02, ERR-03, ERR-04, ERR-05
 **Success Criteria** (what must be TRUE):
+
   1. Catching `OdooRpcError` gives direct access to `.model_name`, `.field_name`, `.constraint_name`, `.human_message` attributes (each `str | None`) without string parsing.
   2. `str(exc)` and `to_json()` output never contain filesystem paths or server Python tracebacks (`data.debug` content).
   3. `exc.raw` holds the full original fault dict for opt-in debugging; `to_json()` never emits a `"raw"` key.
   4. Existing `except OdooRpcError` / `except OdooValidationError` catch blocks continue to work unchanged (additive-only hierarchy change).
   5. External callers accessing `exc.data` receive the renamed `.raw` attribute (documented breaking change in changelog; `data=` constructor kwarg retained for call-site compat in `_categorize_error`).
+
 **Plans**: 1 plan
 
 Plans:
+
 - [x] 09-01-PLAN.md -- Refactor OdooRpcError: structured fields, .data->.raw rename, privacy strip, test migration
 
 ### Phase 10: Typed Relation Resolution
+
 **Goal**: A caller holding a `Ref[T]` can resolve it to the related typed model instance through `client.read`, without naming the target model, using one batched RPC per distinct target model.
 **Depends on**: Phase 9 (structured errors improve error feedback during testing of the new dispatch paths; ERR-01 structured fields surface cleanly when `Ref[int]` guard fires).
 **Requirements**: REL-01, REL-02, REL-03, REL-04, REL-05, TEST-02
 **Success Criteria** (what must be TRUE):
+
   1. A `Ref[T]` produced by the wire transform carries the Python target model class at runtime so `client.read(ref)` requires no additional model argument.
   2. `client.read(ref)` returns a single typed model instance (one RPC); `client.read(refs)` for a mixed list of typed Refs issues one batched RPC per distinct target model with ids deduplicated.
   3. Passing an untyped `Ref[int]` (no known target model class) to `client.read` raises `OdooValidationError` with a message that names the cause.
   4. Existing `Ref(id, name)` construction and equality semantics are unchanged — the new `_target_cls` field is `compare=False, hash=False, repr=False`.
   5. Wire transform tests exercise `Ref` / `date` / `datetime` fields through the full `client.read` dispatch chain (not just `model_validate`), closing backlog 999.4.
+
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 10-01-PLAN.md — Add `_target_cls` to `Ref[T]`, implement `_ref_target_class()` helper, populate from wire transform, TEST-02 wire-fidelity test
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 10-02-PLAN.md — `client.read(Ref[T])` overloads + dispatch branch (batching, fail-fast guard, order preservation), `test_rel_resolution.py`
 
 ### Phase 11: Codegen Metadata + Typed Writes
+
 **Goal**: Callers can pass a typed `OdooBaseModel` instance into `client.write` or `client.create`, and only explicitly-set, writable fields are sent on the wire.
 **Depends on**: Phase 10 (stable `_pydantic_transform.py` and `client.py` — shared edit surface; GEN-01 must precede WRITE-04 readonly-field exclusion).
 **Requirements**: GEN-01, WRITE-01, WRITE-02, WRITE-03, WRITE-04, WRITE-05, TEST-01
 **Success Criteria** (what must be TRUE):
+
   1. `client.create(instance)` accepts an `OdooBaseModel` instance and returns the new record id; only fields in `model_fields_set` are sent, with read-only fields excluded regardless.
   2. `client.write(instance)` updates the record at `instance.id` using only explicitly-set fields (`__pydantic_fields_set__`); unset fields are never sent as `None`.
   3. The write serializer converts `Ref` → bare int id, `None` (for set fields) → Odoo `False`, and `date`/`datetime` → ISO wire strings.
   4. Generated model fields include `json_schema_extra={"odoo_readonly": True}` where `readonly=True` or `store=False`; the write serializer uses this metadata to exclude computed/readonly fields from all write payloads.
   5. Attempting to write an x2many field via the typed path raises `OdooValidationError` with a message pointing to raw `write()` with command tuples.
   6. An end-to-end test feeds a codegen-generated model class through `client.read` dispatch and then `client.write`, closing backlog 999.3.
+
 **Plans**: TBD
 
 ### Phase 12: Tech Debt Close-out
+
 **Goal**: The CI pipeline is warning-free, the spike password is gone from the repo, test output has no `RuntimeWarning` noise, and direct `OdooTestContainer` users get the same complete snapshot key as `TestHarness` users.
 **Depends on**: Nothing — all four items are independent fixes in separate files; can be done in any order after Phase 9 completes.
 **Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04
 **Success Criteria** (what must be TRUE):
+
   1. `release.yml` CI runs produce no Node 20 deprecation warnings from `actions/checkout` or `setup-uv`.
   2. `run_spike.py` contains no committed plaintext password (value removed or replaced with an env-var reference).
   3. Running the `test_cli.py` error-path tests produces no `RuntimeWarning: coroutine was never awaited` noise.
   4. Direct `OdooTestContainer` users receive a snapshot cache key that includes the properties dict, matching the key produced by `TestHarness`.
+
 **Plans**: TBD
 
 ## Progress
@@ -131,6 +149,7 @@ Plans:
 **Plans:** 0 plans
 
 Plans:
+
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
 ### Phase 999.3: Codegen→typed-read round-trip test (PROMOTED to Phase 11 / TEST-01)
