@@ -163,3 +163,21 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.3: Codegen→typed-read round-trip test (BACKLOG)
+
+**Goal:** [Captured for future planning] Add an end-to-end test that feeds a `godoo-introspection` codegen-generated Pydantic model class through `client.read(ModelClass, ids)` dispatch. Surfaced by the v1.1 milestone audit (2026-06-02): codegen importlib-roundtrip and typed-read dispatch are each tested in isolation, leaving the codegen-output ↔ read-dispatch contract verified by inspection only. Suggested test: `test_generate_importlib_roundtrip_with_client_read` — generate/load a model, then dispatch it through `client.read`. Tech-debt, non-blocking.
+**Requirements:** TBD (touches the TYPED-01 / TYPED-02 → TYPED-03 boundary)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.4: Wire-transforms-through-dispatch test (BACKLOG)
+
+**Goal:** [Captured for future planning] Add a typed-dispatch test that exercises the `Ref` / `date` / `datetime` wire transforms through the full `client.read` chain. Surfaced by the v1.1 milestone audit (2026-06-02): these transforms are tested at `OdooBaseModel.model_validate` level in `test_pydantic_transform.py`, but no `test_typed_dispatch.py` case uses a model with `Ref`/`date` fields, so they are not exercised end-to-end through dispatch. Suggested: a dispatch test using a model with `Ref` and `date`/`datetime` fields. Tech-debt, non-blocking.
+**Requirements:** TBD (touches TYPED-06)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
