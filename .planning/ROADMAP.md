@@ -129,7 +129,7 @@ Plans:
 
 **Wave 2** *(blocked on Waves 1; NOT autonomous — live az deployment + in-browser run)*
 
-- [ ] 08-03-PLAN.md — Deploy the endpoint, run the in-browser spike, write 08-SPIKE.md (SC-1 call + SC-2 per-strategy table + SC-3 Python-floor rec) (BROWSER-02, BROWSER-03)
+- [x] 08-03-PLAN.md — Deploy the endpoint, run the in-browser spike, write 08-SPIKE.md (SC-1 call + SC-2 per-strategy table + SC-3 Python-floor rec) (BROWSER-02, BROWSER-03)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -147,7 +147,7 @@ Plans:
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete    | 2026-06-01 |
-| 8. Pyodide Spike | v1.1 | 2/4 | In Progress|  |
+| 8. Pyodide Spike | v1.1 | 3/4 | In Progress|  |
 
 ## Backlog
 
