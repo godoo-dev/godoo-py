@@ -2,18 +2,20 @@
 phase: 10-typed-relation-resolution
 reviewed: 2026-06-02T00:00:00Z
 depth: standard
-files_reviewed: 5
+files_reviewed: 7
 files_reviewed_list:
-  - packages/godoo-client/src/godoo/client/typed.py
   - packages/godoo-client/src/godoo/client/_pydantic_transform.py
   - packages/godoo-client/src/godoo/client/client.py
-  - packages/godoo-client/tests/test_typed_dispatch.py
+  - packages/godoo-client/src/godoo/client/typed.py
+  - packages/godoo-client/tests/test_pydantic_transform.py
   - packages/godoo-client/tests/test_rel_resolution.py
+  - packages/godoo-client/tests/test_typed.py
+  - packages/godoo-client/tests/test_typed_dispatch.py
 findings:
   critical: 2
-  warning: 3
-  info: 2
-  total: 7
+  warning: 4
+  info: 3
+  total: 9
 status: issues_found
 ---
 
@@ -21,154 +23,196 @@ status: issues_found
 
 **Reviewed:** 2026-06-02T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 5
+**Files Reviewed:** 7
 **Status:** issues_found
 
 ## Summary
 
-This phase adds `Ref[T]._target_cls` capture (Plan 01) and the `OdooClient.read(Ref[T])` dispatch branch (Plan 02). The core data-flow design is sound and the TDD approach is solid. However, two Critical bugs were found: a `KeyError` crash that silently drops records returned out-of-id-order from Odoo, and a behaviorally incorrect detection condition for a list of `Ref` objects that silently misfires on any non-empty `list[non-Ref]`. Three Warnings cover a partially broken `_ref_target_class` recursion path, a missing overload for the duplicate-refs de-duplication semantic, and the assert-as-guard pattern in production code.
-
----
+Phase 10 adds typed relation resolution: a `_target_cls` carried on `Ref[T]`, wire-transform
+population of that field, and `OdooClient.read()` overloads that dispatch on `Ref` / `list[Ref]`
+to batch-resolve relations. The dispatch logic, batching, dedup, and order-stitching are mostly
+sound and well tested for the happy paths. However, the resolution path has two un-handled
+failure modes that crash with raw, untyped exceptions instead of the project's typed error
+contract, and the `Ref[T]` resolution recursion does not re-validate that the target class is a
+typed model — a `Ref` whose `_target_cls` is a plain (non-`__odoo_model__`) class silently
+routes the class *object* into the str RPC path as a model name. The test suite covers
+happy paths thoroughly but has zero coverage for the partial-success and missing-record cases
+that the BLOCKER findings describe.
 
 ## Critical Issues
 
-### CR-01: `fetched` dict KeyError crash when Odoo returns records out of id-order or omits missing ids
+### CR-01: `read(Ref)` / `read(list[Ref])` raises bare `KeyError` when Odoo omits a record
 
-**File:** `packages/godoo-client/src/godoo/client/client.py:248`
+**File:** `packages/godoo-client/src/godoo/client/client.py:242-248`
+**Issue:** The resolution path builds `fetched` from whatever records Odoo's `read` returns,
+then stitches results back with `fetched[(r._target_cls, r.id)]`. Odoo's `read` silently drops
+ids the current user cannot access (ACL filtering) or that no longer exist (deleted between the
+m2o snapshot and the resolve call). When that happens, the requested id is absent from `fetched`
+and line 248 raises a bare `KeyError(( <cls>, <id> ))`.
 
-**Issue:** The stitch loop at line 248 builds `ordered` by doing `fetched[(r._target_cls, r.id)]` for every `r` in the original `refs` list. The `fetched` dict is populated by iterating over the typed RPC result (line 245-246). If Odoo returns records in a different order than the requested ids — or omits a record entirely (deleted record, ACL restriction, etc.) — the key `(target_cls, r.id)` will be absent and the line raises an unhandled `KeyError`, crashing the call site with no `OdooMissingError` or other typed exception.
-
-This is a correctness bug, not just a robustness concern. The plan says "one batched `self.read(target_cls, ids)`" but `read()` on a non-existent or ACL-restricted record simply omits it from the result — it does not raise. The existing typed path at line 275 (`[target.model_validate(r) for r in raw]`) also returns a short list in that case; the downstream caller would get a `KeyError` rather than the missing-id behaviour the project already handles via `OdooMissingError` in other methods.
+This is a real, reachable production scenario: a `Ref` captured from an earlier read is resolved
+later, and the target record was deleted or ACL-restricted in the interim. The whole point of the
+typed error tree (`OdooMissingError`, `OdooValidationError`) is that callers can catch domain
+errors; a raw `KeyError` leaks an internal tuple and bypasses that contract. The dedup at line 239
+guarantees each id is requested once, so a short result list is the *only* signal of a missing
+record, and it is not checked.
 
 **Fix:**
 ```python
-# Replace the stitch at line 248 with a .get() and explicit missing-id handling:
-ordered = []
+ordered: list[Any] = []
 for r in refs:
     record = fetched.get((r._target_cls, r.id))
     if record is None:
-        from godoo.client.errors import OdooMissingError
         raise OdooMissingError(
-            f"Ref(id={r.id}, model={getattr(r._target_cls, '__odoo_model__', r._target_cls)!r})"
-            " was not returned by Odoo — record may be deleted or access-restricted."
+            f"Ref(id={r.id}) on {r._target_cls.__name__} could not be resolved "
+            "— the record was not returned by Odoo (deleted or access-restricted)."
         )
     ordered.append(record)
 ```
+(Import `OdooMissingError`; it is already exported from `godoo.client.errors`.)
 
----
+### CR-02: `Ref` resolution routes a class object into the str RPC path when `_target_cls` is not a typed model
 
-### CR-02: Ref-list detection fires on any non-empty `list` whose first element happens to be a `Ref`
+**File:** `packages/godoo-client/src/godoo/client/client.py:243-244`
+**Issue:** The resolve loop calls `await self.read(target_cls, target_ids)`. The recursive `read`
+only takes the typed branch when `hasattr(target_cls, "__odoo_model__")` (line 256). `_target_cls`
+is populated by `_ref_target_class()`, which returns *any* `type` it finds in the annotation —
+including `object` for a `Ref[object]` field (proven by `test_m2o_bare_ref_target_cls_none`, which
+asserts `_target_cls is object`). For such a `Ref`, `_target_cls is not None`, so the up-front
+guard at line 227-232 passes, but `hasattr(object, "__odoo_model__")` is `False`. The recursion
+then falls through to the str path (line 280) and calls `self.call(object, "read", [id_list], {})`
+with a **class object as the `model` argument**. That is sent over JSON-RPC as the model name,
+producing a confusing server-side failure (or a `TypeError`/serialization error) rather than the
+intended typed resolution or a clean local validation error.
 
-**File:** `packages/godoo-client/src/godoo/client/client.py:224`
+The guard at 227-232 checks only `_target_cls is None`; it must also confirm the target is an
+actual Odoo-typed model. `Ref[object]` is the documented fallback annotation (`typed.py` docstring,
+and `_TestPartner.parent_id: Ref[object]`), so this is not a contrived input.
 
-**Issue:** The detection guard is:
+**Fix:** Tighten the guard to require a typed model, not merely a non-`None` type:
 ```python
-isinstance(model, list) and model and isinstance(model[0], Ref)
+bad = [r for r in refs if not hasattr(r._target_cls, "__odoo_model__")]
+if bad:
+    raise OdooValidationError(
+        f"Cannot resolve Ref(id={bad[0].id}): target {bad[0]._target_cls!r} "
+        "is not a typed Odoo model (came from an untyped or Ref[object] field)."
+    )
 ```
-This only inspects `model[0]`. A `list` whose first element is a `Ref` but whose remaining elements are non-`Ref` objects (e.g., mixed content, a user mistake, or a future overload expansion) bypasses the guard silently and reaches the `list(model)` cast at line 226. When a later element is a non-`Ref`, line 227 (`r._target_cls`) raises `AttributeError` with no helpful message. Worse, if a future caller passes a `list[int]` where the first element happens to be wrapped as a `Ref` by accident, the branch fires incorrectly.
-
-The plan acknowledged heterogeneous lists are valid only when all elements are `Ref`. The detection should validate all elements — or at minimum raise a clear `OdooValidationError` when non-`Ref` elements are found, before reaching the batching logic.
-
-**Fix:** Replace the detection + normalise block with an all-elements check:
-```python
-if isinstance(model, Ref) or (
-    isinstance(model, list) and model and isinstance(model[0], Ref)
-):
-    refs = [model] if isinstance(model, Ref) else list(model)
-    # Validate all elements are Ref — guard against mixed lists
-    non_ref = [r for r in refs if not isinstance(r, Ref)]
-    if non_ref:
-        raise OdooValidationError(
-            f"read() received a list whose first element is a Ref but element"
-            f" {refs.index(non_ref[0])} is not a Ref: {non_ref[0]!r}"
-        )
-    ...
-```
-
----
 
 ## Warnings
 
-### WR-01: `_ref_target_class` recursion path silently returns `None` for nested-generic `Ref[T] | None` when the bare-`Ref` check fires first
+### WR-01: Empty `list[Ref]` silently falls through to the str RPC path with `model=[]`
 
-**File:** `packages/godoo-client/src/godoo/client/_pydantic_transform.py:63-70`
+**File:** `packages/godoo-client/src/godoo/client/client.py:224`
+**Issue:** The dispatch guard is `isinstance(model, list) and model and isinstance(model[0], Ref)`.
+For an empty list (`await client.read([])`), `model` is falsy, so the Ref branch is skipped.
+Execution falls to line 253 (`id_list = ... ids or []` → `[]`) and then to the str path at line
+280, calling `self.call([], "read", [[]], {})` — the empty list is passed as the Odoo model name.
+A caller resolving a dynamically-built, possibly-empty list of refs gets an opaque RPC failure
+instead of an empty result. The natural, correct behavior is to return `[]`.
 
-**Issue:** The recursive fallback at lines 67-70 calls `_ref_target_class(arg)` again for nested generics. However, the loop at line 63 already checks `if get_origin(arg) is Ref` (line 64) before falling into the recursive path. That is correct. But the recursive call at line 68 will re-enter the same top-level logic for `arg`. For `Ref[T] | None` (a common annotation), the union origin is `types.UnionType` (Python 3.10+ `X | Y`) or `typing.Union` — neither is `Ref`. The loop then iterates the args of the union: `Ref[T]` (origin=Ref, handled correctly) and `NoneType`. So for the standard use-case this works.
-
-The subtle bug is in the `get_args(arg)` guard at line 67: for a plain `arg` like `int` or `str`, `get_args(int)` returns `()` — so the guard is `False` and recursion does not fire. For `list[int]`, `get_args(list[int])` returns `(int,)` — truthy — so `_ref_target_class(list[int])` is called recursively. Inside that recursive call, `get_origin(list[int]) is Ref` is `False`, the loop processes `int`, `get_origin(int)` is `None` ≠ `Ref`, `get_args(int)` is `()` — so it returns `None`. This is correct but wasteful. No actual bug for current usage.
-
-However: `_annotation_mentions_ref` has a parallel loop (line 47) that calls itself recursively via `_annotation_mentions_ref(arg)`. The twin function `_ref_target_class` applies the `get_args(arg)` guard before recursing (line 67) whereas `_annotation_mentions_ref` recurses unconditionally if `get_args(arg)` is truthy (line 47 also guards). The structures are symmetric. But `_ref_target_class` at line 63-66 handles only the direct `get_origin(arg) is Ref` case for args of the outer annotation. It does NOT call `_ref_target_class` recursively when `arg` is itself a bare `Ref` (not a generic `Ref[T]`). `_annotation_mentions_ref` handles bare `Ref` at line 44 (`arg is Ref`). `_ref_target_class` has no equivalent check — for a bare `Ref` in args of a union, `get_origin(Ref)` is `None` (not `Ref`), so line 64 misses it. But a bare `Ref` has no type argument, so returning `None` is the correct documented behaviour. No outright bug, but the asymmetry between the two sibling functions is a latent maintenance hazard — adding new code paths may produce silent `None` returns that look correct.
-
-**Fix:** Add a comment cross-referencing the `arg is Ref` case handled by `_annotation_mentions_ref` to prevent future contributors from inadvertently creating a divergence:
+**Fix:** Special-case the empty list before the str path, e.g. at the top of `read`:
 ```python
-# Note: bare Ref (no type arg) in a union is intentionally not handled here —
-# get_origin(Ref) is None, so it falls through to return None, which is correct
-# (bare Ref carries no target class). See _annotation_mentions_ref for the parallel
-# `arg is Ref` check that only needs bool semantics.
+if isinstance(model, list) and not model:
+    return []
+```
+(Place it so it does not collide with the existing `model: type[T]` overloads — an empty list is
+unambiguously the `list[Ref]` case.)
+
+### WR-02: `read()` typed path with `fields` can crash validation when a required base field is excluded
+
+**File:** `packages/godoo-client/src/godoo/client/client.py:265-275`
+**Issue:** In the `read` typed branch, when `fields` is provided, `derive_partial_model` makes only
+the *requested* fields `Optional`. Non-requested fields that are **required** on the base model
+(no default) stay required. `read()` deliberately does not inject `id`, relying on Odoo always
+returning it — true for `id`, but any *other* required field (e.g. a codegen model with
+`name: str` and no default) that the caller omits from `fields` will be absent from the raw dict,
+and `target.model_validate(r)` raises a pydantic `ValidationError` (not an `OdooValidationError`).
+The `search_read` path has the same shape but is partly masked because it injects `id`. This is a
+latent crash for any non-trivial generated model the moment a caller does a projected read that
+drops a required field. The test models (`TinyPartner`, `_TestPartner`) all give every non-`id`
+field a default, so the suite never exercises this.
+
+**Fix:** Either (a) document and enforce that generated models must default every field to `None`
+(All-Optional at the source), or (b) in `derive_partial_model`, when building the partial, relax
+*all* non-requested base fields to optional as well (so a projected read never fails on an
+unrequested required field), or (c) catch pydantic `ValidationError` around `model_validate` and
+re-raise as `OdooValidationError`. Add a test with a model that has a second required field and a
+projected read excluding it.
+
+### WR-03: Cache key `(id(model), frozenset(fields))` can collide after GC reuses an id
+
+**File:** `packages/godoo-client/src/godoo/client/_pydantic_transform.py:204, 19`
+**Issue:** `_partial_model_cache` is keyed on `id(model)`. The cache holds a strong reference to
+the *derived* class but **not** to the source `model`. If the source model class is garbage
+collected (e.g. a model defined inside a function, as several tests do), CPython can reuse its
+`id()` for a different, unrelated class. A subsequent `derive_partial_model(other_model, fields)`
+with the same field set would then hit the stale cache entry and return a partial of the *wrong*
+base model — a silent correctness bug. The codegen-emitted models are module-level and long-lived,
+so this is unlikely in the primary use case, but it is a genuine soundness hole in a public helper,
+and `abs(hash(key))` in the generated class name (line 219) does not disambiguate because the key
+itself collides.
+
+**Fix:** Key on the class object directly via a `WeakKeyDictionary` keyed by `model`, with an
+inner dict keyed by `frozenset(fields)` — this both prevents id-reuse collisions and lets entries
+be reclaimed when the model dies:
+```python
+from weakref import WeakKeyDictionary
+_partial_model_cache: WeakKeyDictionary[type[BaseModel], dict[frozenset[str], type[BaseModel]]] = WeakKeyDictionary()
 ```
 
----
+### WR-04: `_ref_target_class` returns the first type arg without verifying it relates to `Ref`
 
-### WR-02: `assert` used as a runtime guard in production dispatch code
+**File:** `packages/godoo-client/src/godoo/client/_pydantic_transform.py:52-71`
+**Issue:** The function's contract (docstring) is "Return the T in `Ref[T]` if annotation mentions
+Ref, else None." But the recursion at line 67-70 descends into *any* arg that itself has args,
+regardless of whether that arg is a `Ref`. For an annotation like `list[SomeClass] | None` (no
+`Ref` anywhere) the function would still descend and could return a type that has nothing to do
+with `Ref`. In the wire transform this helper is only reached after `_annotation_mentions_ref`
+gates the branch (line 158), so the live blast radius is contained — but the function is also
+called directly (it is imported and unit-tested in `test_pydantic_transform.py`) and its return
+value is silently stamped onto `Ref._target_cls`, which CR-02 shows is load-bearing for dispatch.
+A target class extracted from a non-`Ref` annotation is a latent source of mis-dispatch.
 
-**File:** `packages/godoo-client/src/godoo/client/client.py:238`
-
-**Issue:** Line 238 is `assert r._target_cls is not None`. This assertion is reachable in production — it fires after the `bad` list check at line 227, but `assert` statements are silently removed when Python runs with `-O` (optimised mode, `PYTHONOPTIMIZE=1`). Running godoo-client in an optimised interpreter (Docker images, some CI setups) means this guard disappears entirely, and the `groups[r._target_cls]` call at line 239 would use `None` as a dict key, producing silent wrong behaviour (all untyped refs grouped under the same `None` key and then looked up successfully — but then the stitch at line 248 would produce `KeyError` against `(None, r.id)` or worse, return the wrong record).
-
-The `bad`-list check at line 227 already covers this precondition completely — the assert is redundant in non-optimised mode and silently broken in optimised mode.
-
-**Fix:** Remove the assert. The `bad`-list check above is the definitive guard:
-```python
-# Remove line 238:
-# assert r._target_cls is not None  <-- delete this line
-```
-
----
-
-### WR-03: `test_read_homogeneous_list_resolves` and `test_read_heterogeneous_list_preserves_order` RPC-call-count assertions are fragile and test the wrong thing
-
-**File:** `packages/godoo-client/tests/test_rel_resolution.py:101,132`
-
-**Issue:** Both tests assert `len(respx.calls) == 1` and `len(respx.calls) == 2` respectively, using the module-global `respx.calls` collector inside a `@respx.mock` block. The plan's own comment in the test action section notes: "Note: auth_client fixture runs in a different `with respx.mock` scope so its auth call is not visible here."
-
-This is actually true because the `auth_client` fixture uses a nested `with respx.mock:` block, so `respx.calls` is reset when the test's outer `@respx.mock` decorator opens its own scope. The assertion technically works as intended today. However, `respx.calls` is a module-level singleton that is reset per-scope — if test isolation between scopes ever breaks (e.g., a future change to the fixture that moves auth inside the test's own mock scope), these assertions would silently count the auth call too and produce false failures or false passes.
-
-More importantly, neither test asserts anything about *which* RPC was made (i.e., that the ids were correctly batched). A test that calls `read()` twice for the same model separately and then checks `len(respx.calls) == 1` would fail in the intended scenario but still pass the existing assertion if the count happens to be right for the wrong reason.
-
-**Fix:** Add at minimum a payload inspection assertion alongside the call-count check, similar to the pattern already used in `test_typed_dispatch.py` (`_extract_rpc_fields`). For the homogeneous test, verify that the single RPC carried both ids `[1, 2]` in the request body. For the heterogeneous test, verify that the two RPCs each carried the expected single id.
-
----
+**Fix:** Make the recursion `Ref`-aware: only return a type when it is the argument of a `Ref`
+origin. Mirror `_annotation_mentions_ref` exactly — descend only when the sub-arg's chain actually
+contains a `Ref` origin, and never return a type pulled from a non-`Ref` generic. Add a test:
+`_ref_target_class(list[_Model] | None)` must return `None`.
 
 ## Info
 
-### IN-01: Duplicate helper code across test files
+### IN-01: `from collections import defaultdict` imported inside the function body
 
-**File:** `packages/godoo-client/tests/test_rel_resolution.py:22-38`
-**Also:** `packages/godoo-client/tests/test_typed_dispatch.py:24-40`
+**File:** `packages/godoo-client/src/godoo/client/client.py:234`
+**Issue:** `defaultdict` is a stdlib import with no circular-import or optional-dependency concern
+(unlike the deliberate lazy `_pydantic_transform` import). Importing it inside the hot dispatch
+path on every `Ref` resolve is unidiomatic and slightly wasteful. The lazy-import convention in
+this codebase exists specifically to avoid circular imports and optional `[typed]` deps — neither
+applies here.
+**Fix:** Move `from collections import defaultdict` to the module top-level import block.
 
-**Issue:** `_jsonrpc_result`, `_make_config`, and the `auth_client` fixture are copy-pasted verbatim between `test_rel_resolution.py` and `test_typed_dispatch.py`. The plan explicitly instructed "copy verbatim from test_typed_dispatch.py" — this is the intentional approach for Plan 02. However, if the auth shape or config defaults change, two files need updating.
+### IN-02: `# type: ignore[index]` at line 248 masks the missing-record bug
 
-**Fix:** Extract to a shared `conftest.py` in the `tests/` directory. This is low-priority but worth tracking.
+**File:** `packages/godoo-client/src/godoo/client/client.py:248`
+**Issue:** The `# type: ignore[index]` suppresses mypy on the dict subscript that CR-01 shows can
+raise `KeyError`. The ignore is there to silence the `r._target_cls` being `type | None`, but it
+also signals that the indexing was known to be type-unsafe and was waved through rather than
+guarded. Once CR-01 is fixed with `.get()` + explicit check, this ignore can be removed entirely.
+**Fix:** Remove after applying the CR-01 fix (the `.get()` form needs no ignore once `_target_cls`
+is narrowed by the CR-02 guard).
 
----
+### IN-03: Test coverage gap — no test for partial-resolution / missing-record paths
 
-### IN-02: `Ref[T]` docstring does not mention `_target_cls` semantics
-
-**File:** `packages/godoo-client/src/godoo/client/typed.py:23-34`
-
-**Issue:** The class docstring explains `name` semantics but says nothing about `_target_cls`. The field docstring (`"""Runtime target class; excluded from equality, hash, and repr."""`) is concise but does not say how the value is populated (wire transform), what `None` means at the caller site (unresolved / bare annotation), or that it is populated only by `_pydantic_transform.py`. Library users who construct a `Ref` manually for testing may not realise they need to pass `_target_cls` for the resolution dispatch to work.
-
-**Fix:** Extend the class or field docstring:
-```python
-_target_cls: type | None = field(default=None, compare=False, hash=False, repr=False)
-"""Runtime target class; excluded from equality, hash, and repr.
-
-Populated automatically by the wire transform when the field annotation is
-``Ref[SomeModel]``. ``None`` when constructed manually or from a bare ``Ref``
-annotation. ``OdooClient.read(ref)`` requires a non-None value — pass
-``_target_cls=MyModel`` when constructing Refs manually for dispatch.
-"""
-```
+**File:** `packages/godoo-client/tests/test_rel_resolution.py` (whole file)
+**Issue:** `test_rel_resolution.py` covers single-ref, homogeneous, heterogeneous, and untyped-ref
+paths, but every mock returns a complete result set. There is no test where Odoo returns *fewer*
+records than requested (CR-01), no test for an empty `list[Ref]` (WR-01), and no test for a
+`Ref[object]` / non-typed `_target_cls` reaching `read()` resolution (CR-02). These are exactly
+the failure modes that crash. The phase's own VERIFICATION should not be considered complete
+without them.
+**Fix:** Add: (1) a mock returning `[]` for a single typed `Ref` → expect `OdooMissingError`;
+(2) `read([])` → expect `[]`; (3) `read(Ref(id=1, name="X", _target_cls=object))` → expect
+`OdooValidationError` before any RPC (assert `len(respx.calls) == 0`).
 
 ---
 
