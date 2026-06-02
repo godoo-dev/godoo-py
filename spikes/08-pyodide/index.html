@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>godoo Pyodide spike — D-06 transport strategies</title>
+  <style>
+    body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 1rem; }
+    h1   { color: #9cdcfe; font-size: 1.1rem; }
+    h2   { color: #ce9178; font-size: 0.95rem; margin-top: 1.5rem; }
+    pre  { background: #252526; border: 1px solid #3c3c3c; padding: 0.75rem;
+           white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; }
+    .pass { color: #4ec9b0; }
+    .fail { color: #f44747; }
+    .info { color: #dcdcaa; }
+    #log  { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+<h1>godoo Pyodide spike — Phase 8 (D-06: all three transport strategies)</h1>
+
+<p>
+  Endpoint: <code id="ep-display">__FILL_AT_RUN_TIME__</code><br>
+  DB: <code id="db-display">__FILL_AT_RUN_TIME__</code>
+</p>
+
+<!--
+  SECURITY NOTE (T-08-01): endpoint FQDN, DB, and credentials are NOT committed.
+  Fill them via URL query params at run time in your LOCAL working copy only:
+
+    ?base_url=https://odoo.YOUR-ENV.azurecontainerapps.io&db=odoo&user=admin&password=THROWAWAY
+
+  NEVER commit real values.  The page is in a public LGPL repo.
+-->
+
+<pre id="log">Loading Pyodide…</pre>
+
+<!-- Pyodide 0.29.4 (CPython 3.13) — pinned per research §Standard Stack -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js"></script>
+<script type="module">
+
+// ---------------------------------------------------------------------------
+// Run-time configuration — filled via URL query params (NEVER hardcode)
+// ---------------------------------------------------------------------------
+const params   = new URLSearchParams(window.location.search);
+const BASE_URL = params.get("base_url") || "__FILL_AT_RUN_TIME__";
+const DB       = params.get("db")       || "__FILL_AT_RUN_TIME__";
+const USER     = params.get("user")     || "__FILL_AT_RUN_TIME__";
+const PASSWORD = params.get("password") || "__FILL_AT_RUN_TIME__";
+
+document.getElementById("ep-display").textContent = BASE_URL;
+document.getElementById("db-display").textContent = DB;
+
+const logEl = document.getElementById("log");
+
+function log(msg, cls = "") {
+  console.log(msg);
+  const line = document.createElement("span");
+  if (cls) line.className = cls;
+  line.textContent = msg + "\n";
+  logEl.appendChild(line);
+}
+
+function logSection(title) {
+  log("\n" + "─".repeat(60));
+  log(title, "info");
+  log("─".repeat(60));
+}
+
+// ---------------------------------------------------------------------------
+// Load Pyodide
+// ---------------------------------------------------------------------------
+logEl.textContent = "";
+log("Loading Pyodide 0.29.4 (CPython 3.13)…");
+const pyodide = await loadPyodide();
+log("Pyodide ready.", "pass");
+
+// ---------------------------------------------------------------------------
+// STRATEGY 1 — stock httpx (expected: FAIL — socket I/O not available)
+//
+// D-06: run strategy 1 with NO patch_httpx() applied so it stays unpatched.
+// This isolation is mandatory (Pitfall 3 from research): the unpatched failure
+// traceback is the SC-2 evidence that "the easy path does not work."
+// ---------------------------------------------------------------------------
+logSection("STRATEGY 1 — stock httpx (expected: FAIL)");
+log("Installing httpx via micropip…");
+try {
+  await pyodide.runPythonAsync(`
+import micropip
+await micropip.install("httpx")
+`);
+  log("httpx installed.");
+  log("Attempting httpx.AsyncClient POST to /jsonrpc…");
+
+  const s1Result = await pyodide.runPythonAsync(`
+import httpx, json, traceback as tb
+
+url     = "${BASE_URL}/jsonrpc"
+payload = {
+    "jsonrpc": "2.0", "method": "call", "id": 1,
+    "params": {"service": "common", "method": "authenticate",
+               "args": ["${DB}", "${USER}", "${PASSWORD}", {}]}
+}
+try:
+    async with httpx.AsyncClient() as c:
+        r = await c.post(url, json=payload)
+    result = "WORKED — " + repr(r.json())
+except Exception as exc:
+    result = "FAILED — " + repr(exc) + "\\n" + tb.format_exc()
+result
+`);
+  const passed = s1Result.startsWith("WORKED");
+  log("Strategy 1 result:\n" + s1Result, passed ? "pass" : "fail");
+} catch (err) {
+  log("Strategy 1 outer error: " + err + "\n" + (err.stack || ""), "fail");
+}
+
+// ---------------------------------------------------------------------------
+// STRATEGY 2 — pyodide-httpx 0.2.0 (expected: WORK — brittle third-party patch)
+//
+// Pin ==0.2.0 and install ssl alongside (required per research §Strategy 2).
+// patch_httpx() is called ONLY inside this strategy block — never before S1.
+// D-10: a success here alone is conditional/no-go to ship (low-maintenance warning).
+// Capture the resolved httpx version alongside the result.
+// ---------------------------------------------------------------------------
+logSection("STRATEGY 2 — pyodide-httpx==0.2.0 (expected: WORK)");
+log("Installing pyodide-httpx==0.2.0 + ssl via micropip…");
+try {
+  await pyodide.runPythonAsync(`
+import micropip
+await micropip.install(["pyodide-httpx==0.2.0", "ssl"])
+`);
+  log("pyodide-httpx + ssl installed.");
+  log("Applying patch_httpx() and attempting POST…");
+
+  const s2Result = await pyodide.runPythonAsync(`
+import httpx, json, traceback as tb
+from pyodide_httpx import patch_httpx
+
+patch_httpx()   # monkeypatches httpx AsyncClient onto pyfetch
+
+url     = "${BASE_URL}/jsonrpc"
+payload = {
+    "jsonrpc": "2.0", "method": "call", "id": 1,
+    "params": {"service": "common", "method": "authenticate",
+               "args": ["${DB}", "${USER}", "${PASSWORD}", {}]}
+}
+try:
+    async with httpx.AsyncClient() as c:
+        r = await c.post(url, json=payload)
+    data = r.json()
+    # Capture resolved httpx version — version skew is a known failure risk
+    httpx_ver = httpx.__version__
+    result = f"WORKED — httpx {httpx_ver} — response: " + repr(data)
+except Exception as exc:
+    result = "FAILED — " + repr(exc) + "\\n" + tb.format_exc()
+result
+`);
+  const passed = s2Result.startsWith("WORKED");
+  log("Strategy 2 result:\n" + s2Result, passed ? "pass" : "fail");
+  if (passed) {
+    log("NOTE (D-10): pyodide-httpx is a brittle third-party patch (3 stars, low maintenance).\n"
+      + "A success here alone is classified as conditional/no-go for shipping.\n"
+      + "NEVER add pyodide-httpx to any pyproject.toml.", "info");
+  }
+} catch (err) {
+  log("Strategy 2 outer error: " + err + "\n" + (err.stack || ""), "fail");
+}
+
+// ---------------------------------------------------------------------------
+// STRATEGY 3 — custom PyfetchTransport via transport_factory seam
+//              (expected: WORK — the maintainable "go" candidate, D-10)
+//
+// Load transport_pyfetch.py by fetching it from the same origin.
+// Construct PyfetchTransport synchronously, then authenticate + call a trivial
+// res.users read to prove the full round-trip.
+// No install needed — pyfetch is bundled with Pyodide.
+// ---------------------------------------------------------------------------
+logSection("STRATEGY 3 — custom PyfetchTransport (expected: WORK, maintainable)");
+log("Fetching transport_pyfetch.py from same origin…");
+try {
+  // Fetch the prototype source from the same static host (same-origin — no CORS needed).
+  const tpRes  = await fetch("transport_pyfetch.py");
+  const tpSrc  = await tpRes.text();
+
+  log("transport_pyfetch.py fetched (" + tpSrc.length + " bytes).");
+  log("Exec'ing prototype and running authenticate + res.users read…");
+
+  // Inject the source then run the spike exercise.
+  pyodide.runPython(tpSrc);  // defines PyfetchTransport in the Pyodide global namespace
+
+  const s3Result = await pyodide.runPythonAsync(`
+import traceback as tb
+
+base_url = "${BASE_URL}"
+db       = "${DB}"
+user     = "${USER}"
+password = "${PASSWORD}"
+
+try:
+    t = PyfetchTransport(base_url, db)
+    session = await t.authenticate(user, password)
+    # Trivial model read — base module only, no extra modules required (research §Minimal modules)
+    users = await t.call(
+        "res.users", "read", [[session.uid]],
+        {"fields": ["login", "name"]}
+    )
+    t.logout()
+    await t.aclose()
+    result = f"WORKED — session uid={session.uid} db={session.db} — users={users!r}"
+except Exception as exc:
+    result = "FAILED — " + repr(exc) + "\\n" + tb.format_exc()
+result
+`);
+  const passed = s3Result.startsWith("WORKED");
+  log("Strategy 3 result:\n" + s3Result, passed ? "pass" : "fail");
+  if (passed) {
+    log("VERDICT signal: strategy 3 satisfies D-10 go-bar (maintainable + works).\n"
+      + "Record this result in 08-SPIKE.md and the go/no-go ADR.", "info");
+  }
+} catch (err) {
+  log("Strategy 3 outer error: " + err + "\n" + (err.stack || ""), "fail");
+}
+
+logSection("Spike run complete — see above for per-strategy pass/fail");
+log("Record tracebacks + devtools Network screenshots in .planning/phases/08-pyodide-spike/08-SPIKE.md", "info");
+
+</script>
+</body>
+</html>
