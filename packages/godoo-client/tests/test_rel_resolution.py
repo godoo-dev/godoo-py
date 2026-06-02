@@ -12,7 +12,7 @@ import pytest
 import respx
 from godoo.client._pydantic_transform import OdooBaseModel
 from godoo.client.client import OdooClient, OdooClientConfig
-from godoo.client.errors import OdooValidationError
+from godoo.client.errors import OdooMissingError, OdooValidationError
 from godoo.client.typed import Ref
 
 BASE_URL = "http://odoo.test"
@@ -146,3 +146,68 @@ async def test_read_untyped_ref_raises_before_rpc(auth_client: OdooClient) -> No
         await auth_client.read(untyped)
     # No RPC was fired — auth ran in a separate respx.mock scope
     assert len(respx.calls) == 0
+
+
+# ------------------------------------------------------------------
+# IN-03 / CR-02: Ref[object] (_target_cls=object) — raises before any RPC
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_object_target_ref_raises_before_rpc(auth_client: OdooClient) -> None:
+    """read(Ref) with _target_cls=object (Ref[object] fallback) raises OdooValidationError
+    BEFORE any RPC — object lacks __odoo_model__ and must not reach the str path (CR-02)."""
+    obj_ref: Ref[object] = Ref(id=1, name="X", _target_cls=object)
+    with pytest.raises(OdooValidationError, match="is not a typed Odoo model"):
+        await auth_client.read(obj_ref)
+    # Guard fires before any RPC — auth ran in a separate respx.mock scope
+    assert len(respx.calls) == 0
+
+
+# ------------------------------------------------------------------
+# IN-03 / WR-01: Empty list[Ref] — resolves to [] with no RPC
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_empty_list_returns_empty(auth_client: OdooClient) -> None:
+    """read([]) resolves to [] without firing any RPC (WR-01)."""
+    result = await auth_client.read([])
+    assert result == []
+    # Empty list is special-cased before the str path — no RPC fired
+    assert len(respx.calls) == 0
+
+
+# ------------------------------------------------------------------
+# IN-03 / CR-01: Odoo omits a requested record — raises OdooMissingError
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_single_ref_missing_record_raises(auth_client: OdooClient) -> None:
+    """read(Ref[T]) raises OdooMissingError when Odoo returns no record for the id
+    (deleted or ACL-restricted between snapshot and resolve) (CR-01)."""
+    respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result([])))
+    ref: Ref[TinyPartner] = Ref(id=42, name="Acme", _target_cls=TinyPartner)
+    with pytest.raises(OdooMissingError, match="could not be resolved"):
+        await auth_client.read(ref)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_list_partial_resolution_raises(auth_client: OdooClient) -> None:
+    """read(list[Ref[T]]) raises OdooMissingError when Odoo returns fewer records than
+    requested — a partial result must not stitch a bare KeyError (CR-01)."""
+    # Two ids requested, only one returned (id=2 dropped by Odoo).
+    respx.post(f"{BASE_URL}/jsonrpc").mock(
+        return_value=httpx.Response(200, json=_jsonrpc_result([{"id": 1, "name": "A"}]))
+    )
+    refs = [
+        Ref(id=1, name="A", _target_cls=TinyPartner),
+        Ref(id=2, name="B", _target_cls=TinyPartner),
+    ]
+    with pytest.raises(OdooMissingError, match="could not be resolved"):
+        await auth_client.read(refs)
