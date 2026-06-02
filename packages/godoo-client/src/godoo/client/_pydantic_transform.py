@@ -49,6 +49,28 @@ def _annotation_mentions_ref(annotation: Any) -> bool:
     return False
 
 
+def _ref_target_class(annotation: Any) -> type | None:
+    """Return the T in Ref[T] if annotation mentions Ref, else None.
+
+    Mirrors _annotation_mentions_ref logic but extracts the type argument.
+    Returns None for bare Ref or when Ref is not present in the annotation.
+    For union annotations like ``Ref[T] | None``, unwraps the union and returns T.
+    """
+    origin = get_origin(annotation)
+    if origin is Ref:
+        args = get_args(annotation)
+        return args[0] if args and isinstance(args[0], type) else None
+    for arg in get_args(annotation):
+        if get_origin(arg) is Ref:
+            inner = get_args(arg)
+            return inner[0] if inner and isinstance(inner[0], type) else None
+        if get_args(arg):
+            result = _ref_target_class(arg)
+            if result is not None:
+                return result
+    return None
+
+
 def _looks_iso_date(value: str) -> bool:
     """Return True if value is a valid ISO date string (date-only, not datetime)."""
     if len(value) != 10:
@@ -135,7 +157,11 @@ class OdooBaseModel(BaseModel):
                 and (isinstance(value[1], str) or value[1] is False)
                 and _annotation_mentions_ref(annotation)
             ):
-                out[name] = Ref(id=value[0], name=None if value[1] is False else value[1])
+                out[name] = Ref(
+                    id=value[0],
+                    name=None if value[1] is False else value[1],
+                    _target_cls=_ref_target_class(annotation),
+                )
                 continue
 
             # ISO datetime BEFORE date (datetime is a subclass of date — order matters)

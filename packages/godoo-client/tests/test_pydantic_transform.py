@@ -6,7 +6,12 @@ from datetime import date, datetime
 from typing import ClassVar
 
 import pytest
-from godoo.client._pydantic_transform import OdooBaseModel, _ref_target_class, clear_partial_model_cache, derive_partial_model
+from godoo.client._pydantic_transform import (
+    OdooBaseModel,
+    _ref_target_class,
+    clear_partial_model_cache,
+    derive_partial_model,
+)
 from godoo.client.typed import Ref
 from pydantic import Field
 
@@ -219,7 +224,7 @@ class _TypedPartner(OdooBaseModel):
     __odoo_model__: ClassVar[str] = "res.partner"
     id: int
     name: str | None = None
-    parent_id: Ref["_TypedPartner"] | None = None
+    parent_id: Ref[_TypedPartner] | None = None
 
 
 def test_m2o_tuple_populates_target_cls() -> None:

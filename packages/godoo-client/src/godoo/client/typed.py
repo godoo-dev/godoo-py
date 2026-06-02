@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Protocol
 
 
@@ -30,6 +30,8 @@ class Ref[T]:
 
     id: int
     name: str | None
+    _target_cls: type | None = field(default=None, compare=False, hash=False, repr=False)
+    """Runtime target class; excluded from equality, hash, and repr."""
 
 
 __all__ = ["OdooModel", "Ref"]
