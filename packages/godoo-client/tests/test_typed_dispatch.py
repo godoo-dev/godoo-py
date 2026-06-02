@@ -15,6 +15,7 @@ import respx
 from godoo.client._pydantic_transform import OdooBaseModel
 from godoo.client.client import OdooClient, OdooClientConfig
 from godoo.client.errors import OdooValidationError
+from godoo.client.typed import Ref
 
 BASE_URL = "http://odoo.test"
 DB = "testdb"
@@ -252,6 +253,25 @@ async def test_typed_dispatch_unknown_field_raises_odoo_validation_read(
     """read() typed path wraps ValueError from derive_partial_model as OdooValidationError."""
     with pytest.raises(OdooValidationError, match="nonexistent_field"):
         await auth_client.read(TinyPartner, [1], fields=["nonexistent_field"])
+
+
+# ------------------------------------------------------------------
+# TEST-02: Ref-typed field wire-fidelity through full dispatch chain
+# ------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_read_typed_ref_field_populated(auth_client: OdooClient) -> None:
+    """Ref-typed field is populated with _target_cls via wire transform (TEST-02)."""
+    respx.post(f"{BASE_URL}/jsonrpc").mock(
+        return_value=httpx.Response(200, json=_jsonrpc_result([{"id": 1, "parent_id": [3, "Acme"]}]))
+    )
+    result = await auth_client.read(TinyPartner, [1])
+    assert result[0].parent_id is not None
+    assert result[0].parent_id.id == 3
+    assert result[0].parent_id.name == "Acme"
+    assert result[0].parent_id._target_cls is TinyPartner
 
 
 # ------------------------------------------------------------------
