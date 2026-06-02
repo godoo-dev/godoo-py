@@ -1,5 +1,39 @@
 # Milestones
 
+## v1.1 Typed Models & Browser Reach (Shipped: 2026-06-02)
+
+**Phases completed:** 4 phases, 11 plans
+**Delivered:** Instance-derived Pydantic typed models with typed-read dispatch, the packages/godoo→godoo-client rename, a pluggable transport seam, and an empirically-grounded Pyodide/browser go/no-go verdict.
+
+> **Versioning note:** "v1.1" is the GSD *planning* milestone. No new PyPI distribution was
+> required by the milestone itself; current package version is 0.2.0/0.2.1. The milestone
+> is tagged `milestone-v1.1` to avoid colliding with the semantic-release `vX.Y.Z` tag
+> namespace.
+
+**Key accomplishments:**
+
+- `packages/godoo/` renamed to `packages/godoo-client/` via `git mv` (blame preserved); all operative path references updated across 5 config/doc files; PEP 420 namespace guard test (`godoo.__file__ is None`) added to CI.
+- `Transport` Protocol + `transport_factory` hook on `OdooClientConfig` — pluggable transport seam that allows alternative transports (e.g. browser-native fetch) without changing core.
+- `godoo.client.typed` stdlib-only module (`OdooModel` Protocol, `Ref[T]` dataclass) and `godoo.client._pydantic_transform` with full wire transforms; `@overload` dispatch on `client.read` / `search_read` so `client.read(ModelClass, ids)` → `list[ModelClass]`; default install stays httpx-only (`godoo[typed]` optional extra).
+- Pydantic generator in `godoo-introspection` replaces the TypedDict generator (breaking, changelog-noted); `godoo-introspect generate` CLI entrypoint emits one-file-per-model + barrel `__init__.py`; selection fields as `Literal[...]`, m2o as `Ref[TargetClass]` / `Ref[int]`, x2many as `list[int]`.
+- Pyodide spike: real in-browser HTTPS JSON-RPC call (`uid` + users via `PyfetchTransport`, Strategy 3); ADR-0001 GO verdict; Python-floor Option A (defer until Pyodide ships CPython ≥3.14); BROWSER-F1/F2 escalated to v2.0 planning.
+
+**Per-phase:**
+
+- **Phase 5 — Directory Rename:** `git mv packages/godoo packages/godoo-client`; 8 path references updated; PEP 420 guard test; CI green.
+- **Phase 6 — Transport Seam & Typed Models Core:** `Transport` Protocol + `transport_factory`; `godoo.client.typed` + `_pydantic_transform`; `@overload` read/search_read dispatch; `godoo[typed]` extra; subprocess isolation test.
+- **Phase 7 — Pydantic CLI Generator:** TypedDict emitter removed; Pydantic emitter + `type_mapper.py` migration; `godoo-introspect generate` CLI (typer); `pydantic>=2.13` + `typer>=0.26` as runtime deps.
+- **Phase 8 — Pyodide Spike:** ACA Bicep (Odoo+Postgres, HTTPS, CORS); PyfetchTransport prototype + raw HTML spike page; in-browser HTTPS JSON-RPC run; ADR-0001 written (GO verdict, Strategy 3, Option A floor).
+
+**Tech-debt incurred:**
+
+- `spikes/08-pyodide/run_spike.py:16` hardcodes `password=admin` (ACA endpoint torn down; trivially guessable default; no rotation needed, but it is committed).
+- `test_cli.py` error-path tests leave `_generate_async` coroutines unawaited → `RuntimeWarning` noise in CI output; tests pass, cosmetic.
+- Codegen → typed-read round-trip not tested end-to-end (each half tested in isolation); tracked as backlog 999.3.
+- Wire transforms not exercised through full `client.read` dispatch (tested at `model_validate` level); tracked as backlog 999.4.
+
+---
+
 ## v1.0 Parity & Release (Shipped: 2026-05-22)
 
 **Phases completed:** 5 phases, 14 plans, 14 tasks

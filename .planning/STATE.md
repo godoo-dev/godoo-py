@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Typed Models & Browser Reach
-status: executing
-last_updated: "2026-06-02T11:27:04.487Z"
-last_activity: 2026-06-02
+status: complete
+last_updated: "2026-06-02T12:13:20.807Z"
+last_activity: 2026-06-02 — Milestone v1.1 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -20,18 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 8 — pyodide spike
+**Current focus:** Awaiting next milestone — v1.1 complete (2026-06-02)
 
 ## Current Position
 
-Phase: 8
-Plan: 4 of 4 complete (08-01, 08-02, 08-03, 08-04)
-Status: Phase 8 complete — v1.1 milestone complete
-Last activity: 2026-06-02
-
-```
-Progress: [██████████] 100%
-```
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-02 — Milestone v1.1 completed and archived
 
 ## Performance Metrics
 
@@ -123,7 +119,4 @@ Stopped at: Phase 8 plan 08-04 complete — ADR written and mkdocs wired
 
 ## Operator Next Steps
 
-- Phase 8 complete. v1.1 milestone (Typed Models & Browser Reach) all 4 phases done.
-- ADR-0001 recorded: GO verdict, Strategy 3 (PyfetchTransport), Python floor Option A (await Pyodide 3.14).
-- BROWSER-F1 and BROWSER-F2 escalated to v2.0 planning backlog.
-- Next: plan v2.0 milestone or address backlog items.
+- Start the next milestone with /gsd-new-milestone

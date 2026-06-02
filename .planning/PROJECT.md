@@ -14,24 +14,11 @@ The Python family member reaches feature parity with the TypeScript core-3 libra
 a Python developer gets the same client, introspection, and testcontainers capabilities
 that godoo-ts already ships.
 
-## Current Milestone: v1.1 Typed Models & Browser Reach
+## Current Milestone
 
-**Goal:** Sharpen developer ergonomics with instance-derived typed models, and de-risk
-running godoo in the browser — without breaking the existing API.
-
-**Target features:**
-- Rename `packages/godoo` → `packages/godoo-client` to close the directory↔dist-name gap
-  (import namespace stays `godoo.*` — no user breakage)
-- Instance-specific typed models: a `godoo-introspection` CLI that emits a Pydantic model
-  package from the live schema, plus a polymorphic typed-read layer in core behind a
-  `godoo[typed]` extra (`client.read(ResPartner, …)` → `list[ResPartner]`; raw `str` path
-  unchanged; relational fields type as typed `Ref[Model]` / id, no nested fetch)
-- Pyodide/browser spike: prove whether httpx works in Pyodide (or needs a custom transport
-  adapter), then decide whether to commit to a browser-compatible build
-
-**Version note:** v1.1 is additive (typed reads dispatch on `read()`'s first arg; default
-install stays httpx-only). If the Pyodide spike surfaces required breaking changes, revisit
-and bump to v2.0.
+_No active milestone. Next milestone (v2.0) not yet scoped — run /gsd:new-milestone.
+Candidate v2.0 work: BROWSER-F1/F2 (browser build, gated on Pyodide CPython ≥3.14),
+TYPED-F1 (nested relational fetch), TYPED-F2 (typed write/create)._
 
 ## Requirements
 
@@ -93,12 +80,19 @@ and bump to v2.0.
 - ✓ `__odoo_model__: ClassVar[str]` on every generated model — pydantic-free `client.read(...)` dispatch — Phase 7 (TYPED-01)
 - ✓ `godoo-introspect generate` CLI entrypoint (typer); `pydantic>=2.13` + `typer>=0.26` as runtime deps — Phase 7 (TYPED-02)
 
+<!-- Validated in milestone v1.1 (2026-06-02). -->
+
+- ✓ `packages/godoo` → `packages/godoo-client` directory rename via `git mv` (blame preserved); PEP 420 `godoo.*` namespace guard test — v1.1 (Phase 5 / PKG-01, PKG-02, PKG-03)
+- ✓ `Transport` Protocol + `transport_factory` hook on `OdooClientConfig` — pluggable transport injection point — v1.1 (Phase 6 / BROWSER-01)
+- ✓ `godoo.client.typed` stdlib-only module: `OdooModel` Protocol, `Ref[T]` dataclass; importable without Pydantic — v1.1 (Phase 6 / TYPED-07)
+- ✓ Wire transforms: Odoo `False` → `None` (non-bool fields), many2one `[id, "Name"]` → `Ref`, date/datetime strings → typed values — v1.1 (Phase 6 / TYPED-06)
+- ✓ `@overload` dispatch on `client.read` / `search_read`: `str` path → `list[dict]`, `ModelClass` path → `list[ModelClass]`; lazy Pydantic import inside typed branch — v1.1 (Phase 6 / TYPED-03, TYPED-04, TYPED-05)
+- ✓ `godoo[typed]` optional extra in `packages/godoo-client/pyproject.toml`; subprocess isolation test confirms no Pydantic import by default — v1.1 (Phase 6 / TYPED-05)
+- ✓ Pyodide spike: real in-browser HTTPS JSON-RPC call via `PyfetchTransport` (Strategy 3); GO verdict (ADR-0001); Python-floor Option A (defer until Pyodide ships CPython ≥3.14); BROWSER-F1/F2 escalated to v2.0 — v1.1 (Phase 8 / BROWSER-02, BROWSER-03)
+
 ### Active
 
-<!-- v1.1 Typed Models & Browser Reach — scoping in progress. REQ-IDs land in REQUIREMENTS.md. -->
-
-_Milestone v1.1 is being scoped (see Current Milestone above). Requirements with REQ-IDs are
-defined in `.planning/REQUIREMENTS.md`._
+_No active milestone. See Current Milestone above._
 
 ### Out of Scope
 
@@ -110,6 +104,7 @@ defined in `.planning/REQUIREMENTS.md`._
 
 ## Context
 
+- **v1.1 shipped (2026-06-02).** Typed models (Pydantic CLI generator + typed-read dispatch layer behind `godoo[typed]`), the `packages/godoo`→`packages/godoo-client` rename, a pluggable transport seam, and the Pyodide spike (ADR-0001 GO verdict, escalated to v2.0). 13/13 v1.1 requirements complete. GSD milestone tag: `milestone-v1.1`. No new PyPI release was required by the milestone itself; current package version is 0.2.0/0.2.1.
 - **v1.0 shipped (2026-05-22).** All three packages reached TS parity and were published
   to PyPI: `godoo-client`, `godoo-introspection`, `godoo-testcontainers` (plus a `godoo`
   placeholder dist) on a PEP 420 shared `godoo.*` namespace, at package version 0.2.1 via
@@ -153,6 +148,12 @@ defined in `.planning/REQUIREMENTS.md`._
 | Drop INTRO-05 (`godoo-introspect` CLI) from v1 | Library is the v1 deliverable; no CLI surface yet | D-CLI-1 |
 | Insert Phase 4.1 (package READMEs) after release | PyPI pages rendered empty — only the `godoo` meta package shipped a README | ✓ Good — fixed in 0.2.1 |
 | Tag GSD milestone as `milestone-v1.0`, not `v1.0` | Bare `v1.0` collides with semantic-release's `vX.Y.Z` tag namespace and would force a 1.0 package bump | ✓ Good |
+| D-01 All-Optional partial-read via Pydantic `create_model(__base__=)` | Precision vs ergonomics; All-Optional wins — every generated field is `Optional[T] = None`, `model_construct()` is the documented escape hatch for partial reads | ✓ Good |
+| D-02 boolean `False` coercion skip — emit plain `bool`, skip `False→None` in wire transform | Bool fields must not coerce `False` to `None`; annotation-driven skip keeps the transform declarative | ✓ Good |
+| Transport seam as injection point (BROWSER-01) — `Transport` Protocol + `transport_factory` on config | Additive, ships regardless of Pyodide verdict; enables clean browser transport swap without core changes | ✓ Good |
+| Pydantic generator replaces TypedDict generator — breaking change, supersedes INTRO-03 | Pydantic provides validation + wire transforms; TypedDict is a dead-end for the typed-read path; documented breaking change | ✓ Good |
+| Pyodide spike GO verdict → v2.0 (ADR-0001, Strategy 3 PyfetchTransport, Python-floor Option A) | Real in-browser HTTPS call succeeded; floor requires Pyodide CPython ≥3.14 (not yet released); escalate not defer | — Pending v2.0 |
+| Tag GSD milestone as `milestone-v1.1`, not `v1.1` | Same rationale as `milestone-v1.0` — avoids semantic-release tag namespace collision | ✓ Good |
 
 ## Evolution
 
@@ -172,4 +173,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-01 — Phase 7 (Pydantic CLI Generator) complete; milestone v1.1 (Typed Models & Browser Reach)*
+*Last updated: 2026-06-02 after v1.1 milestone (Typed Models & Browser Reach)*
