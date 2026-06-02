@@ -42,10 +42,15 @@
 
 // ---------------------------------------------------------------------------
 // Run-time configuration — filled via URL query params (NEVER hardcode)
+//
+// The defaults below are the spike endpoint used for Phase 8 empirical evidence
+// (2026-06-02). That ACA endpoint has since been torn down (self-destruct TTL).
+// To re-run the spike you need a fresh deploy + a new base_url query param:
+//   ?base_url=https://YOUR-NEW-CA.azurecontainerapps.io&db=spike&user=admin&password=THROWAWAY
 // ---------------------------------------------------------------------------
 const params   = new URLSearchParams(window.location.search);
-const BASE_URL = params.get("base_url") || "__FILL_AT_RUN_TIME__";
-const DB       = params.get("db")       || "__FILL_AT_RUN_TIME__";
+const BASE_URL = params.get("base_url") || "https://ca-godoo-pyodide-spike.nicegrass-f470f64f.northeurope.azurecontainerapps.io";
+const DB       = params.get("db")       || "spike";
 const USER     = params.get("user")     || "__FILL_AT_RUN_TIME__";
 const PASSWORD = params.get("password") || "__FILL_AT_RUN_TIME__";
 
