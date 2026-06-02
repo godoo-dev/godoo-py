@@ -220,6 +220,9 @@ class OdooClient:
         fields: list[str] | None = None,
         **kwargs: Any,
     ) -> Any:
+        # Empty list is unambiguously the list[Ref] case → resolve to empty result (WR-01).
+        if isinstance(model, list) and not model:
+            return []
         # Ref / list[Ref] dispatch — D-01, D-02, D-03
         if isinstance(model, Ref) or (isinstance(model, list) and model and isinstance(model[0], Ref)):
             # Collect refs, validate all up front (D-03)
