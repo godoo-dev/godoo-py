@@ -38,7 +38,7 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 
 ### v1.2 Typed Relations, Writes & Error Surface (Phases 9-12)
 
-- [x] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch (completed 2026-06-02)
+- [x] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch (completed 2026-06-02)
 - [ ] **Phase 10: Typed Relation Resolution** — `Ref[T]` carries runtime target class; `client.read(ref)` / `client.read(list[Ref])` resolves typed relations, batched
 - [ ] **Phase 11: Codegen Metadata + Typed Writes** — Codegen emits readonly/store metadata; `client.write(instance)` / `client.create(instance)` typed paths with correct wire serialization
 - [ ] **Phase 12: Tech Debt Close-out** — CI action bumps, committed password removal, unawaited coroutine warnings, snapshot partial-key fix
@@ -70,7 +70,11 @@ Plans:
   3. Passing an untyped `Ref[int]` (no known target model class) to `client.read` raises `OdooValidationError` with a message that names the cause.
   4. Existing `Ref(id, name)` construction and equality semantics are unchanged — the new `_target_cls` field is `compare=False, hash=False, repr=False`.
   5. Wire transform tests exercise `Ref` / `date` / `datetime` fields through the full `client.read` dispatch chain (not just `model_validate`), closing backlog 999.4.
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Add `_target_cls` to `Ref[T]`, implement `_ref_target_class()` helper, populate from wire transform, TEST-02 wire-fidelity test
+- [ ] 10-02-PLAN.md — `client.read(Ref[T])` overloads + dispatch branch (batching, fail-fast guard, order preservation), `test_rel_resolution.py`
 
 ### Phase 11: Codegen Metadata + Typed Writes
 **Goal**: Callers can pass a typed `OdooBaseModel` instance into `client.write` or `client.create`, and only explicitly-set, writable fields are sent on the wire.
@@ -110,7 +114,7 @@ Plans:
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete | 2026-06-01 |
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
-| 10. Typed Relation Resolution | v1.2 | 0/? | Not started | - |
+| 10. Typed Relation Resolution | v1.2 | 0/2 | Not started | - |
 | 11. Codegen Metadata + Typed Writes | v1.2 | 0/? | Not started | - |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 
