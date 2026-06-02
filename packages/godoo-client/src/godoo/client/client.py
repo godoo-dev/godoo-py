@@ -251,8 +251,19 @@ class OdooClient:
                 results = await self.read(target_cls, target_ids)
                 for record in results:
                     fetched[(target_cls, record.id)] = record
-            # Stitch back in input order
-            ordered = [fetched[(r._target_cls, r.id)] for r in refs]  # type: ignore[index]
+            # Stitch back in input order. Odoo silently drops ids the user cannot access
+            # (ACL) or that were deleted between snapshot and resolve, so a requested id may
+            # be absent from `fetched` — surface that as a typed error, not a bare KeyError (CR-01).
+            ordered: list[Any] = []
+            for r in refs:
+                assert r._target_cls is not None  # narrowed by the __odoo_model__ guard above
+                record = fetched.get((r._target_cls, r.id))
+                if record is None:
+                    raise OdooMissingError(
+                        f"Ref(id={r.id}) on {r._target_cls.__name__} could not be resolved "
+                        "— the record was not returned by Odoo (deleted or access-restricted)."
+                    )
+                ordered.append(record)
             if isinstance(model, Ref):
                 return ordered[0]
             return ordered
