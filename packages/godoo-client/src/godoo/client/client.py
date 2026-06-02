@@ -227,11 +227,15 @@ class OdooClient:
         if isinstance(model, Ref) or (isinstance(model, list) and model and isinstance(model[0], Ref)):
             # Collect refs, validate all up front (D-03)
             refs: list[Ref[Any]] = [model] if isinstance(model, Ref) else list(model)
-            bad = [r for r in refs if r._target_cls is None]
+            # A resolvable Ref must carry an actual Odoo-typed target model. A bare/untyped
+            # field yields _target_cls=None, and Ref[object] yields _target_cls=object — both
+            # lack __odoo_model__ and would otherwise route the class object into the str RPC
+            # path as a model name (CR-02). Reject them up front with a typed error.
+            bad = [r for r in refs if not hasattr(r._target_cls, "__odoo_model__")]
             if bad:
                 raise OdooValidationError(
-                    f"Cannot resolve Ref(id={bad[0].id}): no target model known"
-                    " — it came from an untyped many2one field."
+                    f"Cannot resolve Ref(id={bad[0].id}): target {bad[0]._target_cls!r} "
+                    "is not a typed Odoo model (came from an untyped or Ref[object] field)."
                 )
             # Group by target class, preserving insertion order within each group (D-02)
             from collections import defaultdict

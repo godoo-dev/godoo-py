@@ -142,7 +142,7 @@ async def test_read_heterogeneous_list_preserves_order(auth_client: OdooClient) 
 async def test_read_untyped_ref_raises_before_rpc(auth_client: OdooClient) -> None:
     """read(Ref) with _target_cls=None raises OdooValidationError BEFORE any RPC (REL-04)."""
     untyped: Ref[int] = Ref(id=42, name="X")  # _target_cls defaults to None
-    with pytest.raises(OdooValidationError, match="no target model known"):
+    with pytest.raises(OdooValidationError, match="is not a typed Odoo model"):
         await auth_client.read(untyped)
     # No RPC was fired — auth ran in a separate respx.mock scope
     assert len(respx.calls) == 0
