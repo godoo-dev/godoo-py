@@ -55,7 +55,10 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
   3. `exc.raw` holds the full original fault dict for opt-in debugging; `to_json()` never emits a `"raw"` key.
   4. Existing `except OdooRpcError` / `except OdooValidationError` catch blocks continue to work unchanged (additive-only hierarchy change).
   5. External callers accessing `exc.data` receive the renamed `.raw` attribute (documented breaking change in changelog; `data=` constructor kwarg retained for call-site compat in `_categorize_error`).
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 09-01-PLAN.md -- Refactor OdooRpcError: structured fields, .data->.raw rename, privacy strip, test migration
 
 ### Phase 10: Typed Relation Resolution
 **Goal**: A caller holding a `Ref[T]` can resolve it to the related typed model instance through `client.read`, without naming the target model, using one batched RPC per distinct target model.
