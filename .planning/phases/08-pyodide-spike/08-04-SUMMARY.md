@@ -36,6 +36,7 @@ metrics:
   tasks_total: 2
   files_created: 1
   files_modified: 1
+requirements-completed: [BROWSER-03]
 ---
 
 # Phase 8 Plan 04: Go/No-Go ADR Summary

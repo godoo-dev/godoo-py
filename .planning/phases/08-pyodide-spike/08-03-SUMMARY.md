@@ -137,10 +137,10 @@ per D-08 evidence-vs-decision separation. This document is the evidence artifact
 ## Threat Surface Scan
 
 No @secure() deploy secrets (Odoo master password, Postgres password) were ever committed.
-A transient Playwright runner script (`spikes/08-pyodide/run_spike.py`) was left in the working tree
-during the spike run; it embedded the throwaway `admin`/`admin` default in a URL query string.
-That file was never committed to git history and has since been removed from the working tree.
-The destroyed ACA endpoint grants no access; no credential rotation was required.
+A transient Playwright runner script (`spikes/08-pyodide/run_spike.py`) was committed to the repo
+as part of the spike harness; line 16 embeds a default `admin` password in a URL query string
+(`password=admin`). The targeted ACA endpoint has since been torn down (endpoint deleted, no live
+system) and `admin` is a trivially guessable Odoo default — no credential rotation is required.
 The spike FQDN committed to `index.html` defaults is documentation of the (now-destroyed) spike
 endpoint; it grants no access (endpoint torn down).
 
