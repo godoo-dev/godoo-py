@@ -1,603 +1,597 @@
-# Architecture Research — godoo-py v1.1
+# Architecture Research — godoo-py v1.2
 
-**Domain:** Python async Odoo SDK — adding typed models + browser transport to a shipped library
-**Researched:** 2026-05-27
-**Confidence:** HIGH — based on direct file inspection of the live codebase
-
----
-
-## Existing Architecture Baseline (do not redesign)
-
-### Namespace layout (PEP 420 implicit namespace packages)
-
-```
-packages/godoo/src/
-└── godoo/                          # namespace root — NO __init__.py
-    └── client/                     # dist: godoo-client
-        ├── __init__.py             # barrel exports OdooClient, OdooClientConfig, errors, ...
-        ├── client.py               # OdooClient facade
-        ├── config.py               # config_from_env, create_client
-        ├── errors.py               # OdooError hierarchy
-        ├── safety/                 # SafetyContext, OperationInfo, infer_safety_level
-        └── rpc/
-            ├── transport.py        # JsonRpcTransport (sole httpx consumer)
-            └── types.py            # OdooSessionInfo
-        └── services/{name}/        # 8 domain services (quad: types/functions/service/__init__)
-
-packages/godoo-introspection/src/
-└── godoo/                          # namespace root — NO __init__.py
-    └── introspection/              # dist: godoo-introspection
-        ├── __init__.py             # barrel: CodeGenerator, Introspector, IntrospectionCache, ...
-        ├── introspector.py         # Introspector + IntrospectionCache
-        ├── codegen.py              # CodeGenerator → TypedDict module strings
-        ├── type_mapper.py          # python_type_str() — 20-ttype mapper
-        ├── markers.py              # FieldMeta dataclass (PEP 593 Annotated metadata)
-        └── types.py                # FieldSchema, ModelSchema dataclasses
-
-packages/godoo-testcontainers/src/
-└── godoo/
-    └── testcontainers/             # dist: godoo-testcontainers
-
-packages/godoo-meta/                # dist: godoo (meta only, no code)
-```
-
-The `godoo/` directory at each `src/` root has NO `__init__.py` — that is the PEP 420 namespace
-mechanism that lets all four packages contribute to the same `godoo.*` import tree.
-
-### Key architectural constraints (hard)
-
-- `httpx` is the ONLY runtime dep of `godoo-client`. Nothing else imports at runtime.
-- `OdooClient` is imported under `TYPE_CHECKING` in all service files to prevent circular imports.
-- Service classes are wired via `@cached_property` with local imports inside the property body.
-- Dataclasses (not Pydantic) for all core types.
-- `from __future__ import annotations` in every file.
-- `mypy --strict` on all `src/` directories.
-
-### Current state of the dir rename (Feature A)
-
-The dist name is already `godoo-client` (confirmed in `packages/godoo/pyproject.toml:project.name`).
-The **directory** is still `packages/godoo` — the rename to `packages/godoo-client` has NOT
-happened yet in the filesystem, despite being listed as validated in PROJECT.md. This is the
-discrepancy to close. The import namespace is already `godoo.client.*` — no user-visible change
-is needed.
+**Domain:** Python async Odoo SDK — Typed Relations, Writes & Error Surface
+**Researched:** 2026-06-02
+**Confidence:** HIGH — all claims verified from direct source reading; no assumptions
 
 ---
 
-## Integration Points: New vs Modified Components
+## Existing Architecture Baseline (verified from source)
 
-### Feature A — Dir Rename: `packages/godoo` → `packages/godoo-client`
+### Namespace layout (post v1.1)
 
-**New components:** none.
-**Modified files — complete enumeration:**
+```
+packages/godoo-client/src/godoo/client/
+├── __init__.py             # barrel: OdooClient, all errors, SafetyContext, ...
+├── client.py               # OdooClient facade — @overload read/search_read + CRUD helpers
+├── config.py               # config_from_env, create_client
+├── errors.py               # OdooError hierarchy (7 classes)
+├── typed.py                # stdlib-only: OdooModel Protocol, Ref[T] dataclass
+├── _pydantic_transform.py  # SOLE pydantic importer: OdooBaseModel, derive_partial_model
+├── safety/
+│   └── __init__.py         # SafetyContext, OperationInfo, infer_safety_level
+└── rpc/
+    ├── protocol.py         # Transport Protocol (structural)
+    ├── transport.py        # JsonRpcTransport._categorize_error (line 138)
+    └── types.py            # OdooSessionInfo
 
-| File | Change |
-|------|--------|
-| `packages/godoo/` | Rename directory to `packages/godoo-client/` (git mv) |
-| `packages/godoo/pyproject.toml` → `packages/godoo-client/pyproject.toml` | No content change — `[tool.hatch.build.targets.wheel] only-include = ["src/godoo/client"]` already correct; `project.name = "godoo-client"` already correct |
-| `pyproject.toml` `[tool.mypy] mypy_path` line 35 | `"packages/godoo/src"` → `"packages/godoo-client/src"` |
-| `pyproject.toml` `[tool.semantic_release] version_toml` line 63 | `"packages/godoo/pyproject.toml:project.version"` → `"packages/godoo-client/pyproject.toml:project.version"` |
-| `.github/workflows/test.yml` line 24 | `mypy packages/godoo/src ...` → `mypy packages/godoo-client/src ...` |
-| `mkdocs.yml` line 48 | `paths: [packages/godoo/src, ...]` → `paths: [packages/godoo-client/src, ...]` |
-| `[tool.uv.workspace] members = ["packages/*"]` | No change — glob covers the renamed dir automatically |
-| `.planning/codebase/ARCHITECTURE.md` and other `.planning/` docs | Planning-only files; update as documentation, not code |
-| `CLAUDE.md` path references to `packages/godoo/src/godoo/...` | Update prose references |
-| `CHANGELOG.md` | No change needed (historical paths stay accurate) |
+packages/godoo-introspection/src/godoo/introspection/
+├── codegen.py              # CodeGenerator — emits OdooBaseModel subclasses (Pydantic)
+└── type_mapper.py          # pydantic_field_str() — 20-ttype → (annotation, default, imports)
+```
 
-**What does NOT change:** any Python import (`from godoo.client.client import OdooClient`, etc.) —
-the import namespace is already `godoo.client.*` and the `src/godoo/client/` subtree stays
-identical. No test files, no service files, no `__init__.py` files change.
+### Hard constraints (load-bearing for v1.2 design)
 
-**uv workspace:** `members = ["packages/*"]` uses a glob — the rename is transparent to uv.
+1. `_pydantic_transform.py` is the only file that imports Pydantic — never at module top-level in any other file (D-04/D-08). Subprocess isolation test verifies this.
+2. `OdooClient` is imported under `TYPE_CHECKING` in all service files to prevent circular imports.
+3. Runtime typed dispatch uses `hasattr(model, "__odoo_model__")` — never `isinstance(model, BaseModel)`.
+4. All mutations route through `self.call()` which calls `_guard()` — safety guard is free for any new typed path.
+5. `from __future__ import annotations` in every file — annotation strings are never evaluated at runtime.
+6. `mypy --strict` on all `src/` directories.
 
-**Hatchling wheel config:** `only-include = ["src/godoo/client"]` is relative to `sources = ["src"]`,
-so it also stays correct after the directory rename.
-
----
-
-### Feature B — Typed Models
-
-#### B1: Protocol that lives in `godoo.client` (no pydantic dependency)
-
-**New component:** `packages/godoo-client/src/godoo/client/typed.py`
-
-This module ships in core (no pydantic import at module level) and defines:
+### Current `Ref[T]` dataclass (typed.py:22–34 — VERIFIED)
 
 ```python
-# godoo/client/typed.py
-from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
-
-@runtime_checkable
-class OdooModel(Protocol):
-    """Protocol satisfied by every generated Pydantic model."""
-    __odoo_model__: str   # class var — the technical model name e.g. "res.partner"
-
-T = OdooModel  # convenience alias used in overloads
-ModelT = TypeVar("ModelT", bound=OdooModel)
-```
-
-`runtime_checkable` makes `isinstance(x, OdooModel)` work — but dispatch uses
-`hasattr(model, "__odoo_model__")` on the *class* (not instance), which never imports pydantic.
-The Protocol is pure stdlib and imposes zero runtime cost on the raw path.
-
-**Why in core:** generated model packages (`import ResPartner from mymodels.res_partner`) must
-`from godoo.client.typed import OdooModel` to declare conformance. If the Protocol lived in
-`godoo.introspection`, generated packages would depend on `godoo-introspection` — wrong direction.
-
-#### B2: Dispatch placement in `client.py`
-
-**Modified component:** `packages/godoo-client/src/godoo/client/client.py`
-
-The `@overload` signatures sit directly on `OdooClient.read` and `OdooClient.search_read`.
-The typed branch logic is extracted into a guarded helper to keep the raw path unaffected:
-
-```python
-# In client.py — imports section (TYPE_CHECKING only for ModelT)
-if TYPE_CHECKING:
-    from godoo.client.typed import ModelT
-
-@overload
-async def read(self, model: str, ids: int | list[int], ...) -> list[dict[str, Any]]: ...
-@overload
-async def read(self, model: type[ModelT], ids: int | list[int], ...) -> list[ModelT]: ...
-
-async def read(self, model: str | type[Any], ids: int | list[int], ...) -> list[Any]:
-    if hasattr(model, "__odoo_model__"):
-        return await self._typed_read(model, ids, ...)  # lazy pydantic path
-    id_list = [ids] if isinstance(ids, int) else ids
-    ...  # existing raw path — untouched
-```
-
-`_typed_read` is a private async method on `OdooClient` that does the late import:
-
-```python
-async def _typed_read(self, model_cls: type[Any], ids: int | list[int], ...) -> list[Any]:
-    from godoo.client._pydantic_transform import transform_records  # lazy import
-    model_name: str = model_cls.__odoo_model__
-    raw = await self._raw_read(model_name, ids, ...)
-    return transform_records(model_cls, raw)
-```
-
-The `from godoo.client._pydantic_transform import transform_records` line executes only when
-a model class is passed — never on `import godoo`. The raw path's hot loop is completely
-untouched.
-
-**mypy --strict typing:** The overload uses `type[ModelT]` where `ModelT` is `TypeVar(...,
-bound=OdooModel)`. Because `OdooModel` is a `Protocol` with `runtime_checkable`, mypy resolves
-the TypeVar correctly in both overloads. The implementation signature uses `type[Any]` to
-avoid the overload conflict. The `hasattr(model, "__odoo_model__")` guard is a runtime check;
-mypy needs a `TYPE_CHECKING` annotation for `ModelT` to keep the overloads strict.
-
-#### B3: Import isolation — the `_pydantic_transform` helper
-
-**New component:** `packages/godoo-client/src/godoo/client/_pydantic_transform.py`
-
-This is a private module. It is the ONLY file in `godoo-client` that imports pydantic.
-It is never imported at module load time — only inside `_typed_read`.
-
-```python
-# _pydantic_transform.py
-from __future__ import annotations
-from typing import Any
-
-def transform_records(model_cls: type[Any], raw: list[dict[str, Any]]) -> list[Any]:
-    # pydantic import is local — never at module level
-    try:
-        import pydantic  # noqa: F401
-    except ImportError as exc:
-        raise ImportError(
-            "godoo[typed] extra required: pip install godoo-client[typed]"
-        ) from exc
-    return [model_cls.model_validate(record) for record in raw]
-```
-
-`model_validate` is the Pydantic v2 API. The `ImportError` with a helpful message guides
-users who call the typed path without installing the extra.
-
-**Pydantic optional extra** declared in `packages/godoo-client/pyproject.toml`:
-
-```toml
-[project.optional-dependencies]
-typed = ["pydantic>=2.0"]
-```
-
-Nothing else changes in the package — `dependencies = ["httpx>=0.27"]` stays as-is.
-
-#### B4: Generated-package shape (emitted by the CLI generator)
-
-A generated package (e.g. `myproject_models/`) has this layout:
-
-```
-myproject_models/
-├── __init__.py          # barrel: from .res_partner import ResPartner, ...
-├── res_partner.py       # one file per model
-├── account_move.py
-└── ...
-```
-
-Each model file:
-
-```python
-# AUTOGENERATED by godoo-introspection — do not edit manually.
-# Model: res.partner
-from __future__ import annotations
-from typing import Literal
-import pydantic
-from godoo.client.typed import OdooModel  # Protocol conformance (structural, not base class)
-
-class Ref(pydantic.BaseModel):
-    id: int
-    name: str
-
-class ResPartner(pydantic.BaseModel):
-    __odoo_model__ = "res.partner"  # class var — satisfies OdooModel Protocol
-
-    id: int
-    name: str | None = None
-    active: bool = True
-    parent_id: Ref | None = None    # many2one → Ref
-    child_ids: list[int] = []       # one2many / many2many → list[int] (id-only, no fetch)
-    # ... all fields with validators
-```
-
-Key design decisions for generated models:
-- `pydantic.BaseModel` with `model_config = ConfigDict(from_attributes=False)` — input is dicts.
-- Odoo's `False` wire value for unset fields is handled via a pydantic field validator
-  (`@field_validator(..., mode="before")` that maps `False` → `None`).
-- many2one (`[id, "Name"]` tuple/list) → `Ref` dataclass-like model.
-- one2many / many2many → `list[int]` (id list; no nested fetch by design).
-- selection → `Literal[...]` matching the existing type_mapper output, OR a pydantic enum.
-- `__odoo_model__` is a class variable (`ClassVar[str]`), not a pydantic field.
-- Generated models do NOT inherit from any godoo base class — they conform structurally to
-  `OdooModel` Protocol via the presence of `__odoo_model__`.
-
-**Where `Ref` lives:** Define `Ref` in `godoo.client.typed` (not in each generated file) to avoid
-duplicating it. Generated models import it: `from godoo.client.typed import Ref`. This keeps
-`Ref` in core, importable without pydantic (it is a stdlib dataclass at the Protocol level):
-
-```python
-# godoo/client/typed.py (addition)
-from dataclasses import dataclass
-
 @dataclass(frozen=True)
-class Ref:
-    """Typed reference for many2one fields: wire format is [id, 'Name']."""
+class Ref[T]:
     id: int
-    name: str
+    name: str | None
 ```
 
-The pydantic-model version of `Ref` used inside generated models can be a subclass or just
-the same dataclass — pydantic v2 validates dataclasses fine via `model_validate`.
+`T` is annotation-only — erased by `from __future__ import annotations`. No `_target_cls` field exists today. When `_odoo_wire_transforms` constructs `Ref(id=value[0], name=...)` at `_pydantic_transform.py:138`, it does NOT pass target class information. The `T` in `Ref[ResPartner]` annotation is available via `get_args(field_info.annotation)` at validation time but is never stored in the Ref instance.
 
-#### B5: CLI generator placement in `godoo-introspection`
-
-**New component:** `packages/godoo-introspection/src/godoo/introspection/pydantic_codegen.py`
-
-This is a NEW module alongside the existing `codegen.py` (which emits TypedDict — unchanged).
-It reuses:
-- `Introspector.get_schemas()` — unchanged, provides `ModelSchema` / `FieldSchema`
-- `_model_to_classname()` / `_model_to_filename()` — can be extracted to a `_codegen_utils.py`
-  shared by both codegen modules, OR duplicated (both are tiny, duplication is fine)
-- `type_mapper.python_type_str()` — used as a starting point, but the Pydantic codegen
-  needs a different mapper (Pydantic types vs TypedDict annotation strings differ: `Ref` vs
-  `tuple[int, str] | Literal[False]`)
-
-**New mapper:** `packages/godoo-introspection/src/godoo/introspection/pydantic_type_mapper.py`
-
-A separate mapper from `type_mapper.py` — same ttype inputs, different outputs:
-
-| ttype | TypedDict mapper output | Pydantic mapper output |
-|-------|------------------------|------------------------|
-| many2one | `tuple[int, str] \| Literal[False]` | `Ref \| None` |
-| one2many / many2many | `list[int]` | `list[int]` |
-| char/text/html | `str \| Literal[False]` | `str \| None` |
-| integer | `int \| Literal[False]` | `int \| None` |
-| boolean | `bool` | `bool` |
-| date | `str \| Literal[False]` | `date \| None` (with validator) |
-| datetime | `str \| Literal[False]` | `datetime \| None` (with validator) |
-| selection | `Literal[...] \| Literal[False]` | `Literal[...] \| None` |
-
-The `False` → `None` coercion is handled via a single `@model_validator(mode="before")` or
-per-field `@field_validator` on the generated model — not in the type annotation.
-
-**CLI entry point** declared in `packages/godoo-introspection/pyproject.toml`:
-
-```toml
-[project.scripts]
-godoo-introspect = "godoo.introspection.cli:main"
-```
-
-**New component:** `packages/godoo-introspection/src/godoo/introspection/cli.py`
+### Current `_odoo_wire_transforms` m2o branch (verified, lines 130–138)
 
 ```python
-# cli.py — thin argparse wrapper
-async def _generate(url, db, user, password, models, output_dir, format_): ...
-
-def main() -> None:
-    # parse args, call asyncio.run(_generate(...))
+if (
+    isinstance(value, list)
+    and len(value) == 2
+    and isinstance(value[0], int)
+    and (isinstance(value[1], str) or value[1] is False)
+    and _annotation_mentions_ref(annotation)
+):
+    out[name] = Ref(id=value[0], name=None if value[1] is False else value[1])
+    continue
 ```
 
-The CLI authenticates a client, constructs an `Introspector`, calls `get_schemas()`, then
-dispatches to `CodeGenerator.write()` (TypedDict) or `PydanticCodeGenerator.write()` (Pydantic)
-based on a `--format typeddict|pydantic` flag (default: `pydantic` for the v1.1 milestone).
+At this point `annotation` is `field_info.annotation` — the full annotation including type arguments (e.g. `Optional[Ref[ResPartner]]`). `get_args(annotation)` is callable here and would yield `(Ref[ResPartner], type(None))` for an `Optional[Ref[ResPartner]]` field.
 
-**Modified component:** `packages/godoo-introspection/src/godoo/introspection/__init__.py`
-
-Add `PydanticCodeGenerator` to `__all__` once the class exists.
-
-**Pydantic as introspection dependency:** The `godoo-introspection` package generates pydantic
-code — it does NOT need pydantic at runtime itself (it emits strings). Pydantic is NOT added
-as a dep of `godoo-introspection`. The generated package's consumer installs pydantic.
-If the CLI's `--format pydantic` is used, the generated output imports pydantic, but the CLI
-itself only writes text files — no runtime pydantic import needed during generation.
-
----
-
-### Feature C — Pyodide Transport Spike
-
-#### Seam analysis
-
-`JsonRpcTransport` in `packages/godoo-client/src/godoo/client/rpc/transport.py` is constructed
-directly in `OdooClient.__init__`:
+### Current `OdooRpcError` (errors.py:20–43 — VERIFIED)
 
 ```python
-self._transport = JsonRpcTransport(config.url, config.database, timeout=config.timeout)
-```
-
-The transport is consumed only through `self._transport.authenticate()`, `self._transport.call()`,
-`self._transport.logout()`, and `self._transport.aclose()`.
-
-**New component:** `packages/godoo-client/src/godoo/client/rpc/protocol.py`
-
-Extract a `Transport` Protocol (structural typing, no ABC overhead):
-
-```python
-# rpc/protocol.py
-from __future__ import annotations
-from typing import Any, Protocol
-from godoo.client.rpc.types import OdooSessionInfo
-
-class Transport(Protocol):
-    @property
-    def session(self) -> OdooSessionInfo | None: ...
-    def is_authenticated(self) -> bool: ...
-    async def authenticate(self, username: str, password: str) -> OdooSessionInfo: ...
-    async def call(self, model: str, method: str, args: list[Any], kwargs: dict[str, Any]) -> Any: ...
-    def logout(self) -> None: ...
-    async def aclose(self) -> None: ...
-```
-
-**Modified component:** `OdooClientConfig` gets an optional `transport_factory` field:
-
-```python
-@dataclass
-class OdooClientConfig:
-    ...
-    transport_factory: Callable[[str, str, float | None], Transport] | None = field(default=None)
-```
-
-`OdooClient.__init__` becomes:
-
-```python
-factory = config.transport_factory or JsonRpcTransport
-self._transport = factory(config.url, config.database, config.timeout)
-```
-
-The `Transport` Protocol is the seam. `JsonRpcTransport` already satisfies it structurally —
-no modification to `JsonRpcTransport` needed (it is a structural match, not a subclass).
-
-**New component (spike only):** `packages/godoo-client/src/godoo/client/rpc/pyodide_transport.py`
-
-```python
-# pyodide_transport.py — NOT imported by default; only used in Pyodide env
-class PyodideTransport:
-    """fetch()-backed transport for Pyodide environments.
-    Satisfies the Transport Protocol structurally.
-    """
-    def __init__(self, base_url: str, db: str, timeout: float | None = None) -> None: ...
-    async def call_rpc(self, method: str, params: dict[str, Any]) -> Any:
-        # Uses js.fetch (Pyodide's JS bridge) instead of httpx
-        import js  # type: ignore[import]  # Pyodide-only
+class OdooRpcError(OdooError):
+    def __init__(self, message, *, code=None, data=None, cause=None):
+        super().__init__(message)
+        self.code = code
+        self.data = data          # ← named .data today; SEED-003 renames to .raw
         ...
 ```
 
-The `import js` line is Pyodide-specific and guarded — the module exists in the package but
-is never imported unless explicitly constructed. CI runs in CPython so this file is never
-exercised except in Pyodide testing.
+All subclasses pass through the same `__init__` (no override of `__init__` in subclasses — verified). All subclasses override only `to_json()` using `result = super().to_json(); result["error"] = "..."; return result`.
 
-**What does NOT change:** `JsonRpcTransport`, `OdooClient.call()`, all services, all tests.
-The spike is purely additive: a new file + a new optional config field with a `None` default.
+### Current `_categorize_error` (transport.py:138–168 — VERIFIED)
 
----
-
-## Data-Flow Changes
-
-### Raw read path (unchanged)
-
-```
-client.read("res.partner", [1])
-  → OdooClient.read (str branch — hasattr guard is False)
-  → OdooClient.call()
-  → JsonRpcTransport.call()
-  → Odoo JSON-RPC
-  → list[dict[str, Any]]
-```
-
-### Typed read path (new)
-
-```
-client.read(ResPartner, [1])
-  → OdooClient.read (type[ModelT] branch — hasattr guard is True)
-  → OdooClient._typed_read()
-  → lazy import: godoo.client._pydantic_transform.transform_records
-  → OdooClient._raw_read("res.partner", [1])
-  → OdooClient.call()
-  → JsonRpcTransport.call()
-  → Odoo JSON-RPC
-  → list[dict] → transform_records(ResPartner, raw) → list[ResPartner]
-```
-
-### Code generation path (new)
-
-```
-CLI: godoo-introspect --url ... --models res.partner --output ./models/ --format pydantic
-  → cli.py: asyncio.run(_generate(...))
-  → OdooClient (authenticate)
-  → Introspector.get_schemas(["res.partner"])
-  → PydanticCodeGenerator.write([schema], output_dir)
-  → ./models/res_partner.py (emits pydantic BaseModel source)
-  → ./models/__init__.py (barrel)
-```
+Constructs errors as: `OdooValidationError(message, code=code, data=data)`. The `data` kwarg is the full parsed `error_dict["data"]` dict from the Odoo response. No stripping occurs today.
 
 ---
 
-## Build Order
+## Feature Integration Analysis
 
-The suggested build order respects hard dependencies between the three features:
+---
 
-### Step 1 — Dir rename (`packages/godoo` → `packages/godoo-client`)
+### TYPED-F1: `client.read(ref)` / `client.read(list[Ref])` — Ref-Driven Resolution
 
-**Why first:** every subsequent change touches files in this directory. Do the rename once
-before any new files are added so all paths are correct from the start. The rename is a
-pure filesystem + config update with no logic change — low risk, high payoff for clarity.
+#### The Core Problem: Ref Has No Runtime Target Class
 
-Files to update in one atomic commit (git mv + config edits):
-1. `git mv packages/godoo packages/godoo-client`
-2. `pyproject.toml` — update `mypy_path` and `version_toml`
-3. `.github/workflows/test.yml` — update mypy invocation
-4. `mkdocs.yml` — update `paths`
-5. Verify `uv sync` and `uv run mypy ...` pass before proceeding
+`Ref[T]` instances carry only `id` and `name`. To resolve a `Ref` to its model, `client.read(ref)` needs to know which `OdooBaseModel` subclass to instantiate. The `T` type argument is annotation-only and inaccessible at runtime on the `Ref` instance.
 
-### Step 2 — Protocol + Transport seam (`godoo.client.rpc.protocol`, `Transport` field in config)
+**Required change:** `Ref[T]` must carry `_target_cls: type | None` — populated by the wire transform at validation time, when `field_info.annotation` is available.
 
-**Why before typed models:** the `Transport` Protocol and the `transport_factory` field in
-`OdooClientConfig` are additive and zero-risk (no behaviour change). Establishing this seam
-early also enables the Pyodide spike (Step 4) to proceed independently once the seam exists.
-No pydantic involved.
+#### Step 1: Extend `Ref[T]` — `client/typed.py` MODIFIED
 
-### Step 3 — Typed models core (`godoo.client.typed`, `_pydantic_transform`, overloads in `client.py`)
+Add a non-frozen, defaulted field so existing `Ref(id=..., name=...)` construction sites still work:
 
-**Why before the CLI generator:** the generated models import `godoo.client.typed.OdooModel`
-and `Ref`. Core must exist before codegen can emit valid imports. Also the `godoo-client[typed]`
-optional extra must be declared before the CLI generator's output is tested end-to-end.
+```python
+@dataclass(frozen=True)
+class Ref[T]:
+    id: int
+    name: str | None
+    _target_cls: type | None = field(default=None, compare=False, repr=False, hash=False)
+```
 
-Order within Step 3:
-3a. Add `godoo/client/typed.py` (Protocol + `Ref`) — pure stdlib, no pydantic
-3b. Add `godoo[typed]` optional extra to `packages/godoo-client/pyproject.toml`
-3c. Add `godoo/client/_pydantic_transform.py` (lazy pydantic import)
-3d. Add `@overload` signatures + dispatch guard to `client.py:read` and `search_read`
-3e. Add tests: raw path unchanged; typed path returns model instances; missing pydantic gives clear error
+`compare=False, hash=False` — the target class is metadata, not identity. `repr=False` keeps repr clean. `frozen=True` is preserved — `field(default=None)` is compatible with frozen dataclasses.
 
-### Step 4 — Pydantic CLI generator in `godoo-introspection`
+**mypy --strict note:** `field(default=None, ...)` on a frozen dataclass with a TypeVar parameter requires care. The annotation `_target_cls: type | None` (not `type[T] | None`) avoids generic complexity at the call site while remaining honest about the value. Callers who need the typed class cast it themselves.
 
-**Why after Step 3:** `PydanticCodeGenerator` emits `from godoo.client.typed import OdooModel`
-— the Protocol must exist. The CLI can be built and tested only after the core typed layer is
-stable.
+#### Step 2: Populate `_target_cls` in Wire Transform — `_pydantic_transform.py` MODIFIED
 
-Order within Step 4:
-4a. Add `godoo/introspection/pydantic_type_mapper.py`
-4b. Add `godoo/introspection/pydantic_codegen.py` (PydanticCodeGenerator)
-4c. Add `godoo/introspection/cli.py` + `[project.scripts]` entry point
-4d. Integration test: CLI generates a model package from a live Odoo; `client.read(Model, ...)` validates
+In `_odoo_wire_transforms`, the m2o branch already has `annotation` for the field. Extract the target class from the annotation's type arguments:
 
-### Step 5 — Pyodide transport spike
+```python
+# m2o branch — after confirming _annotation_mentions_ref(annotation):
+target_cls = _extract_ref_target_cls(annotation)
+out[name] = Ref(id=value[0], name=None if value[1] is False else value[1], _target_cls=target_cls)
+```
 
-**Why last:** it is explicitly a spike — the outcome determines whether to commit to a browser
-build or not. The `Transport` Protocol seam from Step 2 is the prerequisite. The spike has
-no dependencies on Steps 3/4. It can run in parallel with Step 4 if bandwidth allows, but
-sequentially placing it last reduces risk: if the spike reveals breaking changes (e.g. httpx
-cannot be made Pyodide-compatible, requiring a fork), those decisions are made after the higher-
-value typed-models work ships.
+New private helper `_extract_ref_target_cls(annotation) -> type | None`:
+- Unwrap `Optional[Ref[X]]` → `Ref[X]`
+- Extract `get_args(Ref[X])` → `(X,)`
+- Return `X` if `hasattr(X, "__odoo_model__")` else `None`
+- For `Ref[int]`: `int` has no `__odoo_model__` → returns `None`
 
-Spike deliverable: a proof-of-concept `pyodide_transport.py` + a decision memo on whether
-to commit to `godoo-client[pyodide]` as a supported configuration.
+This helper is NEW in `_pydantic_transform.py`. It does not change the existing `_annotation_mentions_ref` predicate — add a sibling rather than modifying the predicate to return two values.
+
+#### Step 3: New `@overload` on `client.read` — `client/client.py` MODIFIED
+
+Current implementation signature: `read(self, model: str | type[T], ids: int | list[int], ...)`.
+
+The Ref overloads use a different first-parameter type. Add two new `@overload` signatures:
+
+```python
+@overload
+async def read(self, model: Ref[T]) -> T: ...
+
+@overload
+async def read(self, model: list[Ref[T]]) -> list[T]: ...
+```
+
+The implementation signature becomes:
+```python
+async def read(
+    self,
+    model: str | type[T] | Ref[T] | list[Ref[T]],
+    ids: int | list[int] | None = None,
+    fields: list[str] | None = None,
+    **kwargs: Any,
+) -> list[dict[str, Any]] | list[T] | T:
+```
+
+Making `ids` optional (default `None`) allows `read(ref)` without `ids`. The existing overloads require `ids` — their signatures are unchanged. mypy will dispatch correctly because `Ref` and `list[Ref]` are structurally distinct from `str` and `type[T]`.
+
+**Ref import in client.py:** `Ref` lives in `typed.py` (stdlib-only). `OdooModel` is already imported from `typed.py` at module level (`from godoo.client.typed import OdooModel`, line 21 of client.py). Add `Ref` to that same import. No pydantic boundary crossed.
+
+#### Step 4: Batch-by-Target-Model Logic — `client/client.py` MODIFIED
+
+Inside the new Ref branch:
+
+```python
+# Single Ref
+if isinstance(model, Ref):
+    if model._target_cls is None:
+        raise OdooValidationError("Cannot resolve untyped Ref[int] — target model class unavailable")
+    results = await self.read(model._target_cls, [model.id], fields=fields, **kwargs)
+    return cast("T", results[0])
+
+# list[Ref]
+if isinstance(model, list) and model and isinstance(model[0], Ref):
+    return await self._resolve_ref_list(model, fields=fields, **kwargs)
+```
+
+`_resolve_ref_list` is a private async method on `OdooClient` (NEW):
+
+```python
+async def _resolve_ref_list(self, refs: list[Ref[Any]], ...) -> list[Any]:
+    # Group by target class
+    grouped: dict[type, list[tuple[int, Ref[Any]]]] = {}
+    for i, ref in enumerate(refs):
+        if ref._target_cls is None:
+            raise OdooValidationError(f"Ref at index {i} is untyped (Ref[int]) — cannot resolve")
+        grouped.setdefault(ref._target_cls, []).append((i, ref))
+
+    # Fetch each group; results keyed by id
+    id_to_record: dict[int, Any] = {}
+    for target_cls, indexed_refs in grouped.items():
+        ids = [ref.id for _, ref in indexed_refs]
+        records = await self.read(target_cls, ids, ...)
+        for record in records:
+            id_to_record[record.id] = record  # OdooBaseModel instances have .id
+
+    # Reassemble in input order
+    return [id_to_record[ref.id] for ref in refs]
+```
+
+This method lives in `client.py`, not a separate module. The lazy Pydantic import is inherited from the delegated `self.read(target_cls, ...)` call — no direct Pydantic import needed in `_resolve_ref_list`.
+
+#### TYPED-F1 Integration Point Summary
+
+| Symbol | File | Change | Notes |
+|--------|------|--------|-------|
+| `Ref[T]` | `client/typed.py` | MODIFIED | Add `_target_cls: type \| None` field |
+| `_extract_ref_target_cls` | `client/_pydantic_transform.py` | NEW helper | Extracts target class from `Optional[Ref[X]]` annotation |
+| `_odoo_wire_transforms` (m2o branch) | `client/_pydantic_transform.py` | MODIFIED | Pass `_target_cls` to Ref constructor |
+| `OdooClient.read` | `client/client.py` | MODIFIED | New `@overload` for `Ref[T]` and `list[Ref[T]]`; Ref dispatch branch |
+| `OdooClient._resolve_ref_list` | `client/client.py` | NEW private method | Batch-group-and-fetch logic |
+| `Ref` import in `client.py` | `client/client.py` | MODIFIED | Add `Ref` to `from godoo.client.typed import OdooModel, Ref` |
+
+**Pydantic-optional boundary:** `Ref._target_cls` is a plain `type | None` stored in stdlib dataclass — no Pydantic. The target class extraction runs inside `_pydantic_transform.py` (already Pydantic-only module). The `client.read(ref)` dispatch branch lazy-imports nothing new — it delegates to `self.read(target_cls, ids)` which already uses the existing lazy import.
+
+**`Ref[int]` behaviour:** `_target_cls = None` → `OdooValidationError` raised at read time. Expected, documented.
+
+---
+
+### TYPED-F2: Typed Write/Create — Accept `OdooBaseModel` Instances
+
+#### Serialization Function — `_pydantic_transform.py` NEW
+
+`OdooBaseModel.model_dump(exclude_none=True)` produces a dict that needs reverse transforms before sending to Odoo:
+
+- `Ref(id=14, name="France") → 14` (m2o field: send id only)
+- `date(2024, 1, 15) → "2024-01-15"` (date field)
+- `datetime(2024, 1, 15, 12, 0, 0) → "2024-01-15 12:00:00"` (datetime field — Odoo format, not ISO T)
+- `list[int]` — unchanged
+- `bool` — unchanged
+- `str`, `int`, `float`, `None` — unchanged
+
+New function `odoo_dump(instance: OdooBaseModel, *, exclude_id: bool = True) -> dict[str, Any]`:
+
+```python
+def odoo_dump(instance: OdooBaseModel, *, exclude_id: bool = True) -> dict[str, Any]:
+    from datetime import date, datetime
+    raw = instance.model_dump(exclude_none=True)
+    if exclude_id:
+        raw.pop("id", None)
+    for name, value in list(raw.items()):
+        if isinstance(value, Ref):
+            raw[name] = value.id
+        elif isinstance(value, datetime):  # datetime before date — subclass
+            raw[name] = value.strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(value, date):
+            raw[name] = value.isoformat()
+    return raw
+```
+
+`date`/`datetime` imports are stdlib — permitted in `_pydantic_transform.py` (they are already imported there at lines 11–12). `Ref` is already imported from `typed.py` at line 13 of `_pydantic_transform.py`.
+
+#### New `@overload` on `write` and `create` — `client/client.py` MODIFIED
+
+**`write` overloads (existing lines 440–473):**
+
+```python
+@overload
+async def write(self, model: type[T], ids: int | list[int], values: T, **kwargs) -> bool: ...
+@overload
+async def write(self, model: str, ids: int | list[int], values: dict[str, Any], **kwargs) -> bool: ...
+```
+
+Implementation: detect `hasattr(model, "__odoo_model__")` → lazy import `odoo_dump` → serialize `values` → call existing `self.call(model.__odoo_model__, "write", ...)`.
+
+**`create` overloads (existing lines 440–462):**
+
+```python
+@overload
+async def create(self, model: type[T], values: T, **kwargs) -> int: ...
+@overload
+async def create(self, model: type[T], values: list[T], **kwargs) -> list[int]: ...
+@overload
+async def create(self, model: str, values: dict[str, Any], **kwargs) -> int: ...
+@overload
+async def create(self, model: str, values: list[dict[str, Any]], **kwargs) -> list[int]: ...
+```
+
+Implementation: `hasattr(model, "__odoo_model__")` → serialize single instance or list → call existing `self.call(model.__odoo_model__, "create", ...)`.
+
+#### Safety Guard — No Changes
+
+All typed write/create paths route through `self.call()` which calls `_guard()`. Safety is free — no new guard logic needed.
+
+#### Public Export
+
+`OdooBaseModel` is in `_pydantic_transform.py` (private module). If users need to type-annotate against it, it should be exposed. However, it is already accessible via `from godoo.client._pydantic_transform import OdooBaseModel` for generated model files. Adding it to `client/__init__.py` `__all__` is optional — depends on whether it is a public API (it was not in v1.1). Decision deferred to requirements author; the implementation does not require it.
+
+#### TYPED-F2 Integration Point Summary
+
+| Symbol | File | Change | Notes |
+|--------|------|--------|-------|
+| `odoo_dump` | `client/_pydantic_transform.py` | NEW function | Serializes `OdooBaseModel` → Odoo write/create payload dict |
+| `OdooClient.write` | `client/client.py` | MODIFIED | New `@overload` for `type[T]` + `T` instance |
+| `OdooClient.create` | `client/client.py` | MODIFIED | New `@overload` for `type[T]` + `T \| list[T]` |
+| `client/__init__.py` | `client/__init__.py` | POSSIBLY MODIFIED | Add `OdooBaseModel` to exports if public API |
+
+**Pydantic-optional boundary:** `odoo_dump` is in `_pydantic_transform.py` — already Pydantic-only. The new overloads in `client.py` lazy-import it the same way `read()` does. No Pydantic at module load time.
+
+---
+
+### SEED-003: Restructure `OdooError` Hierarchy
+
+#### Current Structure (verified from errors.py)
+
+```
+OdooError
+├── OdooRpcError(code, data, cause)     ← self.data = raw server dict
+│   ├── OdooAuthError
+│   ├── OdooNetworkError
+│   │   └── OdooTimeoutError
+│   ├── OdooValidationError
+│   ├── OdooAccessError
+│   └── OdooMissingError
+└── OdooSafetyError(operation)           ← local-only; unaffected by SEED-003
+```
+
+No subclass overrides `__init__` (verified — only `OdooAuthError` has an `__init__` override, and it delegates to `super().__init__` with the same signature). All subclasses override only `to_json()`.
+
+#### What SEED-003 Changes
+
+**`OdooRpcError.__init__` — MODIFIED:**
+
+```python
+class OdooRpcError(OdooError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: int | None = None,
+        data: dict[str, Any] | None = None,   # kwarg name stays "data" at call sites
+        cause: Exception | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.raw: dict[str, Any] | None = data     # RENAMED: was self.data
+        # NEW structured fields — extracted from data dict:
+        self.odoo_model: str | None = _extract_model(data)
+        self.odoo_field: str | None = _extract_field(data)
+        self.constraint: str | None = _extract_constraint(data)
+        self.human_message: str | None = _extract_human_message(data)
+        if cause is not None:
+            self.__cause__ = cause
+```
+
+**Breaking change:** `self.data` → `self.raw`. The kwarg name in `__init__` stays `data=` (no call-site changes in `_categorize_error`). Only external callers accessing `exc.data` must migrate to `exc.raw`.
+
+**`OdooAuthError.__init__` — MINIMALLY MODIFIED:**
+
+```python
+class OdooAuthError(OdooRpcError):
+    def __init__(self, message="Authentication failed", *, code=None, data=None, cause=None):
+        super().__init__(message, code=code, data=data, cause=cause)
+```
+
+Signature unchanged — `data=` kwarg name stays. Only the inherited `self.raw` rename affects it. No functional change.
+
+**`OdooRpcError.to_json` — MODIFIED:**
+
+```python
+def to_json(self) -> dict[str, Any]:
+    return {
+        "error": "RPC_ERROR",
+        "message": str(self),
+        "model": self.odoo_model,
+        "field": self.odoo_field,
+        "constraint": self.constraint,
+        "human_message": self.human_message,
+        "raw": self.raw,
+    }
+```
+
+Subclasses override only `result["error"] = "..."` — that pattern still works unchanged.
+
+**Extraction helpers — NEW private functions in `errors.py`:**
+
+Odoo's `data` dict shape (from `_categorize_error` inspection) has keys: `exception_type`, `name`, `message`, `debug`, `arguments`, `context`. The structured fields map as:
+
+- `human_message` — `data.get("message")` or `data.get("arguments", [None])[0]`
+- `odoo_model` — heuristic from `data.get("name")` (e.g. `"odoo.exceptions.ValidationError"`) or `data.get("context", {}).get("model")`
+- `odoo_field` — `data.get("field")` if present, else `None`
+- `constraint` — `data.get("context", {}).get("constraint")` if present
+- Traceback stripping: `data.get("debug")` contains the Python traceback — NOT included in `to_json()` output; available only via `self.raw["debug"]`
+
+All helpers return `None` if `data is None` or the key is absent — safe defaults.
+
+**`_categorize_error` in `transport.py` — MINIMALLY MODIFIED:**
+
+Current construction: `OdooValidationError(message, code=code, data=data)` where `message` is `data.get("message", "Unknown RPC error")` from the outer error dict (not the nested `data["message"]`).
+
+The `message` passed to the constructor is Odoo's outer error message — which may contain a server traceback in some versions. The stripping happens in `OdooRpcError.__init__` by extracting `human_message` from `data["message"]` (the nested, cleaner message) and using that as the overriding display.
+
+**Alternative approach:** override `str(self)` to return `self.human_message or self.args[0]`. This avoids changing `message` assignment in `_categorize_error` at all — the human-readable message surfaces via `str(exc)` without touching the constructor.
+
+This second approach is cleaner: `_categorize_error` is unchanged except it now benefits from structured fields on the raised exception.
+
+#### Existing Raise Sites — No Change Required
+
+`client.py` raises `OdooValidationError("...")` and `OdooAuthError("...")` with string-only messages (no `data=`). After SEED-003, `self.raw = None` and structured fields are all `None` for these — the existing behaviour is preserved exactly.
+
+#### SEED-003 Integration Point Summary
+
+| Symbol | File | Change | Notes |
+|--------|------|--------|-------|
+| `OdooRpcError.__init__` | `client/errors.py` | MODIFIED | `self.data` → `self.raw`; add structured fields |
+| `OdooRpcError.to_json` | `client/errors.py` | MODIFIED | Surface structured fields; `raw` instead of `details` |
+| `OdooAuthError.__init__` | `client/errors.py` | MINIMALLY MODIFIED | `super()` call unchanged; just inherits new fields |
+| `_extract_model`, `_extract_field`, `_extract_constraint`, `_extract_human_message` | `client/errors.py` | NEW private helpers | Safe None-returning extractors |
+| `_categorize_error` | `client/rpc/transport.py` | NOT MODIFIED | `data=` kwarg unchanged; stripping handled in `OdooRpcError.__init__` |
+| `client/__init__.py` `__all__` | `client/__init__.py` | NOT MODIFIED | All errors already exported |
+
+---
+
+## Data Flow Changes
+
+### TYPED-F1: Ref Resolution Data Flow
+
+```
+Before (v1.1):
+  OdooBaseModel._odoo_wire_transforms
+    → Ref(id=14, name="France")          # no target class
+
+After (v1.2):
+  OdooBaseModel._odoo_wire_transforms
+    → _extract_ref_target_cls(annotation)  # annotation = Optional[Ref[ResCountry]]
+    → Ref(id=14, name="France", _target_cls=ResCountry)
+
+New resolution path:
+  client.read(ref)                         # ref._target_cls = ResCountry
+    → ref._target_cls is None? → OdooValidationError
+    → self.read(ResCountry, [ref.id])      # existing typed read path
+    → list[ResCountry][0]                  # unwrap single
+
+  client.read([ref1, ref2, ref3])          # list[Ref] — may be mixed types
+    → group by ref._target_cls
+    → self.read(ResCountry, [id1, id2])
+    → self.read(ResCurrency, [id3])
+    → reassemble in input order
+```
+
+### TYPED-F2: Typed Write/Create Data Flow
+
+```
+Before (v1.1):
+  client.write("res.partner", [42], {"name": "ACME"})
+    → self.call("res.partner", "write", [[42], {"name": "ACME"}], {})
+    → safety guard (WRITE) → transport.call() → Odoo
+
+After (v1.2, new typed path):
+  client.write(ResPartner, [42], partner_instance)
+    → hasattr(ResPartner, "__odoo_model__") → True
+    → lazy import: odoo_dump from _pydantic_transform
+    → payload = odoo_dump(partner_instance)
+        → model_dump(exclude_none=True)
+        → reverse transforms: Ref→id, datetime→str, date→str
+        → {"name": "ACME", "country_id": 14, ...}
+    → self.call("res.partner", "write", [[42], payload], {})
+    → safety guard (WRITE) → transport.call() → Odoo
+```
+
+### SEED-003: Error Path Data Flow
+
+```
+Before (v1.1):
+  transport._categorize_error({"message": "...", "data": {...traceback...}})
+    → OdooValidationError(message, code=code, data=data)
+        → exc.data = {"message": "...", "debug": "Traceback..."}
+        → exc.to_json() = {"details": {"message": "...", "debug": "Traceback..."}}
+
+After (v1.2):
+  transport._categorize_error({"message": "...", "data": {...traceback...}})
+    → OdooValidationError(message, code=code, data=data)   # unchanged call
+        → exc.raw = {"message": "...", "debug": "Traceback..."}   # full dict preserved
+        → exc.human_message = "Field 'name' is required"          # extracted, clean
+        → exc.odoo_model = "res.partner"                          # extracted
+        → exc.to_json() = {
+              "error": "VALIDATION_ERROR",
+              "message": "...",            # stripped (no traceback)
+              "human_message": "Field 'name' is required",
+              "model": "res.partner",
+              "field": None,
+              "constraint": None,
+              "raw": {"message": "...", "debug": "Traceback..."}  # full escape hatch
+          }
+```
+
+---
+
+## Recommended Build Order
+
+### Dependency Graph
+
+```
+SEED-003
+  (no dependencies on TYPED features)
+
+TYPED-F1-prereq: Ref._target_cls + wire transform
+  └── depends on: nothing (Ref is stdlib, transform is in existing _pydantic_transform.py)
+
+TYPED-F1-dispatch: client.read(Ref) overloads + _resolve_ref_list
+  └── depends on: TYPED-F1-prereq (Ref must carry _target_cls before dispatch is useful)
+
+TYPED-F2: odoo_dump + write/create overloads
+  └── depends on: nothing new (odoo_dump uses existing OdooBaseModel + Ref.id)
+      Note: odoo_dump.Ref reverse-transform uses ref.id only — no _target_cls dependency
+```
+
+### Proposed Phase Order
+
+**Step 1 — SEED-003 (`errors.py` restructure)**
+
+Rationale: Independent of both typed features. Ships first so the cleaner error surface is active for all subsequent testing. Tests: unit tests for `_extract_*` helpers; round-trip test verifying `exc.raw` is preserved and `exc.human_message` is extracted; regression test that `exc.data` raises `AttributeError` (breaking change verification).
+
+**Step 2 — TYPED-F1 prerequisite: `Ref._target_cls` + wire transform**
+
+Modify `typed.py`: add `_target_cls` field. Modify `_pydantic_transform.py`: add `_extract_ref_target_cls` helper + populate `_target_cls` in the m2o branch. Tests: unit test `_odoo_wire_transforms` with `Optional[Ref[SomeModel]]` annotation verifies `_target_cls` is set; with `Ref[int]` annotation verifies `_target_cls = None`.
+
+**Step 3 — TYPED-F1: `client.read(ref)` dispatch + batch logic**
+
+Add `@overload` and `_resolve_ref_list` in `client.py`. Tests: integration test verifying codegen → typed read → Ref resolution round-trip (999.3 requirement).
+
+**Step 4 — TYPED-F2: `odoo_dump` + typed write/create overloads**
+
+Add `odoo_dump` to `_pydantic_transform.py`. Add overloads to `client.py`. Tests: unit test `odoo_dump` round-trip (wire-in → `model_validate` → `odoo_dump` → assert payload dict); integration test for typed write/create.
+
+**Why TYPED-F2 after Step 3, not in parallel:**
+
+Both Step 3 and Step 4 modify `client.py`. Sequential is safer than concurrent for a single-maintainer repo. TYPED-F1 (higher complexity) goes first so its overload changes are stable before TYPED-F2 adds more overloads to the same methods.
 
 ---
 
 ## Component Summary Table
 
-| Component | New / Modified | Package | Path |
-|-----------|---------------|---------|------|
-| `packages/godoo` → `packages/godoo-client` | Modified (rename) | — | filesystem + config |
-| `godoo/client/typed.py` | NEW | godoo-client | `src/godoo/client/typed.py` |
-| `godoo/client/_pydantic_transform.py` | NEW | godoo-client | `src/godoo/client/_pydantic_transform.py` |
-| `OdooClient.read` / `search_read` overloads | Modified | godoo-client | `src/godoo/client/client.py` |
-| `OdooClient._typed_read` (private) | NEW method | godoo-client | `src/godoo/client/client.py` |
-| `OdooClientConfig.transport_factory` | Modified (new field) | godoo-client | `src/godoo/client/client.py` |
-| `godoo/client/rpc/protocol.py` | NEW | godoo-client | `src/godoo/client/rpc/protocol.py` |
-| `godoo/client/rpc/pyodide_transport.py` | NEW (spike) | godoo-client | `src/godoo/client/rpc/pyodide_transport.py` |
-| `packages/godoo-client/pyproject.toml` `[typed]` extra | Modified | godoo-client | `pyproject.toml` |
-| `godoo/introspection/pydantic_type_mapper.py` | NEW | godoo-introspection | `src/godoo/introspection/pydantic_type_mapper.py` |
-| `godoo/introspection/pydantic_codegen.py` | NEW | godoo-introspection | `src/godoo/introspection/pydantic_codegen.py` |
-| `godoo/introspection/cli.py` | NEW | godoo-introspection | `src/godoo/introspection/cli.py` |
-| `godoo/introspection/__init__.py` | Modified (add exports) | godoo-introspection | `src/godoo/introspection/__init__.py` |
-| `packages/godoo-introspection/pyproject.toml` | Modified (add scripts) | godoo-introspection | `pyproject.toml` |
-| `pyproject.toml` (root) | Modified (mypy_path, version_toml) | workspace | `pyproject.toml` |
-| `.github/workflows/test.yml` | Modified (mypy invocation) | CI | `.github/workflows/test.yml` |
-| `mkdocs.yml` | Modified (paths) | docs | `mkdocs.yml` |
+| Component | New / Modified | File | Feature |
+|-----------|---------------|------|---------|
+| `Ref[T]._target_cls` field | MODIFIED | `client/typed.py` | TYPED-F1 |
+| `Ref` import in `client.py` | MODIFIED | `client/client.py` | TYPED-F1 |
+| `_extract_ref_target_cls` | NEW private helper | `client/_pydantic_transform.py` | TYPED-F1 |
+| `_odoo_wire_transforms` m2o branch | MODIFIED | `client/_pydantic_transform.py` | TYPED-F1 |
+| `OdooClient.read` `@overload` (Ref/list[Ref]) | MODIFIED | `client/client.py` | TYPED-F1 |
+| `OdooClient._resolve_ref_list` | NEW private method | `client/client.py` | TYPED-F1 |
+| `odoo_dump` | NEW function | `client/_pydantic_transform.py` | TYPED-F2 |
+| `OdooClient.write` `@overload` (typed) | MODIFIED | `client/client.py` | TYPED-F2 |
+| `OdooClient.create` `@overload` (typed) | MODIFIED | `client/client.py` | TYPED-F2 |
+| `OdooRpcError.__init__` | MODIFIED | `client/errors.py` | SEED-003 |
+| `OdooRpcError.to_json` | MODIFIED | `client/errors.py` | SEED-003 |
+| `OdooAuthError.__init__` | MINIMALLY MODIFIED | `client/errors.py` | SEED-003 |
+| `_extract_model/field/constraint/human_message` | NEW private helpers | `client/errors.py` | SEED-003 |
+| `_categorize_error` | NOT MODIFIED | `client/rpc/transport.py` | SEED-003 |
 
-**Unchanged:** `JsonRpcTransport`, all 8 services, `SafetyContext`, `errors.py`, `config.py`,
-`godoo/introspection/codegen.py` (TypedDict path), `type_mapper.py`, `IntrospectionCache`,
-`godoo-testcontainers/*`, `godoo-meta/*`.
-
----
-
-## Import Isolation Pattern (authoritative)
-
-```
-import godoo                          # never imports pydantic
-from godoo.client import OdooClient  # never imports pydantic
-
-client.read("res.partner", [1])       # raw path — pydantic not imported
-
-client.read(ResPartner, [1])          # typed path — pydantic imported HERE, lazily,
-                                      # inside OdooClient._typed_read()
-                                      # via: from godoo.client._pydantic_transform import ...
-```
-
-The `godoo.client.typed` module (Protocol + `Ref`) IS imported at module level from `client.py`
-only under `TYPE_CHECKING` — never at runtime from `client.py` itself. The Protocol is available
-at runtime only if the user imports `godoo.client.typed` explicitly, which is a no-op without
-pydantic (typed.py has no pydantic dependency).
-
-The `_pydantic_transform` module is NEVER in `__init__.py`, never in `__all__`, never imported
-at module load. It is a private implementation detail gated behind `hasattr(model, "__odoo_model__")`.
+**Unchanged by v1.2:** `JsonRpcTransport` (beyond inheriting SEED-003 benefits), all 8 services, `SafetyContext`, `config.py`, `codegen.py`, `type_mapper.py`, `IntrospectionCache`, `godoo-testcontainers`.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Dispatch on `isinstance(model, type)` alone
+### Setting `_target_cls = int` for out-of-set m2o fields
 
-`isinstance(model, type)` is True for any class including plain strings (no — strings are not
-types) but also for any class the user passes accidentally. `hasattr(model, "__odoo_model__")`
-is the correct guard: it is specific to godoo-generated models and does not touch pydantic.
+`int` has no `__odoo_model__`. If `_target_cls = int`, the dispatch branch must check `hasattr(int, "__odoo_model__")` → False and raise a confusing error. Use `None` as the sentinel for unresolvable Refs — it is unambiguous and the `OdooValidationError` message at call time is clear.
 
-### Importing `godoo.client.typed` at the top of `client.py`
+### Importing `_pydantic_transform` at module top-level (reiteration)
 
-Even though `typed.py` has no pydantic dependency, importing it unconditionally at the top of
-`client.py` forces it into the module load path and adds a small overhead. Use `TYPE_CHECKING`
-for the type annotation and `hasattr` for the runtime dispatch.
+Any new file that needs `odoo_dump` or `OdooBaseModel` must lazy-import inside a function body. The subprocess isolation test will catch violations.
 
-### Making `Ref` a pydantic model in core
+### Stripping traceback in `_categorize_error` instead of `OdooRpcError.__init__`
 
-`Ref` in `godoo.client.typed` must be a stdlib dataclass. Generated model files import it from
-core. If core's `Ref` were a pydantic model, installing `godoo-client` without `[typed]` would
-import pydantic at install time — breaking the isolation guarantee.
+Stripping in `__init__` covers all raise paths (including direct `OdooValidationError(...)` calls in `client.py`). Stripping in `_categorize_error` only covers the RPC fault path. Centralizing in `__init__` is the correct architectural choice even though direct raises have no `data=` dict and thus no traceback to strip.
 
-### Putting `PydanticCodeGenerator` in the same file as `CodeGenerator`
+### Modifying `_annotation_mentions_ref` to return a tuple
 
-`codegen.py` emits TypedDict source; `pydantic_codegen.py` emits pydantic source. They have
-different type mappers and different template logic. Keeping them separate preserves the single-
-responsibility principle and prevents the TypedDict path from growing pydantic-aware conditionals.
+`_annotation_mentions_ref` is used elsewhere as a boolean predicate. Changing its return type breaks existing callers. Add `_extract_ref_target_cls` as a sibling — same annotation traversal logic, different return shape.
 
-### Subclassing `JsonRpcTransport` for Pyodide
+### Routing typed write/create directly to `self._transport.call()`
 
-The Pyodide transport is a completely different HTTP stack (`js.fetch` vs `httpx`). Subclassing
-would inherit httpx internals that don't apply. Implement as a separate class satisfying the
-`Transport` Protocol structurally — zero shared code with `JsonRpcTransport`.
+Bypasses the safety guard. All paths must go through `self.call()`.
 
 ---
 
-*Architecture research for: godoo-py v1.1 — typed models + browser reach*
-*Researched: 2026-05-27*
+## Sources
+
+All claims verified from direct source reading. No training data assumptions made.
+
+- `packages/godoo-client/src/godoo/client/client.py` — `OdooClient`, lines 1–565
+- `packages/godoo-client/src/godoo/client/typed.py` — `Ref[T]`, `OdooModel`, lines 1–36
+- `packages/godoo-client/src/godoo/client/_pydantic_transform.py` — `OdooBaseModel._odoo_wire_transforms`, `derive_partial_model`, lines 1–208
+- `packages/godoo-client/src/godoo/client/errors.py` — full error hierarchy, lines 1–130
+- `packages/godoo-client/src/godoo/client/rpc/transport.py` — `JsonRpcTransport._categorize_error`, lines 138–168
+- `packages/godoo-client/src/godoo/client/rpc/protocol.py` — `Transport` Protocol
+- `packages/godoo-client/src/godoo/client/safety/__init__.py` — `SafetyContext`, `infer_safety_level`
+- `packages/godoo-introspection/src/godoo/introspection/codegen.py` — `CodeGenerator.generate`, Ref emission pattern
+- `packages/godoo-introspection/src/godoo/introspection/type_mapper.py` — `pydantic_field_str`, m2o annotation forms
+
+---
+*Architecture research for: godoo-py v1.2 — Typed Relations, Writes & Error Surface*
+*Researched: 2026-06-02*

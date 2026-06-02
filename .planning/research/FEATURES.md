@@ -1,22 +1,23 @@
 # Feature Research
 
-**Domain:** Typed Pydantic model generation from live Odoo schema + polymorphic typed-read client
-**Researched:** 2026-05-27
-**Confidence:** HIGH (core pattern decisions already made in SEED-002; research validates and refines)
+**Domain:** Typed relational resolution, typed writes, and structured error surface for an async Odoo JSON-RPC client library
+**Researched:** 2026-06-02
+**Confidence:** HIGH (Odoo RPC semantics are stable and well-documented; Pydantic patterns are verified against v2 docs; existing v1.1 codebase inspected directly)
 
 ---
 
-## Scope note
+## Scope Note
 
-This document covers ONLY the NEW v1.1 features. The existing shipped SDK (auth,
-CRUD, eight services, introspector, TypedDict codegen, testcontainers) is out of
-scope. Three features are in scope:
+This document covers ONLY the three NEW v1.2 features. The shipped v1.1 foundation
+(Pydantic model generator, `@overload` dispatch, wire transforms, `OdooBaseModel`,
+`Ref[T]`, `godoo[typed]` extra) is treated as **existing infrastructure** — not
+re-researched.
 
-- **A — Instance-specific typed models** (CLI codegen + Pydantic layer + `@overload`
-  dispatch). This is the headline feature; most detail lives here.
-- **B — Package rename** `packages/godoo` → `packages/godoo-client`. Mechanical,
-  low feature surface.
-- **C — Pyodide/browser spike**. De-risk spike, not a committed build.
+Three features are in scope:
+
+- **TYPED-F1** — Ref-driven typed relation resolution: `client.read(ref)` / `client.read(list[Ref])` resolves a typed `Ref[T]` into the related model instance, batched, single-level deep.
+- **TYPED-F2** — Typed write/create: pass `OdooBaseModel` instances into `client.write` / `client.create`.
+- **SEED-003** — Restructured `OdooError` hierarchy: structured fields, traceback/path stripping, `.raw` escape hatch.
 
 ---
 
@@ -24,196 +25,137 @@ scope. Three features are in scope:
 
 ### Table Stakes (Users Expect These)
 
-These are what any user who picks up the CLI generator will expect immediately,
-based on comparable tools (datamodel-code-generator, ariadne-codegen, sqlacodegen,
-openapi-python-client).
+Features users assume exist in a mature typed client. Missing these makes the typed
+layer feel half-finished.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| CLI entrypoint with `--url/--db/--user/--password` and `--output` | Every comparable codegen tool (datamodel-code-generator, sqlacodegen, ariadne-codegen) is a CLI. Users expect `godoo-generate --output ./odoo_models/` | LOW | Entry point declared in `pyproject.toml` `[project.scripts]`. Credentials must NOT be positional args — env-var passthrough is safer (align with `config_from_env`). |
-| One Python file per Odoo model, barrel `__init__.py` | datamodel-code-generator, openapi-python-client, ariadne-codegen all emit a directory package with one-class-per-file and an `__init__.py`. Users expect `from my_odoo.res_partner import ResPartner`. The existing `CodeGenerator.write()` already does this for TypedDicts — the Pydantic variant follows the same pattern. | LOW | CodeGenerator.write() already provides the dir-package layout. Reuse the `_model_to_filename`/`_model_to_classname` helpers. |
-| `id` always required; all other fields optional | SQLAlchemy, Django, and every ORM codegen tool marks PKs as required. All other fields are optional because callers rarely fetch all fields. | LOW | Already the pattern in the TypedDict emitter (`id: Required[int]`, rest `NotRequired`). Pydantic equivalent: `id: int` required, all other fields `field(default=None)` / `Optional[T]`. See partial-read discussion below. |
-| Selection fields as `Literal[...]` or `Enum` | datamodel-code-generator emits `Literal` from JSON Schema enum values. Users expect selection fields to be statically enumerable. | LOW | The existing `type_mapper.py` already emits `Literal[...]` strings. The Pydantic emitter reuses or parallels this logic. |
-| `__odoo_model__` class attribute on every generated model | Required for duck-typed dispatch (`hasattr(cls, "__odoo_model__")`). Core must never `import pydantic` at runtime unless a typed model class is passed. | LOW | A class-level `ClassVar[str] = "res.partner"` on each generated BaseModel suffices. |
-| Pydantic `model_config = ConfigDict(from_attributes=True)` | ORM-mode (`from_attributes`) is standard practice for models that receive data from external systems. Every Pydantic+ORM tutorial sets this. | LOW | One line per generated class. Also ensures `.model_validate()` works on dict and object. |
-| Wire transform: `False` → `None` for optional fields | Odoo returns `False` (Python bool) instead of `None` for unset optional fields. This is Odoo-specific but immediately hits every user who reads any record. Without this, `model_validate` fails on `{"name": False}`. A before-mode `model_validator` on the generated base class covers all fields at once. | MEDIUM | Pydantic v2 `@model_validator(mode="before")` receives raw dict; iterate values and replace `False` with `None`. Must NOT apply to `boolean` fields (False is a valid boolean value). This is the highest-priority wire transform. Confidence HIGH — the existing type_mapper already distinguishes `boolean` from other ttypes. |
-| Wire transform: many2one `[id, "Name"]` → typed `Ref` | Odoo returns many2one as `[42, "ACME Corp"]` (a list). Without unpacking, Pydantic rejects it. The SEED decision is a typed `Ref[Model]` carrying `(id, name)` — a simple dataclass or Pydantic model. | MEDIUM | `Ref` is a shared type exported from `godoo.typed` (the `godoo[typed]` layer). The before-model-validator unpacks `[int, str]` lists into `Ref(id=..., name=...)`. |
-| Regeneration CLI is idempotent (re-run safe) | All codegen tools (datamodel-code-generator, sqlacodegen) are idempotent: re-running overwrites with fresh output. Users expect to be able to pin a generation to CI without manual cleanup. | LOW | Write entire directory atomically or overwrite-in-place. Add `# AUTOGENERATED` header (already present in existing codegen). |
-| `godoo[typed]` optional extra declares pydantic dependency | Users of the untyped path must not get pydantic pulled in. Tools like ariadne-codegen and openapi-python-client declare optional extras. `pip install godoo[typed]` is the established Python pattern. | LOW | Declared in `packages/godoo-client/pyproject.toml` under `[project.optional-dependencies]`. |
+| **TYPED-F1-A: `client.read(ref)` resolves a single `Ref[T]` to `T`** | Users hold `Ref[ResPartner]` objects from reads. The obvious next step is "give me the full record". Without this the Ref type is a dead end — callers must manually extract `.id`, choose a model class, and call `read()` themselves. | LOW | `Ref[T]` carries both the id and the target class at runtime (the `T` parameter). Resolution is one `client.read(T, [ref.id])` call. Returns `T | None` (None if Odoo returns empty, e.g. record deleted). |
+| **TYPED-F1-B: `client.read(list[Ref[T]])` batches refs of the same type into one RPC call** | N separate `read` calls for N relations is the classic N+1 problem. SQLAlchemy's `selectinload`, Strawberry's DataLoader, and every mature Python ORM/client batch by default. Users who resolve a list of refs expect one RPC per distinct target model, not one per ref. | MEDIUM | Group refs by `T.__odoo_model__`. Per group: deduplicate ids, call `client.read(T, [ids])`, stitch results back by id into a `dict[int, T]`. Mixed-type list (`list[Ref[A] \| Ref[B]]`) batches separately per type. |
+| **TYPED-F2-A: `client.create(instance)` accepts an `OdooBaseModel` instance** | Every ORM (SQLAlchemy, Django, Peewee) lets you call `session.add(obj)` or `Model.objects.create(instance)`. In a typed API client (FastAPI, argo, openapi-python-client), you pass a model instance to the create call. Users expect this. | MEDIUM | Extract writable fields from the instance using `model_dump(exclude_unset=True)` to honour partial construction — only explicitly-set fields sent. Serialize `Ref[T]` → int id (m2o write format). Do NOT send computed/readonly fields (see field exclusion below). Return int id. |
+| **TYPED-F2-B: `client.write(ids, instance)` accepts an `OdooBaseModel` instance** | Same ergonomic expectation as create. SQLAlchemy marks changed attributes and only writes them; Django requires `update_fields` but any ORM book teaches the pattern. | MEDIUM | `model_dump(exclude_unset=True)` gives the caller-set fields. Serialize relations. Guard against sending `id` (Odoo's write ignores it but it is misleading). |
+| **SEED-003-A: `OdooRpcError` exposes structured `model`, `field`, `constraint` attributes** | Well-designed API client errors (httpx, Stripe SDK, Twilio) expose machine-readable fields, not just a message string. Users who catch `OdooValidationError` need to know WHICH field or constraint failed without string-parsing the message. | MEDIUM | Parse Odoo's `data.message` and `data.arguments` to extract the model/field/constraint where the pattern is stable. Store as typed optional attributes: `model: str \| None`, `field: str \| None`, `constraint: str \| None`, `human_message: str`. |
+| **SEED-003-B: Server traceback stripped from default error surface** | Today `OdooRpcError.data` contains the raw `data.debug` traceback and internal file paths verbatim. Any caller who logs `err.to_json()` leaks server internals, file paths, and potentially arguments that include record values. Stripe, Twilio, and every production-grade SDK strips internal traces before surfacing to callers. | LOW | `to_json()` and the primary `str(err)` message must not include `data.debug` content. The traceback and raw data dict are preserved in `err.raw` (see SEED-003-C). |
+| **SEED-003-C: `.raw` escape hatch preserves original error dict for debugging** | Developers debugging Odoo integration failures need the full picture — exception class name, traceback, arguments. Stripping without preserving is a support nightmare. httpx preserves `.response`, requests preserves `.response`, every mature client preserves the original artifact. | LOW | `OdooRpcError.raw: dict[str, Any]` holds the original unmodified `error_dict` from Odoo. Opt-in: callers who need the full traceback inspect `err.raw["data"]["debug"]`. Not serialized by `to_json()`. |
 
 ### Differentiators (Competitive Advantage)
 
-Features that go beyond what users expect from a generic codegen tool and are
-specific to the godoo/Odoo domain.
+Features that go beyond what comparable clients provide and are specific to godoo's
+design.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| `@overload`-based dispatch: `read(str, ...)` → raw dict; `read(type[T], ...)` → `list[T]` | ariadne-codegen and openapi-python-client expose ONLY typed returns — you use the generated client, you get models. godoo's raw path stays unchanged, making typed reads genuinely opt-in with zero breakage. The overload pattern (`@overload async def read(self, model: type[T], ...)`) is recognized in mypy/pyright docs and used by SQLAlchemy 2.0's `scalars()` / `execute()` pattern. | MEDIUM | Runtime dispatch: `if hasattr(model, "__odoo_model__")`. Static typing: two `@overload` stubs. The implementation (third non-decorated def) does the duck-type check. Confidence HIGH — this is a well-understood Python typing pattern. |
-| `Ref[Model]` typed relational reference | Many tools leave relational fields as raw `int` or `tuple`. A `Ref[ResPartner]` type that carries `(id, name)` gives callers meaningful static types without forcing a nested fetch. This is the right scope boundary: the caller knows what the relation is; they do NOT get an auto-fetched nested object. | MEDIUM | `Ref` is generic: `class Ref(Generic[T])` with `id: int` and `name: str`. The type parameter is informational — mypy/pyright can type-check callers. The before-validator unpacks `[42, "ACME"]` automatically. |
-| Wire transforms declared per-field via Pydantic validators, not hand-written | ariadne-codegen emits verbose per-field validators. godoo uses a single `@model_validator(mode="before")` on a shared `OdooBaseModel` so individual generated models inherit transforms without per-field boilerplate in each generated file. | LOW | This is a differentiator vs naive generated code. The generated files are cleaner: they only declare fields and their types. |
-| `--models` filter flag to generate only specific models | datamodel-code-generator supports filtering; ariadne-codegen generates only for explicitly listed operations. Power users with large Odoo instances don't want 1,000 model files. | LOW | CLI arg: `--models res.partner,account.move,sale.order`. Passed to `Introspector` as a filter list. |
-| Selection field staleness: emit the live instance's values | Generic codegen tools use the schema at generation time. godoo's generator hits the live instance, so generated `Literal['draft', 'posted', 'cancel']` reflects the installed modules and any custom selections on that specific instance. | LOW | Already how the TypedDict emitter works — no extra effort, but worth surfacing in docs as a differentiator. |
+| **TYPED-F1-C: Mixed-type `Ref` list batched per target model** | Most relation resolvers only handle homogeneous lists (DataLoader keys are a single type). godoo's API naturally receives heterogeneous relation lists (a record with multiple m2o fields of different types). Batching all same-type refs together in a single pass is a clean zero-config N+1 solution. | MEDIUM | `read(refs: list[Ref])` where refs are of mixed `T` types. Group by `T.__odoo_model__`, one `client.read(T, [ids])` per group. Return `list[T]` in original ref order. Requires a type union return — likely `list[OdooModel]` at the untyped level, or a sequence of matching types per group. |
+| **TYPED-F2-C: x2many write ergonomics via helper type** | Odoo's x2many wire format (`[(6,0,[ids])]` for replace, `[(0,0,{vals})]` for create-and-link, `[(1,id,{vals})]` for update-in-place) is cryptic. No existing Python Odoo client provides a typed wrapper that converts human-readable intent to command tuples. | HIGH | Define `X2ManyCommand` helpers: `replace(ids: list[int])` → `(6,0,ids)`, `add(id: int)` → `(4,id,0)`, `remove(id: int)` → `(3,id,0)`, `create_and_link(values: dict)` → `(0,0,values)`, `update(id: int, values: dict)` → `(1,id,values)`, `clear()` → `(5,0,0)`. The typed write path serializes `list[int]` x2many fields as `(6,0,[ids])` automatically (replace semantics as default). **Mark HIGH complexity because the semantics question requires a clear decision: does `list[int]` on an x2many model instance mean REPLACE or something else?** See anti-features. |
+| **SEED-003-D: `human_message` derived from Odoo's cleaned error message** | Odoo `data.message` is usually human-readable but sometimes wrapped in technical context. Exposing a clean `human_message` attribute means callers can surface it directly to users without string surgery. | LOW | `human_message` = `data.message` stripped of stack-trace prefix lines and internal path tokens. Requires light regex; Odoo message format is stable enough across versions. |
+| **TYPED-F1-D: Identity-map cache within a single `read()` call** | If the caller passes a list with duplicate ref ids pointing to the same target model, only one record fetch per unique id. This is SQLAlchemy's identity map at the call level — not a session-level cache (which would be an anti-feature). | LOW | Deduplication of ids before the RPC call is trivial (`list(dict.fromkeys([r.id for r in refs]))`). Stitch back using the id map. |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features (Deliberately NOT Building)
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Nested model fetch: `ResPartner.parent_id` auto-fetches the parent | Appealing for "just give me the full object graph" | Balloons to N+1 RPC calls; breaks the single-read contract; creates circular model references (a partner's parent is also a partner). ariadne-codegen sidesteps this because GraphQL queries are explicit — REST/RPC has no such structure. | Use `Ref[ResPartner]` carrying `(id, name)`. If the caller wants the full parent, they call `client.read(ResPartner, [partner.parent_id.id])` explicitly. |
-| Strict typed reads that reject partial field responses | Appealing as "type safety" — if you ask for a model, you should get all its fields | Fails every time a caller uses `fields=[...]` for bandwidth. openapi-python-client works around this by generating all fields as Optional. | All non-id fields are `Optional[T]` with `default=None`. The typed path validates what it receives, not what it didn't ask for. `model_construct()` is a last resort escape hatch, not the default. |
-| Runtime dynamic model synthesis (`pydantic.create_model()` from live schema) | Appealing for "always fresh" — no codegen step | Pydantic models created at runtime are statically invisible to pyright/mypy and to VS Code Pylance (the default TS-style editor). Fails the headline goal: "IDE understands the return type." | Static codegen. Generate once, commit or gitignore as the consuming project prefers. Re-run generator when schema changes. |
-| Auto-regeneration on every import / startup | Appealing for "always in sync" — no stale models | Requires a live Odoo connection at import time; breaks offline use, test suites, and CI without an Odoo instance. | Make generation an explicit, reproducible CLI step. Document re-run cadence: "re-run after installing modules or adding custom fields." |
-| godoo ships a mypy plugin to synthesize types | Appealing for "no codegen step" | pyright/Pylance has NO third-party plugin API. The most popular Python IDE tooling (VS Code + Pylance) would get nothing. Plugin-only approaches serve a minority of users. | Static codegen serves all editors uniformly. |
-| Nested `__init__.py` re-exports of the full Odoo model tree | Appealing for `from my_odoo import ResPartner, AccountMove` in one import | Breaks circular imports for models that reference each other. ariadne-codegen documents this as a known limitation. datamodel-code-generator had a bug tracker full of circular import issues from this pattern. | Barrel `__init__.py` re-exports all classes. Direct per-model imports are always available. No deep re-export tree. |
-| `mypy --strict` applied to generated model files | Appealing for "same quality gate everywhere" | Generated `Literal[False]` unions and `Optional` chains produce mypy noise. Generated files are typically excluded from strict checking (e.g. by `# mypy: ignore-errors` or `per-module-options`). | Apply `mypy --strict` to godoo's own `src/` only. Advise users to add generated output path to `mypy`'s `exclude` list. |
+| **Ref auto-fetch on attribute access (lazy loading)** | `partner.parent_id` → automatically fetches the `ResPartner` for `parent_id.id`. Mimics SQLAlchemy lazy load. | Requires async attribute access, which is not idiomatic Python (no `async` properties without workarounds). Creates invisible RPC calls. SQLAlchemy itself is moving AWAY from implicit lazy loading in async contexts. | Explicit `client.read(partner.parent_id)` (TYPED-F1). The caller decides when to fetch. |
+| **Session-level identity map / result cache across calls** | Callers who read the same record twice don't want two RPC calls. | Stale data in long-running processes. Makes testing harder (cache invalidation). Adds mutable state to the client. Not needed for scripting/automation use cases which is godoo's target. | Per-call deduplication within `read(list[Ref])` only. No cross-call caching. |
+| **Deep/recursive relation resolution** | `client.read(partner, depth=3)` auto-fetches the full object graph. | N^depth RPC calls. Circular model references (partner → company → parent_company → ...). Odoo has no native join fetch; this is purely client-side and very expensive. | Single-level explicit resolution. Callers chain `read()` calls if they need depth. |
+| **Automatic x2many → full model resolution** | `sale_order.order_line` (list of ids) auto-fetches all `SaleOrderLine` records. | Same as deep resolution — bandwidth and latency explode silently. | x2many stays as `list[int]` by default. Caller explicitly calls `client.read(SaleOrderLine, order.order_line)` when needed. |
+| **`write(instance)` sends ALL fields including `id`, computed, and unset** | Seems like a "full save". | Sending `id` is at best a no-op and at worst triggers Odoo errors on some model constraints. Sending computed/readonly fields raises `"Cannot update a readonly field"`. Sending unset fields (those with `None` default from all-Optional design) overwrites server values with null. | `model_dump(exclude_unset=True)` sends only caller-set fields. Computed/readonly fields excluded by an allowlist or via `fields_get` attribute metadata. |
+| **x2many automatic REPLACE semantics for `list[int]` write** | Treating `model.child_ids = [1,2,3]` as "replace all children with these ids" feels natural. | Silently destructive. `(6,0,[ids])` removes all existing relations not in the list. A user who sets partial x2many intending to ADD items deletes all others. The semantics must be explicit. | Explicit `X2ManyCommand` helpers (see differentiators). Default: if `list[int]` is passed, serialize as `(4, id, 0)` per id (ADD semantics, not REPLACE). Explicit replace requires `X2ManyCommand.replace([ids])`. |
+| **Error message parsing to extract field names via fragile regex** | Appealing for "smart" error attribution. | Odoo error messages are not guaranteed stable across versions. Custom modules produce unpredictable message formats. Regex-based field extraction will produce silent wrong attributions. | Parse only the `data.arguments` array and `data.name` (which is the Python exception class name, stable). For `model`/`field`/`constraint`: populate only when derivable from structured data, not message text. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[A1] CLI entrypoint (godoo-generate)
-    └──requires──> [A2] Pydantic codegen (OdooBaseModel + per-model emitter)
-                       └──requires──> [A3] Wire transform layer (model_validator, Ref type)
-                                          └──requires──> [A4] godoo[typed] optional extra
-                                      └──requires──> [Existing] type_mapper.py (reuse)
-                                      └──requires──> [Existing] Introspector (reuse)
+TYPED-F1 (Ref resolution)
+    └──requires──> v1.1: Ref[T] dataclass with runtime T parameter
+    └──requires──> v1.1: OdooBaseModel (@overload dispatch, client.read(type[T]))
+    └──requires──> v1.1: godoo[typed] optional extra
 
-[A5] @overload dispatch on client.read / client.search_read
-    └──requires──> [A4] godoo[typed] optional extra (but dispatch is in core)
-    └──requires──> [A3] Ref type (returned for m2o fields)
-    └──requires──> [A1] CLI (user must have generated models before typed dispatch is useful)
+TYPED-F2 (Typed write/create)
+    └──requires──> v1.1: OdooBaseModel (model_dump, model_fields_set)
+    └──requires──> v1.1: Ref[T] (m2o serialization: Ref.id → int)
+    └──requires──> existing: client.write() / client.create() (raw dict path, to wrap)
+    └──enhances──> TYPED-F1: a round-trip pattern — read typed, modify, write back
 
-[B] Package rename packages/godoo → packages/godoo-client
-    └──independent: no feature dependencies; must not break import namespace
+SEED-003 (Error surface)
+    └──requires──> existing: OdooRpcError hierarchy in errors.py
+    └──requires──> existing: _categorize_error() in transport.py
+    └──independent──> TYPED-F1 and TYPED-F2 (no direct dependency)
+    └──complements──> TYPED-F2: write errors now expose model/field/constraint
 
-[C] Pyodide spike
-    └──independent: investigates transport.py only; does not interact with A or B
-    └──blocks: any future browser-targeted build (but spike itself is non-blocking)
+X2ManyCommand helpers (TYPED-F2-C differentiator)
+    └──requires──> TYPED-F2 (typed write path must exist first to consume commands)
+    └──optional: can ship in a follow-up task after basic TYPED-F2
 ```
 
 ### Dependency Notes
 
-- **A2 requires type_mapper.py (reuse):** The existing `python_type_str()` function maps
-  Odoo ttypes to Python type strings. The Pydantic emitter needs the same mapping but
-  emits `Optional[str]` instead of `str | Literal[False]`. Two options: (a) add a
-  `target="pydantic"` parameter to `python_type_str`, or (b) write a separate
-  `pydantic_type_str()` function alongside it. Option (b) is cleaner — different
-  semantics, different function. The `FieldSchema` dataclass and `ModelSchema` dataclass
-  are reused unchanged.
+- **TYPED-F1 requires `Ref[T]` to carry `T` at runtime.** The current `Ref[T]` is a frozen
+  dataclass with `id: int` and `name: str | None`. For resolution to work,
+  `client.read(ref)` needs to know the target model class from the ref itself. This
+  requires either: (a) `Ref.__class_getitem__` stores the type arg and makes it
+  retrievable at runtime, or (b) a separate `TypedRef[T]` subclass carries `model_class:
+  type[T]` as a field. Option (b) is simpler and avoids metaclass magic. **This is the
+  single largest open design question for TYPED-F1.**
 
-- **A3 requires a shared OdooBaseModel:** All generated Pydantic models inherit from
-  `OdooBaseModel(BaseModel)` defined in `godoo.typed` (inside `godoo-client` package,
-  behind the `[typed]` extra guard). This base class carries: `model_config =
-  ConfigDict(from_attributes=True)`, and `@model_validator(mode="before")` for the
-  False-coercion and many2one unpacking. Individual generated files are thin — only
-  field declarations.
+- **TYPED-F2 uses `model_dump(exclude_unset=True)`.** The all-Optional model design from
+  v1.1 means every field defaults to `None` — so `exclude_unset=True` is the only
+  correct way to distinguish "caller explicitly set this field to None (clear it)" from
+  "caller never touched this field (leave server value alone)". This is the same pattern
+  used by FastAPI PATCH endpoint implementations.
 
-- **A5 (@overload dispatch) is in godoo-client core, not in godoo-introspection:**
-  The `client.read()` method lives in `packages/godoo-client`. The overload stubs live
-  there. The pydantic import is guarded: `if TYPE_CHECKING: from pydantic import
-  BaseModel`. At runtime, dispatch is `hasattr(model, "__odoo_model__")` — no pydantic
-  import needed in core unless actually called.
+- **TYPED-F2 must serialize `Ref[T]` → int on write.** m2o fields are written as plain
+  `int` id in Odoo (not the `[id, "name"]` tuple form used for reads). The write
+  serializer must unwrap `Ref(id=42, name="ACME")` → `42`.
 
-- **B is fully independent:** The rename changes the directory and dist name but the
-  import namespace stays `godoo.*` (PEP 420 namespace packages already in place from
-  v1.0). No A or C feature depends on B. B should be done first or last in a phase to
-  avoid mid-phase confusion about paths.
+- **TYPED-F2 field exclusion strategy.** Odoo's `fields_get` returns `readonly` and
+  `store` attributes per field. Sending a readonly/computed (store=False) field to
+  `write()` raises `"Cannot update a readonly field"`. Two strategies:
+  (a) **client-side exclusion** — read `fields_get` to build an allowlist, cache per
+  model. Requires an extra RPC on first write per model type.
+  (b) **caller-driven exclusion** — do not pre-filter; let Odoo reject; surface error
+  via SEED-003 structured error. No extra RPC. The caller is responsible for not
+  sending computed fields.
+  Option (b) is simpler and avoids the `fields_get` cache management complexity.
+  The `exclude_unset=True` pattern already protects callers who construct instances
+  only from values they read (generated fields that are readonly will simply not be
+  in `model_fields_set` unless the caller explicitly set them).
 
----
-
-## Partial-Read Problem — Decision
-
-The partial-read problem is a known, documented challenge in typed API clients.
-
-**The problem:** If a caller passes `client.read(ResPartner, [1], fields=["name"])`,
-the result has only `name` (and `id`) — all other Pydantic fields are absent. Strict
-validation raises `ValidationError` for required fields.
-
-**Ecosystem strategies observed:**
-1. **All Optional models** (openapi-python-client, ariadne-codegen partial mode): every
-   field is `Optional[T] = None`. Validation passes for partial payloads. IDE
-   autocomplete still works. Downside: loses the `required=True` semantics from the
-   schema. MEDIUM ergonomics.
-2. **`model_construct()` / skip validation** (Pydantic escape hatch): caller must opt
-   in explicitly. Bypasses all validation including wire transforms. Anti-pattern for
-   this use case because transforms are the point.
-3. **Fetch-all-when-class-given** (strawberry-django partial inputs): if a model class
-   is passed, ignore the `fields` kwarg and fetch all fields. Surprising and
-   bandwidth-expensive. Anti-feature.
-4. **Warn and pass `fields` to the raw path** (custom logic): if `fields` is specified
-   alongside a model class, raise `TypeError` or silently fall back to raw dict.
-
-**Decided:** Option 1 — all non-id fields are `Optional[T] = None`. This is consistent
-with the existing TypedDict emitter (`NotRequired`) and matches the dominant pattern
-in OpenAPI/GraphQL Python codegen. The typed path validates what it receives; missing
-fields default to `None`. The raw path (`str` first arg) is unchanged for callers who
-need precise partial field selection.
-
----
-
-## Browser Spike (Feature C) — Scope
-
-This is a **de-risk spike**, not a feature build. Research findings:
-
-- `httpx` does NOT have native Pyodide/Emscripten support as of 2025. It depends on
-  lower-level networking that uses `getaddrinfo` (DNS), which raises `NotImplementedError`
-  in the browser sandbox. Confidence MEDIUM (based on Flet issue #4840, urllib3
-  Emscripten docs, pyodide-http library scope).
-- `pyodide-http` patches `requests` and `urllib` but NOT `httpx`. There is no
-  maintained httpx-Pyodide adapter in the ecosystem. Confidence HIGH.
-- `urllib3` >= 2.2.0 has native Emscripten/Pyodide support using the fetch API. This
-  is the only HTTP library with official browser support. Confidence HIGH.
-- The spike must answer: can a custom `httpx.AsyncTransport` backed by
-  `pyodide.http.pyfetch` make `httpx.AsyncClient` work in the browser? This is
-  technically plausible but unproven. If it fails, the fallback is replacing httpx with
-  urllib3 in a browser-only transport path, or requiring `pyodide-http` as an install-
-  time patch (intrusive, not ergonomic).
-- CORS is a separate problem: Odoo would need to permit cross-origin JSON-RPC from the
-  notebook's origin. This is not godoo's problem to solve but must be documented.
-
-**Browser user expectations (Marimo / stlite / JupyterLite):**
-- Users expect `import godoo` and `await create_client(...)` to Just Work in a Marimo
-  WASM notebook. They do not expect to install a separate patch (`pyodide-http`).
-- CORS errors are well-understood in the browser-Python community (JupyterLite CORS
-  proxy, marimo GitHub issue #3169). Users accept that the Odoo server must be
-  configured, but the library should not add friction beyond that.
-- The expectation is **one install** (`micropip.install("godoo[browser]")` or just
-  `godoo`), not two (`godoo` + `pyodide-http` + manual patching).
-
-**Spike deliverable:** A short technical finding document (`SPIKE-pyodide.md` or
-similar) answering: (1) does a custom `AsyncTransport` work in Pyodide? (2) what is
-the install story? (3) does this require a breaking change (new transport abstraction)?
-If breaking: bump milestone to v2.0. If non-breaking: add `godoo[browser]` extra.
+- **SEED-003 is independent but should ship in the same milestone.** The v1.2 write path
+  will exercise validation errors. Structured errors make write failures actionable
+  immediately. Shipping SEED-003 alongside TYPED-F2 closes the feedback loop.
 
 ---
 
 ## MVP Definition
 
-### This milestone's launch set (v1.1)
+### v1.2 Launch Set
 
-All three features are in scope for v1.1. Their relative priority:
+All three features are in scope for v1.2. Relative priority:
 
-- [x] **A — Typed models** — the headline feature; everything in "Table Stakes" above
-  is the launch set. Without all of it, the feature is incomplete.
-- [x] **B — Package rename** — mechanical; low risk; ships in same milestone.
-- [x] **C — Pyodide spike** — spike only; findings shipped as a document, not a build.
-  The "committed browser build" decision is deferred based on spike findings.
+- **SEED-003** first — it is independent and improves the foundation. Error surface
+  improvements benefit existing users immediately and every subsequent feature.
+- **TYPED-F2** second — typed writes complete the read-modify-write round-trip.
+  The basic create/write with `model_dump(exclude_unset=True)` is the core. x2many
+  command helpers (TYPED-F2-C) can follow as a second task within the same phase.
+- **TYPED-F1** third — Ref resolution is the most complex due to the runtime `T`
+  parameter design question. Builds directly on the existing `Ref[T]` and typed read
+  dispatch.
 
-### Add after validation (v1.x)
+### Add After Validation (v1.x)
 
-- `--models` filter CLI flag — useful for large instances but not blocking core use
-- `model_construct()` escape hatch documented in user guide — for callers who want
-  to bypass transforms on a partial read
-- `godoo[browser]` optional extra with a Pyodide fetch transport — only if spike
-  confirms it's non-breaking
+- `X2ManyCommand` full helper set (TYPED-F2-C) — if the basic list[int] handling ships
+  first, the helper types can follow once callers confirm the ergonomics are right.
+- `fields_get` allowlist caching for computed-field auto-exclusion on write — only if
+  callers report friction from Odoo "readonly field" errors.
 
-### Future consideration (v2+)
+### Future Consideration (v2+)
 
-- Committed browser-compatible build if spike requires breaking transport changes
-- `Ref` auto-fetch helper (`await ref.fetch(client)` → fully typed model) — adds RPC
-  semantics to the Ref type, nice but not in v1.1 scope
-- Schema version pinning in generated files (emit Odoo version + generation timestamp
-  in the `# AUTOGENERATED` header)
+- Multi-level Ref resolution (`depth=2` or chained explicit resolution helpers) — once
+  single-level usage patterns are understood.
+- Session-scoped identity map as an opt-in plugin — only if automation scripts
+  demonstrate clear benefit.
 
 ---
 
@@ -221,55 +163,105 @@ All three features are in scope for v1.1. Their relative priority:
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| CLI entrypoint | HIGH | LOW | P1 |
-| Pydantic model emitter (OdooBaseModel + per-model files) | HIGH | MEDIUM | P1 |
-| Wire transform: False → None | HIGH | LOW | P1 |
-| Wire transform: many2one → Ref | HIGH | MEDIUM | P1 |
-| `@overload` dispatch on read/search_read | HIGH | MEDIUM | P1 |
-| `godoo[typed]` optional extra | HIGH | LOW | P1 |
-| Package rename (B) | MEDIUM | LOW | P1 |
-| Pyodide spike (C) | MEDIUM | MEDIUM | P1 (spike, not build) |
-| `--models` filter flag | MEDIUM | LOW | P2 |
-| `model_construct()` escape hatch docs | LOW | LOW | P2 |
-| `godoo[browser]` committed build | MEDIUM | HIGH | P3 (post-spike) |
-| Ref auto-fetch helper | LOW | MEDIUM | P3 |
+| SEED-003-B: traceback stripping | HIGH (security) | LOW | P1 |
+| SEED-003-A: structured error fields | HIGH (DX) | MEDIUM | P1 |
+| SEED-003-C: `.raw` escape hatch | MEDIUM | LOW | P1 |
+| TYPED-F2-A: `create(instance)` | HIGH | MEDIUM | P1 |
+| TYPED-F2-B: `write(ids, instance)` | HIGH | MEDIUM | P1 |
+| TYPED-F1-A: `read(ref)` single | HIGH | LOW | P1 |
+| TYPED-F1-B: `read(list[Ref])` batched | HIGH | MEDIUM | P1 |
+| TYPED-F1-D: per-call id deduplication | MEDIUM | LOW | P1 (free with batching) |
+| TYPED-F2-C: X2ManyCommand helpers | MEDIUM | HIGH | P2 |
+| TYPED-F1-C: mixed-type ref list | LOW | MEDIUM | P2 |
+| SEED-003-D: human_message cleanup | LOW | LOW | P2 |
+
+**Priority key:**
+- P1: Must ship in v1.2
+- P2: Should ship in v1.2 if time allows; can defer to v1.3
+- P3: Nice to have, future consideration
 
 ---
 
-## Existing Code Reuse vs Rebuild Map
+## Odoo-Specific Write Semantics (Normative Reference)
 
-This is the key "dependency on existing code" callout requested by the downstream
-consumer.
+These are the exact wire formats TYPED-F2 must serialize to. High confidence — cross-verified
+against official Odoo ORM docs and odoo-development.readthedocs.io.
 
-| Component | Reuse? | What changes |
-|-----------|--------|-------------|
-| `Introspector` / `IntrospectionCache` | Reuse unchanged | CLI calls `Introspector.get_schema()` — no changes needed |
-| `CodeGenerator.write()` layout | Reuse pattern, new class | Pydantic emitter is a NEW `PydanticCodeGenerator` class alongside `CodeGenerator`. Same `_model_to_filename`, `_model_to_classname` helpers. `write()` method is structurally identical. |
-| `type_mapper.python_type_str()` | Partial reuse | New `pydantic_type_str()` function alongside it. Different output: `Optional[str]` not `str | Literal[False]`. Selection fields: `Optional[Literal['a','b']]` not `Literal['a','b'] | Literal[False]`. |
-| `FieldSchema` / `ModelSchema` dataclasses | Reuse unchanged | Input to both generators |
-| `OdooClient.read()` / `search_read()` | Modified with overloads | Add two `@overload` stubs + runtime duck-type dispatch. The existing raw-dict path is unchanged. |
-| `JsonRpcTransport` | Unchanged | Transport is unaware of typed models |
-| `config_from_env` / `create_client` | Unchanged | CLI uses same env-var convention |
-| Existing `TypedDict` codegen | Unchanged | The TypedDict emitter continues to ship; the Pydantic emitter is an addition, not a replacement |
+### many2one write format
+
+Write an integer id. NOT a tuple.
+
+```python
+# Write: set partner_id to record with id=42
+{"partner_id": 42}
+
+# WRONG — this is the READ wire format, not write
+{"partner_id": [42, "ACME Corp"]}
+```
+
+The typed write layer must serialize `Ref(id=42, name="ACME Corp")` → `42`.
+
+### x2many command tuple format
+
+All x2many fields (one2many, many2many) use a list of 3-element command tuples:
+
+| Code | Meaning | Tuple format | Compatibility |
+|------|---------|-------------|---------------|
+| 0 | Create new record and link | `(0, 0, {values})` | create + write |
+| 1 | Update existing linked record | `(1, id, {values})` | write only |
+| 2 | Delete and unlink record | `(2, id, 0)` | write only; one2many only |
+| 3 | Unlink (remove relation, keep record) | `(3, id, 0)` | write only; many2many only |
+| 4 | Link existing record | `(4, id, 0)` | write only; many2many only |
+| 5 | Clear all relations | `(5, 0, 0)` | write only; many2many only |
+| 6 | Replace entire set (clear + link) | `(6, 0, [ids])` | write only; many2many only |
+
+The underscore positions accept `0` or `False` as placeholders.
+
+**Default serialization decision for TYPED-F2:** When a `list[int]` is present in the
+instance's set fields for an x2many annotation, serialize as `[(4, id, 0) for id in ids]`
+(ADD semantics). This is the least destructive default. REPLACE semantics require an
+explicit `X2ManyCommand.replace([ids])` call. This decision avoids the silent-delete
+anti-feature described above.
+
+### Computed / readonly field behavior
+
+Sending a computed field with no `inverse` function to `write()` raises Odoo's
+`"Cannot update a readonly field"` error server-side. Computed fields do NOT silently
+ignore writes — they raise. The typed write path should NOT pre-filter on a `fields_get`
+allowlist (option b from dependency notes above) — let Odoo raise, surface via SEED-003
+structured error. The `exclude_unset=True` pattern naturally avoids this for typical
+read-modify-write flows.
+
+---
+
+## Existing v1.1 Foundation — What TYPED-F1/F2 Builds On
+
+| v1.1 Component | How v1.2 Uses It |
+|----------------|-----------------|
+| `Ref[T]` dataclass (`typed.py`) | TYPED-F1: the input to `client.read(ref)`. Needs runtime T access — design question open. |
+| `OdooBaseModel` (`_pydantic_transform.py`) | TYPED-F2: `model_dump(exclude_unset=True)` + `model_fields_set` for partial write. |
+| `@overload` dispatch on `client.read` | TYPED-F1: adds new overload for `read(Ref[T]) -> T \| None` and `read(list[Ref]) -> list[...]`. |
+| `derive_partial_model()` cache | TYPED-F1: NOT used for resolution (full model fetch, not partial). |
+| `client.create()` / `client.write()` raw dict path | TYPED-F2: new overloads wrap these; existing raw paths unchanged. |
+| `OdooRpcError` tree + `_categorize_error()` | SEED-003: both files modified. `_categorize_error()` grows structured field population; `OdooRpcError` gains `model`, `field`, `constraint`, `human_message`, `raw` attributes. |
+| `to_json()` on all error classes | SEED-003: updated to serialize structured fields, omit `raw`/traceback. Breaking change on `.data` attribute (now becomes `.raw`). |
 
 ---
 
 ## Sources
 
-- [datamodel-code-generator GitHub](https://github.com/koxudaxi/datamodel-code-generator) — field optionality, output layout patterns
-- [ariadne-codegen](https://github.com/mirumee/ariadne-codegen) — typed-only client, Pydantic model generation from schema
-- [openapi-python-client](https://github.com/openapi-generators/openapi-python-client) — all-Optional strategy for partial responses
-- [graphql-code-generator discussion #4253](https://github.com/dotansimha/graphql-code-generator/discussions/4253) — committed vs gitignored generated code consensus
-- [sqlacodegen](https://github.com/agronholm/sqlacodegen) — ORM codegen patterns, PK required / others optional
-- [Pydantic v2 model_validator docs](https://docs.pydantic.dev/latest/concepts/validators/) — before-mode validator for wire transform
-- [Pydantic partial validation issue #5031](https://github.com/pydantic/pydantic/issues/5031) — partial read strategies
-- [pyodide-http](https://github.com/koenvo/pyodide-http) — httpx NOT patched; requests+urllib only
-- [urllib3 Emscripten docs](https://urllib3.readthedocs.io/en/latest/reference/contrib/emscripten.html) — only stdlib-adjacent HTTP lib with native Pyodide support
-- [Flet issue #4840](https://github.com/flet-dev/flet/issues/4840) — httpx + Pyodide NotImplementedError (getaddrinfo)
-- [marimo CORS issue #3169](https://github.com/marimo-team/marimo/issues/3169) — browser-Python CORS user expectations
-- [Python typing.Protocol / PEP 544](https://peps.python.org/pep-0544/) — runtime_checkable and hasattr dispatch patterns
-- [SQLAlchemy 2.0 typed select](https://docs.sqlalchemy.org/en/20/orm/queryguide/select.html) — scalars() vs execute() dispatch precedent
+- [Odoo 17.0 External API docs](https://www.odoo.com/documentation/17.0/developer/reference/external_api.html) — create/write method behaviour
+- [odoo-development.readthedocs.io — x2many command tuples](https://odoo-development.readthedocs.io/en/latest/dev/py/x2many.html) — authoritative command codes 0–6
+- [FastAPI body-updates docs](https://fastapi.tiangolo.com/tutorial/body-updates/) — `exclude_unset` PATCH pattern
+- [Pydantic serialization — exclude_unset](https://docs.pydantic.dev/dev/concepts/serialization/) — `model_dump(exclude_unset=True)` and `model_fields_set`
+- [odoo-rpc-client jsonrpc source](https://odoo-rpc-client.readthedocs.io/en/latest/_modules/odoo_rpc_client/connection/jsonrpc.html) — how existing clients expose debug/traceback (they expose it verbatim — anti-pattern)
+- [Strawberry DataLoader docs](https://strawberry.rocks/docs/guides/dataloaders) — batched async relation resolution pattern
+- [SQLAlchemy selectinload docs](https://docs.sqlalchemy.org/en/20/orm/loading_relationships.html) — selectinload as the canonical batched-not-joined eager load pattern
+- [Odoo JSON-RPC error structure](https://www.braincuber.com/tutorial/odoo-19-api-errors-complete-guide) — `data.name`, `data.debug`, `data.message`, `data.arguments` fields confirmed
+- [django-dirtyfields](https://github.com/romgar/django-dirtyfields) — dirty-field tracking as an ORM pattern
+- [Roman Imankulov — Handling Unset Values in FastAPI with Pydantic](https://roman.pt/posts/handling-unset-values-in-fastapi-with-pydantic/) — unset vs None ergonomics
+- Existing codebase: `errors.py`, `transport.py`, `_pydantic_transform.py`, `typed.py`, `client.py` — inspected directly for current state
 
 ---
-*Feature research for: godoo-py v1.1 typed models + browser spike*
-*Researched: 2026-05-27*
+*Feature research for: godoo-py v1.2 — Typed Relations, Writes & Error Surface*
+*Researched: 2026-06-02*
