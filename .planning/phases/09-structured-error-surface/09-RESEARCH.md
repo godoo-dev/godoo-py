@@ -581,7 +581,7 @@ def test_str_fallback_when_no_data() -> None:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Base `OdooError.to_json()` — keep `"details": None`?**
    - What we know: D-09 and D-10 specify OdooRpcError drops `"details"`, OdooSafetyError is untouched. OdooError base is not addressed.
