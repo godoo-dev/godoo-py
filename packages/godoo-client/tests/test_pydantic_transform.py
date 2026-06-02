@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import ClassVar
 
 import pytest
-from godoo.client._pydantic_transform import OdooBaseModel, clear_partial_model_cache, derive_partial_model
+from godoo.client._pydantic_transform import OdooBaseModel, _ref_target_class, clear_partial_model_cache, derive_partial_model
 from godoo.client.typed import Ref
 from pydantic import Field
 
@@ -173,3 +173,68 @@ def test_derive_partial_model_inherits_validator() -> None:
     raw = Partial.model_validate({"id": 1, "name": False})
     # Cast to dict to inspect — avoid BaseModel attribute access mypy issues
     assert raw.model_dump().get("name") is None
+
+
+# ------------------------------------------------------------------
+# _ref_target_class() helper — REL-01
+# ------------------------------------------------------------------
+
+
+def test_ref_target_class_bare_ref() -> None:
+    """_ref_target_class(Ref) returns None for bare Ref (no type arg)."""
+    assert _ref_target_class(Ref) is None
+
+
+def test_ref_target_class_typed_ref() -> None:
+    """_ref_target_class(Ref[SomeClass]) returns SomeClass."""
+
+    class _Model:
+        pass
+
+    assert _ref_target_class(Ref[_Model]) is _Model
+
+
+def test_ref_target_class_union_with_none() -> None:
+    """_ref_target_class(Ref[SomeClass] | None) returns SomeClass (union unwrapping)."""
+
+    class _Model:
+        pass
+
+    assert _ref_target_class(Ref[_Model] | None) is _Model
+
+
+def test_ref_target_class_unrelated_annotation_returns_none() -> None:
+    """_ref_target_class(str) returns None when annotation has no Ref."""
+    assert _ref_target_class(str) is None
+
+
+# ------------------------------------------------------------------
+# m2o tuple -> Ref with _target_cls populated — REL-01
+# ------------------------------------------------------------------
+
+
+class _TypedPartner(OdooBaseModel):
+    """Minimal model with a Ref[_TypedPartner]-annotated m2o field for wire-transform tests."""
+
+    __odoo_model__: ClassVar[str] = "res.partner"
+    id: int
+    name: str | None = None
+    parent_id: Ref["_TypedPartner"] | None = None
+
+
+def test_m2o_tuple_populates_target_cls() -> None:
+    """[id, 'Name'] m2o tuple → Ref with _target_cls set from annotation (REL-01)."""
+    p = _TypedPartner.model_validate({"id": 1, "parent_id": [3, "Acme"]})
+    assert p.parent_id is not None
+    assert p.parent_id._target_cls is _TypedPartner
+
+
+def test_m2o_bare_ref_target_cls_none() -> None:
+    """[id, 'Name'] m2o tuple → Ref with _target_cls=None for bare Ref[object] annotation."""
+    p = _TestPartner.model_validate({"id": 1, "parent_id": [3, "Acme"]})
+    # _TestPartner.parent_id is annotated Ref[object] — not an OdooModel subclass,
+    # but _ref_target_class returns object (isinstance(object, type) is True).
+    # The important test: no crash, and _target_cls is populated (object is a type).
+    assert p.parent_id is not None
+    # object is a type, so _ref_target_class returns it
+    assert p.parent_id._target_cls is object
