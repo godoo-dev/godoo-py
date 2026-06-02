@@ -125,7 +125,7 @@ Plans:
 **Wave 1** *(parallel — disjoint files, both autonomous)*
 
 - [x] 08-01-PLAN.md — PyfetchTransport prototype (strategy 3) + raw Pyodide HTML page running all 3 strategies + README (BROWSER-02)
-- [ ] 08-02-PLAN.md — ACA multi-container Bicep (Odoo+Postgres, HTTPS ingress, origin-scoped CORS, minReplicas:1) + self-destruct Bicep (UAMI + RG Contributor + Logic App TTL) + deploy notes (BROWSER-02)
+- [x] 08-02-PLAN.md — ACA multi-container Bicep (Odoo+Postgres, HTTPS ingress, origin-scoped CORS, minReplicas:1) + self-destruct Bicep (UAMI + RG Contributor + Logic App TTL) + deploy notes (BROWSER-02)
 
 **Wave 2** *(blocked on Waves 1; NOT autonomous — live az deployment + in-browser run)*
 
@@ -147,7 +147,7 @@ Plans:
 | 5. Directory Rename | v1.1 | 2/2 | Complete    | 2026-05-28 |
 | 6. Transport Seam & Typed Models Core | v1.1 | 3/3 | Complete   | 2026-05-28 |
 | 7. Pydantic CLI Generator | v1.1 | 2/2 | Complete    | 2026-06-01 |
-| 8. Pyodide Spike | v1.1 | 1/4 | In Progress|  |
+| 8. Pyodide Spike | v1.1 | 2/4 | In Progress|  |
 
 ## Backlog
 
