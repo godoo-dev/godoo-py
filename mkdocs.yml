@@ -39,6 +39,8 @@ nav:
     - Safety: api/safety.md
     - Services: api/services.md
   - Testing: testing.md
+  - ADR:
+    - Pyodide Browser Go/No-Go: adr/0001-pyodide-browser-go-no-go.md
 
 plugins:
   - search
