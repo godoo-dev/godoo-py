@@ -28,10 +28,7 @@ param envName string = 'cae-godoo-pyodide-spike'
 @description('Name of the Container App.')
 param appName string = 'ca-godoo-pyodide-spike'
 
-@description(
-  'Exact scheme+host+port of the spike page origin, e.g. "https://<user>.github.io" or '
-  + '"http://localhost:8000".  NEVER pass "*" — CORS is origin-scoped per D-04/T-08-05.'
-)
+@description('Exact scheme+host+port of the spike page origin, e.g. "https://<user>.github.io" or "http://localhost:8000". NEVER pass "*" — CORS is origin-scoped per D-04/T-08-05.')
 param spikePageOrigin string
 
 @description('Odoo database name to create on first boot.')
@@ -127,8 +124,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'odoo'
           image: 'odoo:17'
           resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
+            cpu: json('1.0')
+            memory: '2Gi'
           }
           env: [
             // Postgres host — localhost because both containers share the pod.
@@ -160,10 +157,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           ]
           // Initialize only the base module — res.users is sufficient for the spike's
           // common.authenticate + object.execute_kw(res.users, read) round-trip.
+          // --database must be explicit: the official odoo:17 entrypoint does NOT read
+          // DB_NAME for --init; omitting it leaves --init with no target and the DB
+          // empty (root-cause fix).
           // --without-demo=all keeps the DB lean and the boot fast.
           args: [
             '--db_host=127.0.0.1'
             '--db_port=5432'
+            '--database=spike'
             '--init=base'
             '--without-demo=all'
           ]
@@ -179,8 +180,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'postgres'
           image: 'mcr.microsoft.com/k8se/services/postgres:14'
           resources: {
-            cpu: json('0.25')
-            memory: '0.5Gi'
+            cpu: json('0.5')
+            memory: '1Gi'
           }
           env: [
             {

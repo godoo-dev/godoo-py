@@ -35,10 +35,7 @@ param uamiName string = 'id-spike-destruct'
 @description('Name of the Consumption Logic App.')
 param logicAppName string = 'la-spike-destruct'
 
-@description(
-  'TTL in minutes before the Logic App fires and deletes the resource group. '
-  + 'Default: 60 minutes (≈1 hour after deploy).'
-)
+@description('TTL in minutes before the Logic App fires and deletes the resource group. Default: 60 minutes (approximately 1 hour after deploy).')
 param ttlMinutes int = 60
 
 // ---------------------------------------------------------------------------
@@ -114,7 +111,7 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
       parameters: {
         subscriptionId: {
           type: 'String'
-          defaultValue: subscriptionId()
+          defaultValue: subscription().subscriptionId
         }
         resourceGroupName: {
           type: 'String'
