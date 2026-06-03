@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: executing
+status: complete
 last_updated: "2026-06-03T13:23:05.721Z"
-last_activity: 2026-06-03 -- Phase 12 planning complete
+last_activity: 2026-06-03 -- Phase 12 complete (tech debt close-out, DEBT-01..04 verified)
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 9
   completed_plans: 9
-  percent: 50
+  percent: 100
 ---
 
 # Project State
@@ -25,15 +25,15 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 ## Current Position
 
 Phase: 12
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-03 -- Phase 12 planning complete
+Plan: All 3 complete
+Status: Phase 12 complete — v1.2 milestone done
+Last activity: 2026-06-03 -- Phase 12 complete (tech debt close-out, DEBT-01..04 verified)
 
 ```
-Phase 9  [          ] Not started
-Phase 10 [          ] Not started
-Phase 11 [###       ] 1/3 plans complete
-Phase 12 [          ] Not started
+Phase 9  [##########] 1/1 plans complete
+Phase 10 [##########] 2/2 plans complete
+Phase 11 [##########] 3/3 plans complete
+Phase 12 [##########] 3/3 plans complete
 ```
 
 ## Performance Metrics
