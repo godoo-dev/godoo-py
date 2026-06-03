@@ -205,16 +205,17 @@ async def test_typed_write_datetime_becomes_iso_string(auth_client: OdooClient) 
 
 
 # ------------------------------------------------------------------
-# WRITE-05: x2many in model_fields_set raises OdooValidationError before RPC
+# WRITE-05: explicit post-init x2many mutation raises OdooValidationError before RPC (CR-01)
 # ------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_typed_write_x2many_raises(auth_client: OdooClient) -> None:
-    """WRITE-05: x2many field in model_fields_set raises OdooValidationError before any RPC."""
+    """WRITE-05 / CR-01 contract (c): explicit post-init x2many assignment raises before any RPC."""
     with respx.mock:
         respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(True)))
-        instance = WritePartner(id=1, line_ids=[1, 2])
+        instance = WritePartner(id=1)
+        instance.line_ids = [1, 2]  # explicit post-init mutation — contract (c)
         with pytest.raises(OdooValidationError, match="x2many"):
             await auth_client.write(instance)
         # No RPC beyond the auth call — the serializer raises before network
@@ -305,6 +306,104 @@ async def test_dict_write_still_works(auth_client: OdooClient) -> None:
 
 
 # ------------------------------------------------------------------
+# CR-01 / CR-02: contracts exercised against a real codegen-generated class (exec)
+# ------------------------------------------------------------------
+
+
+def _make_codegen_class(extra_fields: dict[str, object] | None = None) -> type:
+    """Generate and exec a ResPartner-like class via CodeGenerator.
+
+    Returns the generated class object. Uses a minimal schema so the test does not
+    depend on a live Odoo instance. The exec is acceptable because the source is our
+    own trusted codegen output.
+
+    model_rebuild(_types_namespace=ns) is called after exec so that pydantic can
+    resolve deferred annotations introduced by ``from __future__ import annotations``
+    in the generated source. The ``ns`` dict carries all the names the generated
+    module imported (Optional, ClassVar, OdooBaseModel, Field, …) so the rebuild
+    finds everything it needs.
+    """
+    from godoo.introspection.codegen import CodeGenerator
+    from godoo.introspection.types import FieldSchema, ModelSchema
+
+    fields: dict[str, FieldSchema] = {
+        "name": FieldSchema(name="name", ttype="char"),
+        "line_ids": FieldSchema(name="line_ids", ttype="one2many"),
+    }
+    if extra_fields:
+        fields.update(extra_fields)  # type: ignore[arg-type]
+    schema = ModelSchema(name="res.partner", fields=fields)
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    source = gen.generate(schema)
+    ns: dict[str, object] = {}
+    exec(source, ns)  # trusted codegen output
+    cls: type = ns["ResPartner"]  # type: ignore[assignment]
+    cls.model_rebuild(_types_namespace=ns)  # type: ignore[attr-defined]
+    return cls
+
+
+def test_cr02_generated_class_create_without_id() -> None:
+    """CR-02 contract (a): generated class can be instantiated without id for create().
+
+    id: int | None = None means ResPartner(name='X') works without a bogus id.
+    """
+    ResPartner = _make_codegen_class()
+    instance = ResPartner(name="Acme Corp")  # type: ignore[call-arg]
+    assert instance.id is None  # type: ignore[attr-defined]
+    assert instance.name == "Acme Corp"  # type: ignore[attr-defined]
+
+
+def test_cr02_generated_class_id_not_in_payload() -> None:
+    """CR-02: id is excluded from the serialized payload even when set.
+
+    _serialize_for_write always drops id (it's sent as a separate RPC arg).
+    """
+    from godoo.client._pydantic_transform import _serialize_for_write
+
+    ResPartner = _make_codegen_class()
+    instance = ResPartner(name="Acme Corp")  # type: ignore[call-arg]
+    payload = _serialize_for_write(instance)
+    assert "id" not in payload
+    assert payload == {"name": "Acme Corp"}
+
+
+def test_cr01_generated_class_read_then_modify_scalar_does_not_raise() -> None:
+    """CR-01 contract (b): generated class read → modify scalar → serialize MUST NOT raise.
+
+    Simulates client.search_read returning a dict with x2many fields. Modifying one
+    scalar field and serializing must succeed even though line_ids is in model_fields_set.
+    """
+    from godoo.client._pydantic_transform import _serialize_for_write
+
+    ResPartner = _make_codegen_class()
+    # Simulate what model_validate receives from the Odoo JSON-RPC response
+    instance = ResPartner.model_validate({"id": 42, "name": "Original", "line_ids": [1, 2, 3]})  # type: ignore[call-arg]
+    # User modifies only a scalar — the canonical roundtrip case
+    instance.name = "Updated"  # type: ignore[attr-defined]
+
+    # Must not raise — contract (b)
+    payload = _serialize_for_write(instance)
+    assert payload == {"name": "Updated"}
+    assert "line_ids" not in payload
+
+
+def test_cr01_generated_class_explicit_x2many_mutation_raises() -> None:
+    """CR-01 contract (c): explicit post-init x2many assignment on generated class raises.
+
+    The user explicitly sets an x2many field and calls write — must raise
+    OdooValidationError with a clear message.
+    """
+    from godoo.client._pydantic_transform import _serialize_for_write
+
+    ResPartner = _make_codegen_class()
+    instance = ResPartner(id=42, name="Acme")  # type: ignore[call-arg]
+    instance.line_ids = [5, 6, 7]  # type: ignore[attr-defined]  # explicit mutation — contract (c)
+
+    with pytest.raises(OdooValidationError, match="x2many"):
+        _serialize_for_write(instance)
+
+
+# ------------------------------------------------------------------
 # TEST-01 integration: codegen → read → write round-trip (closes 999.3)
 # ------------------------------------------------------------------
 
@@ -344,11 +443,15 @@ async def test_codegen_read_write_roundtrip() -> None:
         gen = CodeGenerator(introspector, in_set=frozenset({"res.lang"}))
         source = gen.generate(schema)
 
-        # Step 3: exec() the source to get the generated class
+        # Step 3: exec() the source to get the generated class.
         # The source is trusted (our own codegen output), so exec() is acceptable here.
+        # model_rebuild is required because generated source uses `from __future__ import
+        # annotations` (deferred evaluation); the rebuild resolves annotations using the
+        # names that the generated module imported (carried in ns).
         ns: dict[str, object] = {}
         exec(source, ns)
         ResLang: type = ns["ResLang"]  # type: ignore[assignment]
+        ResLang.model_rebuild(_types_namespace=ns)  # type: ignore[attr-defined]
 
         # Step 4: Read one record using the generated typed class
         records = await client.search_read(ResLang, [("active", "in", [True, False])], limit=1)

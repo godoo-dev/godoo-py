@@ -17,11 +17,14 @@ from pydantic import Field
 
 
 class _WritePartner(OdooBaseModel):
-    """Minimal model for write-serializer unit tests."""
+    """Minimal model for write-serializer unit tests.
+
+    id is Optional (generated shape per CR-02) so instances can be built for create().
+    """
 
     __odoo_model__: ClassVar[str] = "res.partner"
 
-    id: int
+    id: int | None = None
     name: str | None = None
     comment: str | None = None
     website: str | None = None
@@ -52,14 +55,11 @@ def test_only_set_fields_included() -> None:
 
 
 def test_no_set_fields_returns_empty_dict() -> None:
-    """An instance with only defaults set (empty model_fields_set) yields an empty payload."""
-    # No explicit kwargs passed → model_fields_set is empty
+    """An instance with only id from model_validate yields an empty payload (id is always dropped)."""
     instance = _WritePartner.model_validate({"id": 1})
     payload = _serialize_for_write(instance)
-    # id is set via Odoo read → model_fields_set contains id; no other fields
-    # (id is a required field; model_validate populates it but does NOT add it to model_fields_set
-    # unless explicitly assigned — behaviour depends on pydantic version; either case is valid)
-    assert isinstance(payload, dict)
+    # id is dropped unconditionally; no other fields were set.
+    assert payload == {}
 
 
 def test_multiple_set_fields_included() -> None:
@@ -160,20 +160,26 @@ def test_computed_field_excluded_when_set() -> None:
 
 
 # ------------------------------------------------------------------
-# WRITE-05: x2many raises OdooValidationError (D-01)
+# WRITE-05: x2many raises OdooValidationError only on explicit post-init mutation (CR-01)
 # ------------------------------------------------------------------
 
 
-def test_x2many_field_raises_validation_error() -> None:
-    """A field with odoo_x2many=True raises OdooValidationError with an actionable message (WRITE-05, D-01)."""
-    instance = _WritePartner(id=1, line_ids=[1, 2, 3])
+def test_x2many_explicit_mutation_raises_validation_error() -> None:
+    """Contract (c): explicitly assigning an x2many field post-construction raises OdooValidationError.
+
+    The guard fires on post-init attribute assignment (m.line_ids = [...]), not on
+    constructor kwargs — the caller is unambiguously attempting to write the relation.
+    """
+    instance = _WritePartner(id=1)
+    instance.line_ids = [1, 2, 3]  # explicit post-init mutation — contract (c)
     with pytest.raises(OdooValidationError, match="line_ids"):
         _serialize_for_write(instance)
 
 
 def test_x2many_error_message_mentions_command_tuples() -> None:
     """The x2many error message directs the caller to use command tuples."""
-    instance = _WritePartner(id=1, tag_ids=[5])
+    instance = _WritePartner(id=1)
+    instance.tag_ids = [5]  # explicit post-init mutation
     with pytest.raises(OdooValidationError, match="command tuples"):
         _serialize_for_write(instance)
 
@@ -184,9 +190,48 @@ def test_x2many_raises_before_any_rpc() -> None:
     import inspect
 
     assert not inspect.iscoroutinefunction(_serialize_for_write)
-    instance = _WritePartner(id=1, tag_ids=[1])
+    instance = _WritePartner(id=1)
+    instance.tag_ids = [1]  # explicit post-init mutation
     with pytest.raises(OdooValidationError):
         _serialize_for_write(instance)
+
+
+def test_x2many_from_read_does_not_raise() -> None:
+    """Contract (b): x2many populated via model_validate (read path) does NOT raise on write.
+
+    This is the canonical read→modify-scalar→write roundtrip. The caller never
+    explicitly touched the x2many field — it was stamped in by pydantic's model_validate.
+    """
+    # Simulate what client.search_read / client.read returns
+    instance = _WritePartner.model_validate(
+        {
+            "id": 42,
+            "name": "Acme",
+            "line_ids": [1, 2, 3],  # x2many from Odoo response
+            "tag_ids": [10, 20],
+        }
+    )
+    # Modify a scalar field only — the roundtrip case
+    instance.name = "Acme Updated"
+
+    # Must not raise even though line_ids and tag_ids are in model_fields_set
+    payload = _serialize_for_write(instance)
+    # Only the explicitly mutated scalar appears in the payload
+    assert "name" in payload
+    assert "line_ids" not in payload
+    assert "tag_ids" not in payload
+
+
+def test_x2many_from_constructor_does_not_raise() -> None:
+    """Contract (a): x2many field at its default (constructor, no explicit x2many kwarg) does not raise.
+
+    Instantiating with only scalar fields (the create() pattern) must succeed.
+    line_ids defaults to [] via default_factory — never in _user_set_fields.
+    """
+    instance = _WritePartner(name="New Partner")  # id defaults to None, line_ids defaults to []
+    payload = _serialize_for_write(instance)
+    assert "name" in payload
+    assert "line_ids" not in payload
 
 
 # ------------------------------------------------------------------

@@ -14,6 +14,12 @@ from weakref import WeakKeyDictionary
 from godoo.client.typed import Ref
 from pydantic import BaseModel, create_model, model_validator
 
+# _INIT_SENTINEL is placed in _user_set_fields while __init__/__model_post_init__ is
+# running so that __setattr__ can reliably distinguish construction-time field writes
+# (pydantic internal) from user-triggered attribute assignments (post-construction).
+# After model_post_init clears it, any __setattr__ call records a real user mutation.
+_INIT_SENTINEL = "_init_"
+
 # Module-private cache keyed by the source model class itself (a WeakKeyDictionary, so entries
 # are reclaimed when the model class is garbage-collected) with an inner dict keyed by
 # frozenset(fields). Keying on the class object — not id(model) — avoids a soundness hole where
@@ -118,9 +124,46 @@ class OdooBaseModel(BaseModel):
     Subclasses (emitted by Phase 7 codegen) declare:
         __odoo_model__: ClassVar[str] = "res.partner"
     plus their fields.
+
+    Dirty-tracking for x2many write guard (CR-01):
+    ``_user_set_fields`` is a per-instance ``set[str]`` that records field names that
+    were explicitly assigned **after** construction (i.e., post-``model_post_init``).
+    It is initialised to the empty set via ``model_post_init``; ``__setattr__``
+    appends to it for every post-init field assignment.
+
+    This distinguishes three cases that ``model_fields_set`` cannot:
+    - Construction-time kwargs (``Model(field=value)``): NOT in ``_user_set_fields``;
+      pydantic processes kwargs internally without going through ``__setattr__``.
+    - ``model_validate({...})`` read path: NOT in ``_user_set_fields``; same reason.
+    - Post-init attribute assignment (``m.field = value``): IS in ``_user_set_fields``.
+
+    For x2many fields the write serializer raises only when the field appears in
+    ``_user_set_fields`` — this allows the canonical read→modify-scalar→write roundtrip
+    while still catching explicit x2many mutations.
     """
 
     __odoo_model__: ClassVar[str]
+
+    def model_post_init(self, __context: Any) -> None:
+        """Initialise per-instance dirty-tracking set after pydantic construction."""
+        # Use object.__setattr__ to bypass our own __setattr__ guard and avoid
+        # accidentally recording '_user_set_fields' itself as a mutated field.
+        object.__setattr__(self, "_user_set_fields", set())
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Track post-construction field mutations for x2many write guard (CR-01)."""
+        try:
+            user_set: set[str] = object.__getattribute__(self, "_user_set_fields")
+            # Only track declared model fields (not private attrs like _user_set_fields).
+            # Use type(self).model_fields to access the class-level descriptor without
+            # triggering the pydantic per-instance deprecation warning (pydantic >=2.11).
+            if name in type(self).model_fields:
+                user_set.add(name)
+        except AttributeError:
+            # _user_set_fields not yet created (during pydantic's own __init__ before
+            # model_post_init runs) — silently skip so construction is unaffected.
+            pass
+        super().__setattr__(name, value)
 
     @model_validator(mode="before")
     @classmethod
@@ -256,13 +299,27 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
 
     Only fields in model_fields_set are included. Readonly fields
     (json_schema_extra odoo_readonly=True) are excluded. x2many fields
-    (odoo_x2many=True) in the set raise OdooValidationError. Transformations:
+    (odoo_x2many=True) that appear in the instance's ``_user_set_fields`` raise
+    OdooValidationError; x2many fields that were populated during construction or
+    via model_validate (read path) are silently skipped. Transformations:
       Ref  -> int (bare id)
       None -> False (Odoo wire convention for cleared fields)
       datetime -> ISO-format string  (datetime BEFORE date — datetime subclasses date)
       date -> ISO-format string
+
+    x2many guard semantics (CR-01):
+    - ``_user_set_fields`` tracks post-construction attribute assignments only.
+    - Fields stamped into model_fields_set by model_validate (read path) are NOT in
+      ``_user_set_fields``, so a read→modify-scalar→write roundtrip never raises.
+    - Only an explicit ``instance.field = [...]`` after construction raises.
     """
     from godoo.client.errors import OdooValidationError  # lazy: avoids circular at module load
+
+    # Retrieve the dirty set once; fall back to empty set if somehow missing.
+    try:
+        user_set: set[str] = object.__getattribute__(instance, "_user_set_fields")
+    except AttributeError:
+        user_set = set()
 
     payload: dict[str, Any] = {}
     for field_name in instance.model_fields_set:
@@ -279,13 +336,20 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
         if extra_dict.get("odoo_readonly"):
             continue
 
-        # WRITE-05: raise on x2many before any RPC
+        # WRITE-05: raise only when the caller explicitly mutated an x2many field
+        # (post-construction attribute assignment). x2many values that came from a
+        # model_validate() read are silently excluded — they cannot be expressed via
+        # the scalar typed path anyway, and excluding them enables the
+        # read→modify-scalar→write roundtrip (CR-01).
         if extra_dict.get("odoo_x2many"):
-            raise OdooValidationError(
-                f"Field {field_name!r} is an x2many relation and cannot be written via the "
-                "typed path. Use client.write(model, ids, {field: [(6, 0, [ids])]}) with "
-                "command tuples instead."
-            )
+            if field_name in user_set:
+                raise OdooValidationError(
+                    f"Field {field_name!r} is an x2many relation and cannot be written via the "
+                    f"typed path. Use client.write({instance.__odoo_model__!r}, [<ids>], "
+                    f"{{{field_name!r}: [(6, 0, [<ids>])]}}) with command tuples instead."
+                )
+            # Populated from read path — skip silently.
+            continue
 
         value = getattr(instance, field_name)
 
