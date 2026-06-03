@@ -107,7 +107,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 11-01-PLAN.md — GEN-01: widen pydantic_field_str() to 4-tuple, emit json_schema_extra metadata, update codegen + tests, align ROADMAP SC-4
+- [x] 11-01-PLAN.md — GEN-01: widen pydantic_field_str() to 4-tuple, emit json_schema_extra metadata, update codegen + tests, align ROADMAP SC-4
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

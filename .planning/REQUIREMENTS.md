@@ -21,7 +21,7 @@
 
 ### GEN — Codegen Field Metadata
 
-- [ ] **GEN-01**: The introspection codegen emits read-only / stored field metadata into each generated model field so the write serializer can exclude non-writable fields precisely. (Must land before WRITE-04.)
+- [x] **GEN-01**: The introspection codegen emits read-only / stored field metadata into each generated model field so the write serializer can exclude non-writable fields precisely. (Must land before WRITE-04.)
 
 ### WRITE — Typed Write/Create (TYPED-F2)
 
@@ -88,7 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-03 | Phase 10 | Complete |
 | REL-04 | Phase 10 | Complete |
 | REL-05 | Phase 10 | Complete |
-| GEN-01 | Phase 11 | Pending |
+| GEN-01 | Phase 11 | Complete |
 | WRITE-01 | Phase 11 | Pending |
 | WRITE-02 | Phase 11 | Pending |
 | WRITE-03 | Phase 11 | Pending |

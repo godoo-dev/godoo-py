@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
 status: executing
-last_updated: "2026-06-03T08:13:05.862Z"
-last_activity: 2026-06-03 -- Phase 11 planning complete
+last_updated: "2026-06-03T09:15:00.000Z"
+last_activity: 2026-06-03 -- Phase 11 Plan 01 complete (GEN-01 codegen metadata)
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 25
 ---
 
@@ -25,14 +25,14 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 ## Current Position
 
 Phase: 11
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-03 -- Phase 11 planning complete
+Plan: 1 of 3 complete
+Status: Executing
+Last activity: 2026-06-03 -- Phase 11 Plan 01 complete (GEN-01 codegen metadata)
 
 ```
 Phase 9  [          ] Not started
 Phase 10 [          ] Not started
-Phase 11 [          ] Not started
+Phase 11 [###       ] 1/3 plans complete
 Phase 12 [          ] Not started
 ```
 
@@ -88,6 +88,9 @@ Recent decisions affecting current work:
 - [v1.2-init]: Phase 12 = DEBT-01..04 independent cleanup; placed last so it does not block typed-layer work
 - [v1.2-init]: TEST-01/02 folded into Phases 11/10 respectively (coarse granularity; test belongs adjacent to the feature it covers)
 - [Phase ?]: read() uses Any + None default for Ref overload compatibility
+- [11-01]: D-04 narrowed readonly rule: readonly=True OR (store=False AND compute is not None); plain non-stored inverse fields are writable
+- [11-01]: from pydantic import Field emitted only when at least one field carries extra metadata (conditional header)
+- [11-01]: x2many fields use Field(default_factory=list, ...) not mutable default=[] to avoid PydanticUserError
 
 ### Open Decisions (settle before relevant phase)
 
@@ -134,11 +137,11 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-03T07:22:06.745Z
-Stopped at: Phase 11 context gathered
+Last session: 2026-06-03T09:15:00.000Z
+Stopped at: Phase 11 Plan 01 complete — GEN-01 codegen metadata committed
 
 ## Operator Next Steps
 
+- Run Phase 11 Plan 02 (WRITE-01..05: _serialize_for_write + client.create/write typed overloads)
 - Settle ODD-4 (`.data`→`.raw` scope) then run `/gsd:plan-phase 9`
 - Settle ODD-1 before planning Phase 10
-- Settle ODD-2 + ODD-3 before planning Phase 11
