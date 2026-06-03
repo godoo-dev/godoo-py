@@ -337,3 +337,51 @@ def test_generate_date_import_via_structural(tmp_path: Path) -> None:
     schema = _schema("res.partner", create_date=_date_field("create_date"))
     result = gen.generate(schema)
     assert "from datetime import date" in result, f"Expected 'from datetime import date' in:\n{result}"
+
+
+# ---------------------------------------------------------------------------
+# GEN-01 codegen emission — Task 2
+# ---------------------------------------------------------------------------
+
+
+def _readonly_field(fname: str = "state") -> FieldSchema:
+    return FieldSchema(name=fname, ttype="char", readonly=True)
+
+
+def _x2many_field(fname: str = "line_ids") -> FieldSchema:
+    return FieldSchema(name=fname, ttype="one2many")
+
+
+def test_readonly_field_emits_field_with_json_schema_extra() -> None:
+    """Readonly field generates Field(default=None, json_schema_extra={'odoo_readonly': True})."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", state=_readonly_field("state"))
+    result = gen.generate(schema)
+    assert "json_schema_extra=" in result, f"Expected json_schema_extra in:\n{result}"
+    assert "'odoo_readonly': True" in result, f"Expected odoo_readonly metadata in:\n{result}"
+
+
+def test_x2many_field_emits_default_factory() -> None:
+    """x2many field generates Field(default_factory=list, ...) not Field(default=[], ...)."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", line_ids=_x2many_field("line_ids"))
+    result = gen.generate(schema)
+    assert "Field(default_factory=list" in result, f"Expected default_factory=list in:\n{result}"
+    # Must NOT use mutable default — PydanticUserError at import time
+    assert "= []" not in result, f"Must not use mutable default '= []' in:\n{result}"
+
+
+def test_field_import_added_when_metadata_present() -> None:
+    """'from pydantic import Field' appears when any field carries metadata."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", state=_readonly_field("state"))
+    result = gen.generate(schema)
+    assert "from pydantic import Field" in result, f"Expected pydantic Field import in:\n{result}"
+
+
+def test_no_field_import_when_no_metadata() -> None:
+    """'from pydantic import Field' is absent for all-plain-scalar models."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", name=_char_field("name"), active=_bool_field("active"))
+    result = gen.generate(schema)
+    assert "from pydantic import Field" not in result, f"Field import must be absent in:\n{result}"
