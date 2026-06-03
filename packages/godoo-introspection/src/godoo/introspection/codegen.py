@@ -113,6 +113,7 @@ class CodeGenerator:
         need_literal = False
         need_any = False
         need_ref = False
+        need_field_import = False  # set to True when any field carries extra metadata (GEN-01)
         cross_imports: list[tuple[str, str]] = []  # (stem, classname) for in-set m2o targets
 
         # Collect non-id field lines
@@ -136,8 +137,19 @@ class CodeGenerator:
                 continue
 
             # Finding #10: structural import detection — unpack 4-tuple from type_mapper (GEN-01)
-            annotation, default, imports, _extra = pydantic_field_str(fs, self._in_set, _model_to_classname)
-            field_lines.append(f"    {field_name}: {annotation} = {default}")
+            annotation, default, imports, extra = pydantic_field_str(fs, self._in_set, _model_to_classname)
+
+            # GEN-01: emit Field() with json_schema_extra when metadata is present
+            if extra:
+                if default == "[]":
+                    # x2many: use default_factory=list to avoid PydanticUserError (mutable default)
+                    default_expr = f"Field(default_factory=list, json_schema_extra={extra!r})"
+                else:
+                    default_expr = f"Field(default={default}, json_schema_extra={extra!r})"
+                need_field_import = True
+            else:
+                default_expr = default
+            field_lines.append(f"    {field_name}: {annotation} = {default_expr}")
 
             # Track imports needed — set-membership checks on the imports frozenset
             need_date |= "date" in imports
@@ -190,6 +202,8 @@ class CodeGenerator:
         lines.append("from godoo.client._pydantic_transform import OdooBaseModel")
         if need_ref:
             lines.append("from godoo.client.typed import Ref")
+        if need_field_import:
+            lines.append("from pydantic import Field")
 
         # Cross-imports for in-set many2one targets
         if cross_imports:
