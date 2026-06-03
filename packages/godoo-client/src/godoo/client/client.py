@@ -23,6 +23,7 @@ from godoo.client.typed import OdooModel, Ref
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable
 
+    from godoo.client._pydantic_transform import OdooBaseModel
     from godoo.client.rpc.protocol import Transport
     from godoo.client.services.accounting.service import AccountingService
     from godoo.client.services.attendance.service import AttendanceService
@@ -508,36 +509,77 @@ class OdooClient:
             raise OdooValidationError(f"Binary field {field!r} on {model}:{record_id} is not valid base64") from exc
 
     @overload
+    async def create(self, instance: OdooBaseModel) -> int: ...
+
+    @overload
     async def create(self, model: str, values: dict[str, Any], **kwargs: Any) -> int: ...
 
     @overload
     async def create(self, model: str, values: list[dict[str, Any]], **kwargs: Any) -> list[int]: ...
 
-    async def create(
+    async def create(  # type: ignore[misc]
         self,
-        model: str,
-        values: dict[str, Any] | list[dict[str, Any]],
+        model: Any,
+        values: Any = None,
         **kwargs: Any,
     ) -> int | list[int]:
         """Create one or more records.
 
-        Pass a single dict to create one record (returns int id).
-        Pass a list of dicts to create multiple records (returns list[int] ids).
+        Typed path: pass an OdooBaseModel instance — returns new record id (int).
+        Dict path: pass model str + single dict → int; list of dicts → list[int].
         Raises OdooValidationError locally if the list is empty (no RPC call made).
         """
+        # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
+        if hasattr(model, "__odoo_model__"):
+            try:
+                from godoo.client._pydantic_transform import _serialize_for_write
+            except ModuleNotFoundError as exc:
+                raise OdooValidationError(
+                    "Typed writes require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
+                ) from exc
+            payload = _serialize_for_write(model)
+            return cast("int", await self.call(model.__odoo_model__, "create", [payload], kwargs))
+        # Dict path — unchanged from v1.0
         if isinstance(values, list):
             if not values:
                 raise OdooValidationError("Cannot create with empty list of values")
             return cast("list[int]", await self.call(model, "create", [values], kwargs))
         return cast("int", await self.call(model, "create", [values], kwargs))
 
+    @overload
+    async def write(self, instance: OdooBaseModel) -> bool: ...
+
+    @overload
     async def write(
         self,
         model: str,
         ids: int | list[int],
         values: dict[str, Any],
         **kwargs: Any,
+    ) -> bool: ...
+
+    async def write(  # type: ignore[misc]
+        self,
+        model: Any,
+        ids: Any = None,
+        values: Any = None,
+        **kwargs: Any,
     ) -> bool:
+        # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
+        if hasattr(model, "__odoo_model__"):
+            if model.id is None:
+                raise OdooValidationError(
+                    f"Cannot write {model.__odoo_model__!r}: instance.id is None (record not yet created)."
+                )
+            try:
+                from godoo.client._pydantic_transform import _serialize_for_write
+            except ModuleNotFoundError as exc:
+                raise OdooValidationError(
+                    "Typed writes require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
+                ) from exc
+            payload = _serialize_for_write(model)
+            return cast("bool", await self.call(model.__odoo_model__, "write", [[model.id], payload], kwargs))
+        # Dict path — unchanged from v1.0
         if isinstance(ids, int):
             ids = [ids]
         return cast("bool", await self.call(model, "write", [ids, values], kwargs))
