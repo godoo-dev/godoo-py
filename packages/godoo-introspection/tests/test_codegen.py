@@ -72,18 +72,17 @@ def test_generate_odoo_model_classvar() -> None:
     assert '__odoo_model__: ClassVar[str] = "res.partner"' in result
 
 
-def test_generate_id_plain_int() -> None:
-    """id field emits as plain int — no Optional, no default."""
+def test_generate_id_optional_with_none_default() -> None:
+    """id field emits as int | None = None — optional so instances can be built for create()."""
     gen = CodeGenerator(None)  # type: ignore[arg-type]
     schema = _schema("res.partner", id=FieldSchema(name="id", ttype="integer"))
     result = gen.generate(schema)
-    assert "    id: int" in result
-    # Must NOT have Optional[int] or default for id
+    assert "    id: int | None = None" in result
+    # Must NOT be a required int with no default
     lines = result.splitlines()
     id_lines = [ln for ln in lines if ln.strip().startswith("id:")]
     assert len(id_lines) == 1
-    assert "Optional" not in id_lines[0]
-    assert "=" not in id_lines[0]
+    assert "None" in id_lines[0]
 
 
 def test_generate_optional_char() -> None:
@@ -170,11 +169,11 @@ def test_generate_importlib_roundtrip(tmp_path: Path) -> None:
 
 
 def test_generate_empty_schema_has_id_and_pass() -> None:
-    """Schema with no fields emits id: int and pass."""
+    """Schema with no fields emits id: int | None = None and pass."""
     gen = CodeGenerator(None)  # type: ignore[arg-type]
     schema = ModelSchema(name="res.empty", fields={})
     result = gen.generate(schema)
-    assert "    id: int" in result
+    assert "    id: int | None = None" in result
     assert "pass" in result
 
 
@@ -385,3 +384,48 @@ def test_no_field_import_when_no_metadata() -> None:
     schema = _schema("res.partner", name=_char_field("name"), active=_bool_field("active"))
     result = gen.generate(schema)
     assert "from pydantic import Field" not in result, f"Field import must be absent in:\n{result}"
+
+
+# ---------------------------------------------------------------------------
+# CR-02 contract: generated class can be instantiated without id (create path)
+# ---------------------------------------------------------------------------
+
+
+def test_generated_class_instantiable_without_id() -> None:
+    """A generated class (exec'd) can be instantiated without id — create() contract (a).
+
+    id defaults to None so ResPartner(name='X') works without a bogus id sentinel.
+    This exercises the actual codegen output, not a hand-written fixture.
+
+    model_rebuild(_types_namespace=ns) is called so pydantic can resolve deferred
+    annotations from ``from __future__ import annotations`` in the generated source.
+    """
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema(
+        "res.partner",
+        name=_char_field("name"),
+        active=_bool_field("active"),
+    )
+    source = gen.generate(schema)
+    ns: dict[str, object] = {}
+    exec(source, ns)  # source is our own trusted codegen output
+    ResPartner = ns["ResPartner"]
+    ResPartner.model_rebuild(_types_namespace=ns)  # type: ignore[attr-defined]
+
+    # Contract (a): instantiation without id must not raise
+    instance = ResPartner(name="Acme Corp")  # type: ignore[call-arg]
+    assert instance.id is None  # type: ignore[union-attr]
+    assert instance.name == "Acme Corp"  # type: ignore[attr-defined]
+
+
+def test_generated_class_id_is_optional_in_source() -> None:
+    """Generated source contains 'id: int | None = None', never 'id: int' with no default."""
+    gen = CodeGenerator(None)  # type: ignore[arg-type]
+    schema = _schema("res.partner", name=_char_field("name"))
+    source = gen.generate(schema)
+    lines = source.splitlines()
+    id_lines = [ln for ln in lines if "id:" in ln and not ln.strip().startswith("#")]
+    # Only the field declaration line — must be optional with default
+    assert any("id: int | None = None" in ln for ln in id_lines), (
+        f"Expected 'id: int | None = None' in generated source; id lines: {id_lines}"
+    )

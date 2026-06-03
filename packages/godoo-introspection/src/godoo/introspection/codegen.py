@@ -99,7 +99,9 @@ class CodeGenerator:
 
         The output subclasses ``OdooBaseModel`` and carries:
         - ``__odoo_model__: ClassVar[str]`` set to the Odoo technical name
-        - ``id: int`` always (no Optional, no default)
+        - ``id: int | None = None`` — optional so instances can be built for ``create()``;
+          ``_serialize_for_write`` drops ``id`` from the payload regardless, and Odoo always
+          returns ``id`` on reads so the field is always populated after a round-trip.
         - Per non-id field: ``Optional[T] = None`` or appropriate Pydantic form
 
         Raises:
@@ -220,8 +222,9 @@ class CodeGenerator:
         lines.append(f'    __odoo_model__: ClassVar[str] = "{schema.name}"')
         lines.append("")
 
-        # id field — always emitted first, no Optional, no default
-        lines.append("    id: int")
+        # id field — optional so instances can be constructed for create();
+        # _serialize_for_write drops id from write/create payloads regardless.
+        lines.append("    id: int | None = None")
 
         # Non-id fields
         for fl in field_lines:
