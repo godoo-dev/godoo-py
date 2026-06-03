@@ -169,3 +169,62 @@ def test_unknown_ttype_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
         pydantic_field_str(_field("__another_unknown__"), frozenset(), _fn)
     assert any("__another_unknown__" in record.message for record in caplog.records)
     assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# GEN-01 — metadata emission tests
+# ---------------------------------------------------------------------------
+
+
+def _field_ro(ttype: str, **kwargs: object) -> FieldSchema:
+    """Build a FieldSchema with readonly=True."""
+    return FieldSchema(name="f", ttype=ttype, readonly=True, **kwargs)  # type: ignore[arg-type]
+
+
+def _field_computed_nonstored(ttype: str) -> FieldSchema:
+    """Build a computed non-stored FieldSchema (D-03 rule)."""
+    return FieldSchema(name="f", ttype=ttype, store=False, compute="_compute_f")
+
+
+def test_readonly_field_emits_odoo_readonly_metadata() -> None:
+    _, _, _, extra = pydantic_field_str(_field_ro("char"), frozenset(), _fn)
+    assert extra == {"odoo_readonly": True}
+
+
+def test_computed_nonstored_emits_odoo_readonly_metadata() -> None:
+    _, _, _, extra = pydantic_field_str(_field_computed_nonstored("float"), frozenset(), _fn)
+    assert extra == {"odoo_readonly": True}
+
+
+def test_nonstored_without_compute_no_metadata() -> None:
+    """Non-stored field without compute is NOT marked readonly (D-04 refinement)."""
+    f = FieldSchema(name="f", ttype="char", store=False, compute=None)
+    _, _, _, extra = pydantic_field_str(f, frozenset(), _fn)
+    assert "odoo_readonly" not in extra
+
+
+def test_one2many_emits_odoo_x2many_metadata() -> None:
+    _, _, _, extra = pydantic_field_str(_field("one2many"), frozenset(), _fn)
+    assert extra.get("odoo_x2many") is True
+
+
+def test_many2many_emits_odoo_x2many_metadata() -> None:
+    _, _, _, extra = pydantic_field_str(_field("many2many"), frozenset(), _fn)
+    assert extra.get("odoo_x2many") is True
+
+
+def test_plain_writable_field_no_metadata() -> None:
+    _, _, _, extra = pydantic_field_str(_field("char"), frozenset(), _fn)
+    assert extra == {}
+
+
+def test_readonly_x2many_emits_both_flags() -> None:
+    f = FieldSchema(name="f", ttype="one2many", readonly=True)
+    _, _, _, extra = pydantic_field_str(f, frozenset(), _fn)
+    assert extra.get("odoo_readonly") is True
+    assert extra.get("odoo_x2many") is True
+
+
+def test_boolean_readonly_emits_odoo_readonly() -> None:
+    _, _, _, extra = pydantic_field_str(_field_ro("boolean"), frozenset(), _fn)
+    assert extra == {"odoo_readonly": True}
