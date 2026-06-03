@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: planning
-last_updated: "2026-06-03T11:21:14.549Z"
-last_activity: 2026-06-03
+status: executing
+last_updated: "2026-06-03T12:12:13.139Z"
+last_activity: 2026-06-03 -- Phase 12 planning complete
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 6
+  total_plans: 9
   completed_plans: 6
   percent: 38
 ---
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 
 Phase: 12
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-03
+Status: Ready to execute
+Last activity: 2026-06-03 -- Phase 12 planning complete
 
 ```
 Phase 9  [          ] Not started
