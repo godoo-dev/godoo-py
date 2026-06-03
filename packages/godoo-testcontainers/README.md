@@ -15,7 +15,7 @@ import asyncio
 from godoo.testcontainers import OdooTestContainer
 
 async def main():
-    container = OdooTestContainer(modules=["sale"])
+    container = OdooTestContainer(modules=["sale"], properties={})
     started = await container.start()
     # started.client is an authenticated OdooClient
     await started.cleanup()

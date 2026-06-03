@@ -21,7 +21,7 @@ from godoo_testcontainers import OdooTestContainer
 @pytest.fixture(scope="session")
 async def odoo():
     """Start an Odoo container with the sale module installed."""
-    container = OdooTestContainer(modules=["sale"])
+    container = OdooTestContainer(modules=["sale"], properties={})
     started = await container.start()
     yield started
     await started.cleanup()
@@ -55,6 +55,7 @@ async def test_create_partner(client):
 | `admin_password` | `str` | `"admin"` | Admin password |
 | `startup_timeout` | `int` | `300` | Max seconds to wait for Odoo to be ready |
 | `env` | `dict[str, str]` | `{}` | Extra environment variables for the Odoo container |
+| `properties` | `dict[str, str]` | (required) | `ir.config_parameter` key-value pairs used in the snapshot cache key. Pass `{}` if your setup has no custom parameters. |
 
 ## Seed-aware startup
 
