@@ -98,11 +98,24 @@ Plans:
   1. `client.create(instance)` accepts an `OdooBaseModel` instance and returns the new record id; only fields in `model_fields_set` are sent, with read-only fields excluded regardless.
   2. `client.write(instance)` updates the record at `instance.id` using only explicitly-set fields (`__pydantic_fields_set__`); unset fields are never sent as `None`.
   3. The write serializer converts `Ref` → bare int id, `None` (for set fields) → Odoo `False`, and `date`/`datetime` → ISO wire strings.
-  4. Generated model fields include `json_schema_extra={"odoo_readonly": True}` where `readonly=True` or `store=False`; the write serializer uses this metadata to exclude computed/readonly fields from all write payloads.
+  4. Generated model fields include `json_schema_extra={"odoo_readonly": True}` where `readonly=True` OR `(store=False AND compute is not None)`; plain non-stored fields without a compute function are NOT marked readonly. The write serializer uses this metadata to exclude computed/readonly fields from all write payloads.
   5. Attempting to write an x2many field via the typed path raises `OdooValidationError` with a message pointing to raw `write()` with command tuples.
   6. An end-to-end test feeds a codegen-generated model class through `client.read` dispatch and then `client.write`, closing backlog 999.3.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 11-01-PLAN.md — GEN-01: widen pydantic_field_str() to 4-tuple, emit json_schema_extra metadata, update codegen + tests, align ROADMAP SC-4
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 11-02-PLAN.md — WRITE-01..05: _serialize_for_write() + client.create/write typed overloads
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 11-03-PLAN.md — TEST-01: typed-write unit tests + codegen→read→write integration test (closes 999.3)
 
 ### Phase 12: Tech Debt Close-out
 
