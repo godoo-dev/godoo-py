@@ -89,3 +89,65 @@ Plans:
 ### Phase 999.4: Wire-transforms-through-dispatch test (PROMOTED to Phase 10 / TEST-02)
 
 > **Promoted to Phase 10** (Typed Relation Resolution) as TEST-02 in milestone v1.2.
+
+### Phase 999.5: Typed write/read robustness — fail-fast + silent-drop fixes (BACKLOG)
+
+**Goal:** Close correctness gaps in the v1.2 typed write/read dispatch surfaced by code review — restore fail-fast behavior lost when the typed overloads widened required params to `Any = None`, and fix a silent x2many write drop.
+**Requirements:** TBD
+**Source:** v1.2 post-milestone code review (2026-06-03)
+**Findings:**
+
+- **[HIGH] Silent x2many write loss via `model_copy`** — `packages/godoo-client/src/godoo/client/_pydantic_transform.py:376`. `instance.model_copy(update={'line_ids': [...]})` bypasses `model_post_init` and `__setattr__`, so `_user_set_fields` stays stale; `_serialize_for_write` then omits the x2many instead of raising the documented error — the user's write is silently dropped. Fix: reseed `_user_set_fields` on copy, or fall back to `model_fields_set` when `_user_set_fields` is empty.
+- **[MED] `create()`/`write()` ship `None` to Odoo when `values` omitted** — `client.py:551,589`. The dict path sends `[None]` / `[[id], None]` to the RPC instead of failing locally. Fix: validate `values` is present on the non-typed dict path before calling.
+- **[MED] `read()` returns `[]` when `ids` omitted** — `client.py:292`. The str path coerces missing `ids` to `[]` and silently returns an empty result. Fix: raise on missing ids in the non-typed path.
+- **[LOW] Class-vs-instance guard** — `client.py:574`. Passing a model *class* (not instance) to `write`/`create` passes the `hasattr(__odoo_model__)` guard and fails with a bare AttributeError. Fix: require an instance; raise `OdooValidationError` otherwise.
+
+Plans:
+
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.6: RPC error-surface hardening (BACKLOG)
+
+**Goal:** Close gaps in the Phase 9 structured error surface found in code review — privacy (server-path leak) and message-extraction robustness.
+**Requirements:** TBD
+**Source:** v1.2 post-milestone code review (2026-06-03)
+**Findings:**
+
+- **[MED] Bare server paths leak** — `packages/godoo-client/src/godoo/client/errors.py:11`. The path-strip regexes only match the `File "..."` traceback format; bare absolute paths embedded in `data['message']` (now surfaced by the new `__str__`) pass through to `str(exc)` and `to_json()['human_message']`. Partial regression of ERR-02/ERR-04. Fix: strip bare absolute paths too, or separate the debug payload from the display string at parse time.
+- **[MED] `arguments`-as-string → first character** — `errors.py:28`. `_extract_human_message` indexes `args[0]` guarded only by truthiness; when `arguments` is a plain string, `human_message` becomes its first character. Fix: `isinstance(args, (list, tuple))` before indexing.
+- **[MED] `to_json()` 'details' inconsistency** — `errors.py:104`. `OdooRpcError.to_json()` dropped the `details` key while `OdooError`/`OdooSafetyError` still emit it → KeyError for consumers reading `result['details']`, plus a non-uniform shape across one hierarchy. Fix: make the key set consistent across the hierarchy.
+- **[LOW] No actionable message for empty-message faults** — `errors.py:28`. A psycopg2 IntegrityError relayed with `message=''`/`arguments=[]` yields `human_message=None`; the constraint detail survives only in `raw['debug']`, which is excluded from `to_json()`. Fix: derive a safe fallback (e.g. from `data['name']`) or expose a sanitized constraint summary.
+
+Plans:
+
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.7: Typed relation resolution edge cases (BACKLOG)
+
+**Goal:** Harden `Ref[T]` resolution against malformed inputs and unresolved annotations — deferred hardening from the v1.2 milestone audit, now confirmed reachable by code review.
+**Requirements:** TBD
+**Source:** v1.2 post-milestone code review (2026-06-03) + v1.2 milestone audit
+**Findings:**
+
+- **[MED] Mixed-list Ref crashes with AttributeError** — `client.py:257`. `read(list[Ref])` enters the Ref branch on `model[0]` only; a heterogeneous list (`[Ref(...), 42]`) reaches `(42)._target_cls` → bare AttributeError instead of `OdooValidationError`. Fix: validate every element is a `Ref` before `_target_cls` access.
+- **[MED] ForwardRef target unresolvable** — `packages/godoo-client/src/godoo/client/_pydantic_transform.py:77`. `_ref_target_class` uses `isinstance(arg, type)`; an unresolved `ForwardRef` in multi-file generated models (one-file-per-model codegen with cross-module `Ref[T]` under `from __future__ import annotations`, no `model_rebuild()`) stamps `_target_cls=None`, making the Ref permanently unresolvable. Fix: resolve forward refs (`get_type_hints`/`model_rebuild`) or stamp the target lazily by model name.
+
+Plans:
+
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.8: Typed-layer cleanup & caching (BACKLOG)
+
+**Goal:** Reduce duplication and avoidable per-record work in the typed layer (code-review cleanup themes; no behavior change).
+**Requirements:** TBD
+**Source:** v1.2 post-milestone code review (2026-06-03)
+**Items:**
+
+- Dedupe the `try/except ImportError` `_serialize_for_write` loader copy-pasted verbatim in `client.create()` and `client.write()`.
+- Collapse the co-recursive `_annotation_mentions_ref` + `_ref_target_class` walkers in `_pydantic_transform.py` (they traverse the same annotation tree and have already diverged once; drift risk — relates to the 999.7 ForwardRef fix).
+- Extract shared constants for the `"odoo_readonly"` / `"odoo_x2many"` `json_schema_extra` keys (currently bare string literals duplicated across `type_mapper.py` and `_pydantic_transform.py`; a rename on one side silently disables the readonly/x2many write guards).
+- Cache per-class annotation reflection + readonly/x2many classification to avoid `get_args`/`get_origin` per m2o field per record on large reads; replace the O(n²) list-membership id dedup in `read(list[Ref])` with a per-model set.
+
+Plans:
+
+- [ ] TBD (promote with /gsd:review-backlog when ready)
