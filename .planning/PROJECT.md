@@ -14,18 +14,24 @@ The Python family member reaches feature parity with the TypeScript core-3 libra
 a Python developer gets the same client, introspection, and testcontainers capabilities
 that godoo-ts already ships.
 
-## Current Milestone: v1.2 Typed Relations, Writes & Error Surface
+## Current State
+
+**Shipped:** v1.2 "Typed Relations, Writes & Error Surface" (2026-06-03) — GSD milestone tag `milestone-v1.2`.
+
+godoo-py now ships the complete typed-models story across all three packages: typed read **and** write/create paths, single-level `Ref[T]` relation resolution, instance-derived Pydantic models with readonly/x2many codegen metadata, and a structured, privacy-safe RPC error surface. Current package version remains 0.2.0/0.2.1 (no new PyPI release was required by the milestone).
+
+**Next milestone:** not yet defined — run `/gsd:new-milestone` to scope it. Candidate threads: PostgreSQL v18 bump in testcontainers (backlog 999.2); Phase 10/11 hardening edge cases (stitch `KeyError`, mixed-list `Ref` check, `None`→`False`-on-create server-default override); the v2.0 browser/Pyodide work once Pyodide ships CPython ≥3.14 (ADR-0001 GO).
+
+<details>
+<summary>Previous framing — v1.2 (while in progress)</summary>
 
 **Goal:** Complete the typed-models story — relational resolution and typed writes — and restructure the RPC error surface for safe, structured handling; close v1.1's test-coverage gaps and clear accumulated tech debt.
 
-**Target features:**
-- TYPED-F1 — Ref-driven typed relation resolution: `client.read(ref)` / `read(list[Ref])` resolves typed Refs into related models, batched, single-level (matures SEED-002)
-- TYPED-F2 — typed write/create paths: pass typed model instances into `write`/`create`
-- SEED-003 — restructured `OdooError` hierarchy: structured fields (model/field/constraint/human message), server traceback/path stripping, `.raw` escape hatch
-- 999.3 + 999.4 — codegen→typed-read round-trip test; wire-transforms-through-dispatch test
-- Tech debt — `release.yml` Node 20 bump; `run_spike.py` committed password; `test_cli.py` unawaited coroutines; `snapshot.py` partial-key limitation
+**Target features:** TYPED-F1 Ref-driven typed relation resolution; TYPED-F2 typed write/create; SEED-003 restructured `OdooError` hierarchy; 999.3 + 999.4 coverage tests; tech debt (Node 20 bump, spike password, unawaited coroutines, snapshot partial-key).
 
-**Design constraints (from milestone scoping):** Python-native designs (not bound to godoo-ts API shape). Error restructure is breaking at the package level (0.x → minor semver bump). Browser work (BROWSER-F1/F2, SEED-001) is explicitly OUT of scope — blocked on Pyodide CPython ≥3.14, not yet released.
+**Design constraints:** Python-native designs (not bound to godoo-ts API shape). Error restructure breaking at the package level (0.x → minor semver bump). Browser work (BROWSER-F1/F2, SEED-001) explicitly OUT of scope — blocked on Pyodide CPython ≥3.14.
+
+</details>
 
 ## Requirements
 
@@ -98,6 +104,30 @@ that godoo-ts already ships.
 - ✓ `id: int | None = None` in codegen output — typed `create()` possible without a bogus id (CR-02 fix) — Phase 11 (WRITE-01/GEN-01)
 - ✓ `test_codegen_read_write_roundtrip` end-to-end integration test passes on Odoo 18.0; codegen→typed-read→write roundtrip confirmed; backlog 999.3 closed — Phase 11 (TEST-01)
 
+<!-- Validated in Phase 9: Structured Error Surface (2026-06-02). -->
+
+- ✓ `OdooRpcError` exposes structured `.model_name`/`.field_name`/`.constraint_name`/`.human_message` (each `str | None`), parsed from the fault payload — Phase 9 (ERR-01)
+- ✓ Server tracebacks and filesystem paths (`data.debug`) stripped from `str(exc)` and the user-facing message — Phase 9 (ERR-02)
+- ✓ Full original fault payload preserved on the `.raw` escape-hatch attribute — Phase 9 (ERR-03)
+- ✓ `to_json()` emits structured fields + human message, never the raw payload (security gate) — Phase 9 (ERR-04)
+- ✓ `OdooRpcError.data` renamed to `.raw` (breaking; `data=` kwarg retained, no compat alias, additive hierarchy) — Phase 9 (ERR-05)
+
+<!-- Validated in Phase 10: Typed Relation Resolution (2026-06-02). -->
+
+- ✓ `Ref[T]` carries its target model class at runtime (`_target_cls`, `compare=False`/`hash=False`/`repr=False`) — Phase 10 (REL-01)
+- ✓ `client.read(ref)` returns the single related typed instance (one RPC) — Phase 10 (REL-02)
+- ✓ `client.read(refs)` batches one RPC per distinct target model, ids deduplicated — Phase 10 (REL-03)
+- ✓ Untyped `Ref[int]` (no known target class) raises a typed `OdooValidationError` naming the cause — Phase 10 (REL-04)
+- ✓ Resolution is single-level only; arbitrary-depth nesting explicitly out of scope — Phase 10 (REL-05)
+- ✓ Wire transforms (`Ref`/date/datetime) exercised through the full `client.read` dispatch chain — closes backlog 999.4 — Phase 10 (TEST-02)
+
+<!-- Validated in Phase 12: Tech Debt Close-out (2026-06-03). -->
+
+- ✓ All three CI workflows bumped to Node 24-capable action pins (checkout@v6, setup-uv@v7, codecov@v6); deprecation warnings gone — Phase 12 (DEBT-01)
+- ✓ Committed spike `password=admin` removed; standalone gitleaks secrets-scan workflow added — Phase 12 (DEBT-02)
+- ✓ `test_cli.py` error-path tests no longer leave unawaited coroutines (`RuntimeWarning` noise gone) — Phase 12 (DEBT-03)
+- ✓ `OdooTestContainer.properties` required keyword arg; direct users get the same complete snapshot key as `TestHarness` (breaking at 0.2.x) — Phase 12 (DEBT-04)
+
 <!-- Validated in milestone v1.1 (2026-06-02). -->
 
 - ✓ `packages/godoo` → `packages/godoo-client` directory rename via `git mv` (blame preserved); PEP 420 `godoo.*` namespace guard test — v1.1 (Phase 5 / PKG-01, PKG-02, PKG-03)
@@ -110,7 +140,7 @@ that godoo-ts already ships.
 
 ### Active
 
-_Requirements being defined for milestone v1.2 — see REQUIREMENTS.md (in progress)._
+_No active milestone — v1.2 shipped 2026-06-03. The next milestone's requirements are defined via `/gsd:new-milestone`._
 
 ### Out of Scope
 
@@ -122,6 +152,7 @@ _Requirements being defined for milestone v1.2 — see REQUIREMENTS.md (in progr
 
 ## Context
 
+- **v1.2 shipped (2026-06-03).** Completed the typed-models story — `Ref[T]` single-level relation resolution and typed write/create paths — plus a restructured, privacy-safe RPC error surface (`OdooRpcError` structured fields, traceback/path stripping, `.data`→`.raw` breaking rename). Closed backlog 999.3/999.4 coverage gaps and cleared four tech-debt items. 22/22 v1.2 requirements complete; milestone audit `tech_debt` (no blockers). GSD milestone tag: `milestone-v1.2`. Package version unchanged at 0.2.0/0.2.1.
 - **Phase 11 complete (2026-06-03).** Codegen metadata + typed writes. `GEN-01` (codegen `json_schema_extra` readonly metadata), `WRITE-01..05` (typed `create`/`write` dispatch, reverse wire transforms, readonly exclusion, x2many guard + CR-01 read-inherited fix), `TEST-01` (codegen→typed-read→write integration roundtrip on Odoo 18.0, closes backlog 999.3). Additional fix commit 6922d34 (strip inline comment before `Field()` embedding, found during integration run). Next: Phase 12 (tech-debt close-out: DEBT-01..04).
 - **v1.1 shipped (2026-06-02).** Typed models (Pydantic CLI generator + typed-read dispatch layer behind `godoo[typed]`), the `packages/godoo`→`packages/godoo-client` rename, a pluggable transport seam, and the Pyodide spike (ADR-0001 GO verdict, escalated to v2.0). 13/13 v1.1 requirements complete. GSD milestone tag: `milestone-v1.1`. No new PyPI release was required by the milestone itself; current package version is 0.2.0/0.2.1.
 - **v1.0 shipped (2026-05-22).** All three packages reached TS parity and were published
@@ -173,6 +204,11 @@ _Requirements being defined for milestone v1.2 — see REQUIREMENTS.md (in progr
 | Pydantic generator replaces TypedDict generator — breaking change, supersedes INTRO-03 | Pydantic provides validation + wire transforms; TypedDict is a dead-end for the typed-read path; documented breaking change | ✓ Good |
 | Pyodide spike GO verdict → v2.0 (ADR-0001, Strategy 3 PyfetchTransport, Python-floor Option A) | Real in-browser HTTPS call succeeded; floor requires Pyodide CPython ≥3.14 (not yet released); escalate not defer | — Pending v2.0 |
 | Tag GSD milestone as `milestone-v1.1`, not `v1.1` | Same rationale as `milestone-v1.0` — avoids semantic-release tag namespace collision | ✓ Good |
+| ODD-1 `Ref._target_cls` Option A (`type \| None`, `compare=False`/`hash=False`/`repr=False`) | Runtime target class without breaking `Ref` equality/hash/repr semantics | ✓ Good — REL-01..05 shipped |
+| ODD-2 x2many typed-write strategy = RAISE | Forces explicitness; safest vs silent-destructive REPLACE | ✓ Good — WRITE-05 raises, points to raw command tuples |
+| ODD-3 / D-04 readonly exclusion via codegen metadata; rule `readonly=True OR (store=False AND compute is not None)` | Precise per-field exclusion; plain non-stored inverse fields stay writable | ✓ Good — GEN-01 + WRITE-04 shipped |
+| ODD-4 `.data`→`.raw` breaking rename; `to_json()` drops `details`, adds structured fields; no compat alias | Clean structured error surface; `data=` kwarg retained for call-site compat | ✓ Good — ERR-01..05 shipped |
+| Tag GSD milestone as `milestone-v1.2`, not `v1.2` | Same rationale as v1.0/v1.1 — avoids semantic-release `vX.Y.Z` tag namespace collision | ✓ Good |
 
 ## Evolution
 
@@ -192,4 +228,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-03 — Phase 11 (codegen metadata + typed writes) complete*
+*Last updated: 2026-06-03 after v1.2 milestone — Typed Relations, Writes & Error Surface shipped*

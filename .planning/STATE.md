@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: complete
-last_updated: "2026-06-03T13:23:05.721Z"
-last_activity: 2026-06-03 -- Phase 12 complete (tech debt close-out, DEBT-01..04 verified)
+status: Awaiting next milestone
+last_updated: "2026-06-03T16:13:49.573Z"
+last_activity: 2026-06-03 — Milestone v1.2 completed and archived
 progress:
   total_phases: 8
   completed_phases: 4
@@ -20,21 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-27)
 
 **Core value:** The Python family member reaches feature parity with the TypeScript core-3 libraries
-**Current focus:** Phase 12 — tech debt close out
+**Current focus:** Planning next milestone (v1.2 shipped 2026-06-03 — `milestone-v1.2`)
 
 ## Current Position
 
-Phase: 12
-Plan: All 3 complete
-Status: Phase 12 complete — v1.2 milestone done
-Last activity: 2026-06-03 -- Phase 12 complete (tech debt close-out, DEBT-01..04 verified)
-
-```
-Phase 9  [##########] 1/1 plans complete
-Phase 10 [##########] 2/2 plans complete
-Phase 11 [##########] 3/3 plans complete
-Phase 12 [##########] 3/3 plans complete
-```
+Phase: Milestone v1.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-03 — Milestone v1.2 completed and archived
 
 ## Performance Metrics
 
@@ -144,6 +137,10 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 | Typed models (v1.3+) | WRITE-ADV-02: Typed write of nested/child records | Deferred to future milestone | v1.2 scope |
 | Tech debt | release.yml Node 20 actions deprecation warnings | Addressed in Phase 12 (DEBT-01) | v1.0 close |
 | Tech debt | snapshot.py partial snapshot key for direct container users | Addressed in Phase 12 (DEBT-04) | v1.0 close |
+| Bookkeeping | quick_task 260601-w2x (completed b21e35c; scanner flags `missing`) | Acknowledged non-blocking | v1.2 close |
+| Seed (v2.0) | SEED-001 browser/Pyodide compatibility | Dormant — escalated to v2.0 (ADR-0001 GO, gated on Pyodide CPython ≥3.14) | v1.2 close |
+| Seed | SEED-002 instance-specific typed models | Dormant — matured across v1.1/v1.2 (typed read + write shipped) | v1.2 close |
+| Seed | SEED-003 RPC error categorization | Dormant — delivered in Phase 9 (ERR-01..05) | v1.2 close |
 
 ## Session Continuity
 
@@ -152,6 +149,4 @@ Stopped at: Completed 12-02-PLAN.md (DEBT-03: unawaited coroutine RuntimeWarning
 
 ## Operator Next Steps
 
-- Run Phase 11 Plan 02 (WRITE-01..05: _serialize_for_write + client.create/write typed overloads)
-- Settle ODD-4 (`.data`→`.raw` scope) then run `/gsd:plan-phase 9`
-- Settle ODD-1 before planning Phase 10
+- Start the next milestone with /gsd-new-milestone

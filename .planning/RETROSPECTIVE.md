@@ -84,6 +84,40 @@
 
 ---
 
+## Milestone: v1.2 — Typed Relations, Writes & Error Surface
+
+**Shipped:** 2026-06-03
+**Phases:** 4 (9–12) | **Plans:** 9
+
+### What Was Built
+Completed the typed-models story across the family: structured RPC error surface (`OdooRpcError` parsed fields + `.raw` escape hatch + traceback/path stripping; `.data`→`.raw` breaking rename), single-level `Ref[T]` typed relation resolution (`client.read(ref)` / `read(list[Ref])`, batched per target model), typed write/create paths (`_serialize_for_write()` sending only set+writable fields with reverse wire transforms; codegen readonly/x2many metadata; x2many guard), and closed the two v1.1 coverage gaps (codegen→read→write integration roundtrip; wire-transforms-through-dispatch). Cleared four tech-debt items (Node 24 CI pins + gitleaks; spike password; RuntimeWarning noise; complete snapshot key).
+
+### What Worked
+- Build-order discipline paid off: ERR isolated to `errors.py` first (the one breaking change in isolation), then the REL prerequisite (Ref runtime target) before REL dispatch, then GEN-01 metadata before WRITE-04 readonly exclusion. No rework from ordering.
+- Folding TEST-01/02 into the adjacent feature phases (11/10) kept each coverage test next to the code it exercises.
+- Settling the open design decisions (ODD-1..4) before planning each phase removed mid-execution churn.
+
+### What Was Inefficient
+- Two code-review findings (CR-01 read-inherited x2many; CR-02 `id: int | None`) surfaced during Phase 11 verification rather than planning — caught and fixed pre-verification, but a sharper plan would have anticipated them.
+- An extra Phase 11 fix commit (strip inline comment before `Field()` embedding) was only found during the live integration run, not unit tests.
+- ERR-01..05 traceability checkboxes drifted stale (`[ ]`/Pending) despite Phase 9 verifying `passed` — caught and corrected during the milestone audit, not at phase close.
+
+### Patterns Established
+- Breaking changes isolated to a single dedicated phase (Phase 9 carried the lone `.data`→`.raw` rename).
+- Codegen metadata (`json_schema_extra`) as the single source of truth for write-time field exclusion — no hardcoded readonly sets.
+- Duck-typed dispatch on `client.read`/`write`/`create` keeps the typed layer importable without Pydantic by default.
+
+### Key Lessons
+- Update traceability checkboxes at phase verification, not at milestone audit — stale `[ ]`/Pending rows on `passed` phases create false-incomplete signals.
+- Live integration runs catch serialization-shape bugs (inline comments, `id` defaults) that unit tests at `model_validate` level miss — keep an integration roundtrip in scope for any wire-format change.
+
+### Cost Observations
+- Config: `model_profile: balanced`, `mode: yolo`, `granularity: coarse`.
+- 80 commits over ~2 days (2026-06-02 → 2026-06-03); 440/440 unit tests passing at close.
+- Notable: coarse granularity (1–3 plans/phase) kept planning overhead low for a milestone of mostly well-scoped, well-ordered work.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -92,6 +126,7 @@
 |-----------|--------|------------|
 | v1.0 | 5 | Baseline — brownfield incorporation, parity build-out, first PyPI release |
 | v1.1 | 4 | Typed models + spike-as-decision-artifact; transport seam pattern; All-Optional partial-read; boolean coercion skip |
+| v1.2 | 4 | Typed relation resolution + typed writes; structured error surface; build-order discipline; codegen-metadata-as-truth |
 
 ### Cumulative Quality
 
@@ -99,6 +134,7 @@
 |-----------|--------------|----------|-------|
 | v1.0 | 26/26 complete | — | ruff + mypy --strict gate on all src trees |
 | v1.1 | 13/13 complete | 352 tests (unit) | 2 test-coverage gaps tracked as tech-debt (999.3, 999.4) |
+| v1.2 | 22/22 complete | 440 tests (unit) | Both coverage gaps closed; 0 broken integrations; audit: tech_debt (no blockers) |
 
 ### Top Lessons (Verified Across Milestones)
 

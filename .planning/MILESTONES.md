@@ -1,5 +1,36 @@
 # Milestones
 
+## v1.2 Typed Relations, Writes & Error Surface (Shipped: 2026-06-03)
+
+**Phases completed:** 4 phases (9–12), 9 plans
+**Delivered:** Completed the typed-models story — relational resolution and typed writes — restructured the RPC error surface for safe structured handling, closed v1.1's two test-coverage gaps, and cleared accumulated tech debt.
+
+> **Versioning note:** "v1.2" is the GSD *planning* milestone. No new PyPI distribution
+> was required by the milestone itself; current package version is 0.2.0/0.2.1. The
+> milestone is tagged `milestone-v1.2` to avoid colliding with the semantic-release
+> `vX.Y.Z` tag namespace.
+
+**Key accomplishments:**
+
+- **Structured RPC error surface (ERR-01..05, SEED-003):** `OdooRpcError` restructured with five parsed structured fields (model / field / constraint / human message), server-traceback and filesystem-path stripping from `str(exc)` and `to_json()`, and a `.raw` escape hatch. The `.data`→`.raw` rename is a documented breaking change (`data=` constructor kwarg retained; additive hierarchy, no new intermediate classes).
+- **Typed relation resolution (REL-01..05):** `Ref[T]` carries its Python target model class at runtime (`_target_cls`, `compare=False`/`hash=False`/`repr=False`); `client.read(ref)` resolves a single typed relation (one RPC) and `client.read(list[Ref])` batches one RPC per distinct target model with ids deduplicated; untyped `Ref[int]` fails fast with a typed `OdooValidationError`. Single-level only.
+- **Typed write/create paths (GEN-01, WRITE-01..05):** codegen emits `json_schema_extra` readonly/x2many metadata; `client.create(instance)` / `client.write(instance)` send only explicitly-set, writable fields via `_serialize_for_write()` with reverse wire transforms (`Ref`→int, `None`→`False`, date/datetime→ISO); readonly/computed excluded; x2many writes raise pointing to raw `write()` command tuples.
+- **Two coverage gaps closed (TEST-01/02):** end-to-end codegen→typed-read→write integration roundtrip on Odoo 18.0 (closes backlog 999.3); wire transforms exercised through the full `client.read` dispatch chain, not just `model_validate` (closes 999.4).
+- **Tech-debt close-out (DEBT-01..04):** all three CI workflows bumped from Node 20 to Node 24-capable action pins plus a dedicated `gitleaks/gitleaks-action@v3` secrets-scan job; committed spike password removed; `test_cli.py` unawaited-coroutine `RuntimeWarning` noise eliminated; `OdooTestContainer.properties` made a required keyword arg so direct users get the same complete snapshot cache key as `TestHarness` users (breaking at 0.2.x).
+
+**Per-phase:**
+
+- **Phase 9 — Structured Error Surface:** `OdooRpcError` refactored — `.raw` rename, five structured fields, privacy-safe `__str__`/`to_json()`, POSIX/Windows path stripping via stdlib `re`. 1 plan.
+- **Phase 10 — Typed Relation Resolution:** `_target_cls` added to `Ref[T]` + `_ref_target_class()` annotation-reflection helper; `@overload read(Ref[T])` / `read(list[Ref[T]])` dispatch branch with fail-fast on untyped refs and per-target-class batching; `test_rel_resolution.py`. 2 plans.
+- **Phase 11 — Codegen Metadata + Typed Writes:** `pydantic_field_str()` widened to a 4-tuple emitting `odoo_readonly`/`odoo_x2many`; `_serialize_for_write()` + typed `create`/`write` overloads; 12 respx unit tests + codegen→read→write integration roundtrip. 3 plans.
+- **Phase 12 — Tech Debt Close-out:** Node 24 CI pins + gitleaks job; unawaited-coroutine `RuntimeWarning` fix (test-side patch + production `finally: _coro.close()`); `OdooTestContainer.properties` required kwarg. 3 plans.
+
+**Audit:** `tech_debt` — 22/22 requirements satisfied, 4/4 phases verified `passed`, 0 broken integrations, 440/440 unit tests pass. Outstanding items are non-blocking hardening candidates (Phase 10 stitch `KeyError` on a record deleted mid-read; mixed-list first-element `Ref` check; `None`→`False`-on-create overriding server defaults) and CI follow-ups confirmable only in the Actions UI. Full detail: `milestones/v1.2-MILESTONE-AUDIT.md`.
+
+**Known deferred items at close:** 4 open artifact items acknowledged as non-blocking — 1 quick task (`260601-w2x`, already completed in commit b21e35c but flagged `missing` by the scanner) and 3 dormant seeds (SEED-001 browser/Pyodide → escalated to v2.0; SEED-002 instance-specific typed models → matured across v1.1/v1.2; SEED-003 RPC error categorization → delivered in Phase 9). See STATE.md → Deferred Items.
+
+---
+
 ## v1.1 Typed Models & Browser Reach (Shipped: 2026-06-02)
 
 **Phases completed:** 4 phases, 11 plans
