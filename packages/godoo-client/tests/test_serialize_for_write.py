@@ -11,7 +11,6 @@ from godoo.client.errors import OdooValidationError
 from godoo.client.typed import Ref
 from pydantic import Field
 
-
 # ------------------------------------------------------------------
 # Test model fixtures
 # ------------------------------------------------------------------

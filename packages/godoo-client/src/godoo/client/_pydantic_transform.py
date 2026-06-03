@@ -244,3 +244,66 @@ def clear_partial_model_cache() -> None:
     See Pitfall 4 in RESEARCH.md for context.
     """
     _partial_model_cache.clear()
+
+
+# ------------------------------------------------------------------
+# Write serializer (mirror of _odoo_wire_transforms)
+# ------------------------------------------------------------------
+
+
+def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
+    """Serialize an OdooBaseModel instance to an Odoo write payload.
+
+    Only fields in model_fields_set are included. Readonly fields
+    (json_schema_extra odoo_readonly=True) are excluded. x2many fields
+    (odoo_x2many=True) in the set raise OdooValidationError. Transformations:
+      Ref  -> int (bare id)
+      None -> False (Odoo wire convention for cleared fields)
+      datetime -> ISO-format string  (datetime BEFORE date — datetime subclasses date)
+      date -> ISO-format string
+    """
+    from godoo.client.errors import OdooValidationError  # lazy: avoids circular at module load
+
+    payload: dict[str, Any] = {}
+    for field_name in instance.model_fields_set:
+        fi = instance.__class__.model_fields.get(field_name)
+        if fi is None:
+            continue
+        extra = fi.json_schema_extra
+        extra_dict: dict[str, Any] = extra if isinstance(extra, dict) else {}
+
+        # WRITE-04: skip readonly/computed fields unconditionally
+        if extra_dict.get("odoo_readonly"):
+            continue
+
+        # WRITE-05: raise on x2many before any RPC
+        if extra_dict.get("odoo_x2many"):
+            raise OdooValidationError(
+                f"Field {field_name!r} is an x2many relation and cannot be written via the "
+                "typed path. Use client.write(model, ids, {field: [(6, 0, [ids])]}) with "
+                "command tuples instead."
+            )
+
+        value = getattr(instance, field_name)
+
+        # Ref -> bare int id
+        if isinstance(value, Ref):
+            payload[field_name] = value.id
+            continue
+
+        # None (explicitly set) -> Odoo False
+        if value is None:
+            payload[field_name] = False
+            continue
+
+        # datetime BEFORE date (datetime subclasses date — order matters, mirrors read-side)
+        if isinstance(value, datetime):
+            payload[field_name] = value.isoformat()
+            continue
+        if isinstance(value, date):
+            payload[field_name] = value.isoformat()
+            continue
+
+        payload[field_name] = value
+
+    return payload

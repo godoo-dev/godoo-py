@@ -106,9 +106,7 @@ def _validate_typed(target: type[Any], raw: dict[str, Any]) -> Any:
     try:
         return target.model_validate(raw)
     except ValidationError as exc:
-        raise OdooValidationError(
-            f"Could not validate {target.__name__} record from Odoo: {exc}"
-        ) from exc
+        raise OdooValidationError(f"Could not validate {target.__name__} record from Odoo: {exc}") from exc
 
 
 class OdooClient:
