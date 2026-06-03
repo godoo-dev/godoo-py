@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
 status: executing
-last_updated: "2026-06-03T12:12:13.139Z"
+last_updated: "2026-06-03T13:13:43.061Z"
 last_activity: 2026-06-03 -- Phase 12 planning complete
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 38
 ---
 
@@ -63,6 +63,7 @@ Phase 12 [          ] Not started
 | Phase 10-typed-relation-resolution P02 | 5 | 2 tasks | 2 files |
 | Phase 11-codegen-metadata-typed-writes P02 | 30 | 2 tasks | 3 files |
 | Phase 11-codegen-metadata-typed-writes P03 | 20min | 2 tasks | 2 files |
+| Phase 12-tech-debt-close-out P01 | 90s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,8 @@ Recent decisions affecting current work:
 - [11-01]: x2many fields use Field(default_factory=list, ...) not mutable default=[] to avoid PydanticUserError
 - [Phase ?]: WRITE-01..05: _serialize_for_write iterates model_fields_set, skips odoo_readonly, raises on odoo_x2many, Ref->int, None->False, datetime/date->ISO
 - [Phase ?]: 11-03: _serialize_for_write skips id field — record identifier is passed separately in [[model.id], payload], not part of the write values dict
+- [Phase ?]: DEBT-01: Bumped CI actions to Node 24-capable pins — checkout@v6, setup-uv@v7, codecov@v6; peaceiris left at @v4 (no v5 exists)
+- [Phase ?]: DEBT-02: gitleaks-action@v3 in standalone secrets.yml; no GITLEAKS_LICENSE (personal repo); no .gitleaks.toml (spikes/infra placeholder-only)
 
 ### Open Decisions (settle before relevant phase)
 
@@ -142,8 +145,8 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-03T11:21:14.534Z
-Stopped at: Phase 12 context gathered
+Last session: 2026-06-03T13:13:43.051Z
+Stopped at: Completed 12-01-PLAN.md (DEBT-01 + DEBT-02)
 
 ## Operator Next Steps
 
