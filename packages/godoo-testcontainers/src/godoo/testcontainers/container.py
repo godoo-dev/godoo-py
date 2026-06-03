@@ -72,7 +72,7 @@ class OdooTestContainer:
         snapshot: bool = True,
         cache_dir: Path | None = None,
         env: dict[str, str] | None = None,
-        properties: dict[str, str] | None = None,
+        properties: dict[str, str],
     ) -> None:
         self._modules = modules if modules is not None else []
         self._database = database
@@ -93,7 +93,11 @@ class OdooTestContainer:
         # hits). Direct `OdooTestContainer` users who pass `properties` therefore get a
         # snapshot keyed on properties they must seed themselves — the container will not
         # apply them. Use TestHarness if you want properties seeded automatically.
-        self._properties_for_key: dict[str, str] = properties if properties is not None else {}
+        #
+        # Required keyword arg (no default) so callers are explicit about their snapshot
+        # key inputs (DEBT-04 breaking change). Pass properties={} if your setup has no
+        # ir.config_parameter entries.
+        self._properties_for_key: dict[str, str] = properties
 
     async def start(self) -> StartedOdooContainer:
         odoo_ver = normalise_odoo_version(os.environ.get("ODOO_VERSION"))
