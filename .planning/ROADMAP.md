@@ -111,7 +111,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 11-02-PLAN.md — WRITE-01..05: _serialize_for_write() + client.create/write typed overloads
+- [x] 11-02-PLAN.md — WRITE-01..05: _serialize_for_write() + client.create/write typed overloads
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -146,7 +146,7 @@ Plans:
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
 | 10. Typed Relation Resolution | v1.2 | 2/2 | Complete    | 2026-06-02 |
-| 11. Codegen Metadata + Typed Writes | v1.2 | 0/? | Not started | - |
+| 11. Codegen Metadata + Typed Writes | v1.2 | 2/3 | In Progress|  |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 
 ## Backlog

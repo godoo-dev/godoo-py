@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
 status: executing
-last_updated: "2026-06-03T09:15:00.000Z"
-last_activity: 2026-06-03 -- Phase 11 Plan 01 complete (GEN-01 codegen metadata)
+last_updated: "2026-06-03T09:22:57.037Z"
+last_activity: 2026-06-03
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-27)
 ## Current Position
 
 Phase: 11
-Plan: 1 of 3 complete
-Status: Executing
-Last activity: 2026-06-03 -- Phase 11 Plan 01 complete (GEN-01 codegen metadata)
+Plan: 2 of 3 complete
+Status: Ready to execute
+Last activity: 2026-06-03
 
 ```
 Phase 9  [          ] Not started
@@ -60,6 +60,7 @@ Phase 12 [          ] Not started
 *v1.2 metrics will populate as phases complete.*
 | Phase 10-typed-relation-resolution P01 | 20m | 2 tasks | 5 files |
 | Phase 10-typed-relation-resolution P02 | 5 | 2 tasks | 2 files |
+| Phase 11-codegen-metadata-typed-writes P02 | 30 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,7 @@ Recent decisions affecting current work:
 - [11-01]: D-04 narrowed readonly rule: readonly=True OR (store=False AND compute is not None); plain non-stored inverse fields are writable
 - [11-01]: from pydantic import Field emitted only when at least one field carries extra metadata (conditional header)
 - [11-01]: x2many fields use Field(default_factory=list, ...) not mutable default=[] to avoid PydanticUserError
+- [Phase ?]: WRITE-01..05: _serialize_for_write iterates model_fields_set, skips odoo_readonly, raises on odoo_x2many, Ref->int, None->False, datetime/date->ISO
 
 ### Open Decisions (settle before relevant phase)
 
@@ -137,8 +139,8 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-03T09:15:00.000Z
-Stopped at: Phase 11 Plan 01 complete — GEN-01 codegen metadata committed
+Last session: 2026-06-03T09:22:57.030Z
+Stopped at: Phase 11 Plan 02 complete — WRITE-01..05 typed write path committed
 
 ## Operator Next Steps
 
