@@ -25,11 +25,11 @@
 
 ### WRITE — Typed Write/Create (TYPED-F2)
 
-- [ ] **WRITE-01**: `client.create(instance)` creates a record from a typed model instance and returns the new id.
-- [ ] **WRITE-02**: `client.write(instance)` updates the record at `instance.id` with only explicitly-set fields (`__pydantic_fields_set__`) — never sends unset fields as `None`.
-- [ ] **WRITE-03**: Write serializer applies reverse wire transforms — `Ref`→int id, `None`→Odoo `False`, date/datetime→wire strings.
-- [ ] **WRITE-04**: Read-only/computed fields excluded from write payloads via GEN-01 metadata.
-- [ ] **WRITE-05**: x2many fields are not serialized by the typed-write path in v1.2; a set x2many field raises a clear error pointing to raw `write()` with command tuples.
+- [x] **WRITE-01**: `client.create(instance)` creates a record from a typed model instance and returns the new id.
+- [x] **WRITE-02**: `client.write(instance)` updates the record at `instance.id` with only explicitly-set fields (`__pydantic_fields_set__`) — never sends unset fields as `None`.
+- [x] **WRITE-03**: Write serializer applies reverse wire transforms — `Ref`→int id, `None`→Odoo `False`, date/datetime→wire strings.
+- [x] **WRITE-04**: Read-only/computed fields excluded from write payloads via GEN-01 metadata.
+- [x] **WRITE-05**: x2many fields are not serialized by the typed-write path in v1.2; a set x2many field raises a clear error pointing to raw `write()` with command tuples.
 
 ### ERR — RPC Error Surface (SEED-003)
 
@@ -89,11 +89,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-04 | Phase 10 | Complete |
 | REL-05 | Phase 10 | Complete |
 | GEN-01 | Phase 11 | Complete |
-| WRITE-01 | Phase 11 | Pending |
-| WRITE-02 | Phase 11 | Pending |
-| WRITE-03 | Phase 11 | Pending |
-| WRITE-04 | Phase 11 | Pending |
-| WRITE-05 | Phase 11 | Pending |
+| WRITE-01 | Phase 11 | Complete |
+| WRITE-02 | Phase 11 | Complete |
+| WRITE-03 | Phase 11 | Complete |
+| WRITE-04 | Phase 11 | Complete |
+| WRITE-05 | Phase 11 | Complete |
 | ERR-01 | Phase 9 | Pending |
 | ERR-02 | Phase 9 | Pending |
 | ERR-03 | Phase 9 | Pending |
