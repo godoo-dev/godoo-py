@@ -387,6 +387,44 @@ def test_no_field_import_when_no_metadata() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Regression — readonly many2one OUTSIDE in_set must not break Field() syntax
+# ---------------------------------------------------------------------------
+
+
+def test_readonly_m2o_not_in_set_generates_valid_python() -> None:
+    """Regression (11-01): a readonly many2one whose target is OUTSIDE in_set compiles.
+
+    The degraded not-in-set m2o branch returns a default carrying a trailing inline
+    comment ('None  # res.users'). When that field ALSO carries metadata (readonly),
+    the default is embedded inside Field(default=..., json_schema_extra=...). The inline
+    comment, harmless on a bare assignment line, terminates the Field(...) call early and
+    produces a SyntaxError. This guards that the comment is stripped before embedding.
+    """
+    gen = CodeGenerator(None)  # type: ignore[arg-type]  # empty in_set → m2o degrades to Ref[int]
+    # create_uid is the canonical real-world case: readonly + many2one to res.users
+    create_uid = FieldSchema(name="create_uid", ttype="many2one", relation="res.users", readonly=True)
+    schema = _schema("res.partner", create_uid=create_uid)
+    source = gen.generate(schema)
+
+    # The degraded m2o still emits Ref[int] and a Field() with readonly metadata
+    assert "Optional[Ref[int]]" in source
+    assert "'odoo_readonly': True" in source
+    # The bare inline comment must NOT survive inside the Field() call
+    assert "Field(default=None  #" not in source, f"inline comment leaked into Field():\n{source}"
+
+    # Core assertion: the generated source must be syntactically valid Python.
+    compile(source, "<gen>", "exec")
+
+    # And it must actually build into a usable class (exec + model_rebuild).
+    ns: dict[str, object] = {}
+    exec(source, ns)  # trusted codegen output
+    ResPartner = ns["ResPartner"]
+    ResPartner.model_rebuild(_types_namespace=ns)  # type: ignore[attr-defined]
+    instance = ResPartner(name="Acme")  # type: ignore[call-arg]
+    assert instance.create_uid is None  # type: ignore[union-attr]
+
+
+# ---------------------------------------------------------------------------
 # CR-02 contract: generated class can be instantiated without id (create path)
 # ---------------------------------------------------------------------------
 

@@ -147,7 +147,11 @@ class CodeGenerator:
                     # x2many: use default_factory=list to avoid PydanticUserError (mutable default)
                     default_expr = f"Field(default_factory=list, json_schema_extra={extra!r})"
                 else:
-                    default_expr = f"Field(default={default}, json_schema_extra={extra!r})"
+                    # Strip any trailing inline comment (e.g. "None  # res.users") before
+                    # embedding the default inside Field(...).  The comment is harmless on a
+                    # bare assignment line but breaks Python syntax inside a function call.
+                    bare_default = default.split("#")[0].rstrip()
+                    default_expr = f"Field(default={bare_default}, json_schema_extra={extra!r})"
                 need_field_import = True
             else:
                 default_expr = default
