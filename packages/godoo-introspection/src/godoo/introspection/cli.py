@@ -92,11 +92,19 @@ def generate(
     # auth failures and connection errors produce a clean stderr message + exit 1
     # instead of a raw traceback. str(exc) for OdooError never includes the password
     # (the message is "invalid login" etc.) — safe per T-w2x-02.
+    #
+    # DEBT-03 (production-side fix): extract the coroutine before the try block so that
+    # finally: _coro.close() can always clean it up. close() is a no-op if asyncio.run
+    # completed normally (coroutine already done); it guards against an un-awaited
+    # coroutine if asyncio.run raises before running the coro (e.g. under test monkeypatches).
+    _coro = _generate_async(output_path, models, all, config)
     try:
-        asyncio.run(_generate_async(output_path, models, all, config))
+        asyncio.run(_coro)
     except (ValueError, OdooError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
+    finally:
+        _coro.close()
 
 
 # ------------------------------------------------------------------
