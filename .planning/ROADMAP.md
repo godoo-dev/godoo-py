@@ -40,7 +40,7 @@ Instance-derived Pydantic typed models with a typed-read dispatch layer (`client
 
 - [x] **Phase 9: Structured Error Surface** — Restructure `OdooRpcError` with parsed fields, traceback stripping, and `.raw` escape hatch (completed 2026-06-02)
 - [x] **Phase 10: Typed Relation Resolution** — `Ref[T]` carries runtime target class; `client.read(ref)` / `client.read(list[Ref])` resolves typed relations, batched (completed 2026-06-02)
-- [ ] **Phase 11: Codegen Metadata + Typed Writes** — Codegen emits readonly/store metadata; `client.write(instance)` / `client.create(instance)` typed paths with correct wire serialization
+- [x] **Phase 11: Codegen Metadata + Typed Writes** — Codegen emits readonly/store metadata; `client.write(instance)` / `client.create(instance)` typed paths with correct wire serialization (completed 2026-06-03)
 - [ ] **Phase 12: Tech Debt Close-out** — CI action bumps, committed password removal, unawaited coroutine warnings, snapshot partial-key fix
 
 ## Phase Details
@@ -115,7 +115,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 11-03-PLAN.md — TEST-01: typed-write unit tests + codegen→read→write integration test (closes 999.3)
+- [x] 11-03-PLAN.md — TEST-01: typed-write unit tests + codegen→read→write integration test (closes 999.3)
 
 ### Phase 12: Tech Debt Close-out
 
@@ -146,7 +146,7 @@ Plans:
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
 | 10. Typed Relation Resolution | v1.2 | 2/2 | Complete    | 2026-06-02 |
-| 11. Codegen Metadata + Typed Writes | v1.2 | 2/3 | In Progress|  |
+| 11. Codegen Metadata + Typed Writes | v1.2 | 3/3 | Complete   | 2026-06-03 |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 
 ## Backlog
