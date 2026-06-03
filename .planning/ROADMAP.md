@@ -146,7 +146,7 @@ Plans:
 | 8. Pyodide Spike | v1.1 | 4/4 | Complete | 2026-06-02 |
 | 9. Structured Error Surface | v1.2 | 1/1 | Complete   | 2026-06-02 |
 | 10. Typed Relation Resolution | v1.2 | 2/2 | Complete    | 2026-06-02 |
-| 11. Codegen Metadata + Typed Writes | v1.2 | 3/3 | Complete   | 2026-06-03 |
+| 11. Codegen Metadata + Typed Writes | v1.2 | 3/3 | Complete    | 2026-06-03 |
 | 12. Tech Debt Close-out | v1.2 | 0/? | Not started | - |
 
 ## Backlog
