@@ -14,11 +14,17 @@ from weakref import WeakKeyDictionary
 from godoo.client.typed import Ref
 from pydantic import BaseModel, create_model, model_validator
 
-# _INIT_SENTINEL is placed in _user_set_fields while __init__/__model_post_init__ is
-# running so that __setattr__ can reliably distinguish construction-time field writes
-# (pydantic internal) from user-triggered attribute assignments (post-construction).
-# After model_post_init clears it, any __setattr__ call records a real user mutation.
-_INIT_SENTINEL = "_init_"
+# _READ_CONTEXT_KEY is set in the pydantic validation context by the read path
+# (_validate_typed in client.py) when constructing a model from an Odoo response.
+# model_post_init keys off it to decide whether construction-time fields count as
+# user writes: user construction (constructor kwargs / plain model_validate) seeds
+# _user_set_fields from model_fields_set, while a read-built instance starts empty
+# so that read-inherited x2many values are never treated as user-written (CR-01).
+_READ_CONTEXT_KEY = "godoo_read"
+
+# Helper for the read path to build the validation context that marks an instance
+# as read-built. Exposed so client.py can use it without hardcoding the key.
+READ_VALIDATION_CONTEXT: dict[str, bool] = {_READ_CONTEXT_KEY: True}
 
 # Module-private cache keyed by the source model class itself (a WeakKeyDictionary, so entries
 # are reclaimed when the model class is garbage-collected) with an inner dict keyed by
@@ -126,29 +132,53 @@ class OdooBaseModel(BaseModel):
     plus their fields.
 
     Dirty-tracking for x2many write guard (CR-01):
-    ``_user_set_fields`` is a per-instance ``set[str]`` that records field names that
-    were explicitly assigned **after** construction (i.e., post-``model_post_init``).
-    It is initialised to the empty set via ``model_post_init``; ``__setattr__``
-    appends to it for every post-init field assignment.
+    ``_user_set_fields`` is a per-instance ``set[str]`` of field names the **user**
+    wrote — whether via constructor kwargs, plain ``model_validate``, or
+    post-construction attribute assignment. It is seeded by ``model_post_init`` and
+    extended by ``__setattr__``.
 
-    This distinguishes three cases that ``model_fields_set`` cannot:
-    - Construction-time kwargs (``Model(field=value)``): NOT in ``_user_set_fields``;
-      pydantic processes kwargs internally without going through ``__setattr__``.
-    - ``model_validate({...})`` read path: NOT in ``_user_set_fields``; same reason.
-    - Post-init attribute assignment (``m.field = value``): IS in ``_user_set_fields``.
+    The discriminator between a *read-built* instance and a *user-built* one is the
+    pydantic validation context: the read path (``_validate_typed`` in client.py)
+    passes ``context=READ_VALIDATION_CONTEXT`` to ``model_validate``, which arrives at
+    ``model_post_init`` as ``{_READ_CONTEXT_KEY: True}``. Construction-time kwargs and
+    plain (context-less) ``model_validate`` cannot be told apart by pydantic alone —
+    both bypass ``__setattr__`` and both set ``model_fields_set`` — so the context flag
+    is the only reliable signal.
 
-    For x2many fields the write serializer raises only when the field appears in
-    ``_user_set_fields`` — this allows the canonical read→modify-scalar→write roundtrip
-    while still catching explicit x2many mutations.
+    Seeding rules in ``model_post_init``:
+    - read-built (context flag present): ``_user_set_fields`` starts EMPTY. Fields
+      populated by the read (including x2many returned by Odoo) are NOT user writes.
+    - user-built (no context flag): ``_user_set_fields`` is seeded from
+      ``model_fields_set`` — every field the caller supplied at construction IS a
+      user write, including an x2many passed as a constructor kwarg.
+
+    ``__setattr__`` adds any post-construction field assignment to ``_user_set_fields``.
+
+    For x2many fields the write serializer raises ``OdooValidationError`` whenever the
+    field is in ``_user_set_fields`` (no silent drops), while still permitting the
+    canonical read→modify-scalar→write roundtrip (read-inherited x2many is omitted,
+    never raised). Covered contracts:
+    - (a) ``Model(name='X')`` scalar-only → x2many absent from set → no raise.
+    - (b) read → change a scalar → write → read-inherited x2many omitted, no raise.
+    - (c1) ``Model(name='X', child_ids=[...])`` x2many ctor kwarg → raise.
+    - (c2) ``m.child_ids = [...]`` post-construction → raise.
     """
 
     __odoo_model__: ClassVar[str]
 
     def model_post_init(self, __context: Any) -> None:
-        """Initialise per-instance dirty-tracking set after pydantic construction."""
+        """Seed per-instance dirty-tracking set after pydantic construction (CR-01).
+
+        Read-built instances (validation context carries the read flag) start with an
+        empty user-set so read-inherited fields are never treated as user writes.
+        User-built instances seed the set from ``model_fields_set`` so constructor
+        kwargs — including an x2many relation — count as explicit user writes.
+        """
+        is_read = isinstance(__context, dict) and __context.get(_READ_CONTEXT_KEY) is True
+        user_set: set[str] = set() if is_read else set(self.model_fields_set)
         # Use object.__setattr__ to bypass our own __setattr__ guard and avoid
         # accidentally recording '_user_set_fields' itself as a mutated field.
-        object.__setattr__(self, "_user_set_fields", set())
+        object.__setattr__(self, "_user_set_fields", user_set)
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Track post-construction field mutations for x2many write guard (CR-01)."""
@@ -299,19 +329,20 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
 
     Only fields in model_fields_set are included. Readonly fields
     (json_schema_extra odoo_readonly=True) are excluded. x2many fields
-    (odoo_x2many=True) that appear in the instance's ``_user_set_fields`` raise
-    OdooValidationError; x2many fields that were populated during construction or
-    via model_validate (read path) are silently skipped. Transformations:
+    (odoo_x2many=True) that the **user** wrote (present in ``_user_set_fields``) raise
+    OdooValidationError — never a silent drop. x2many fields that were merely
+    populated by a read (and never written by the caller) are omitted from the
+    payload. Transformations:
       Ref  -> int (bare id)
       None -> False (Odoo wire convention for cleared fields)
       datetime -> ISO-format string  (datetime BEFORE date — datetime subclasses date)
       date -> ISO-format string
 
-    x2many guard semantics (CR-01):
-    - ``_user_set_fields`` tracks post-construction attribute assignments only.
-    - Fields stamped into model_fields_set by model_validate (read path) are NOT in
-      ``_user_set_fields``, so a read→modify-scalar→write roundtrip never raises.
-    - Only an explicit ``instance.field = [...]`` after construction raises.
+    x2many guard semantics (CR-01) — keyed off ``_user_set_fields`` (see OdooBaseModel):
+    - User-written x2many (constructor kwarg OR post-construction assignment) → RAISE.
+    - Read-inherited x2many (populated via the read path's read-flagged model_validate,
+      never written by the caller) → omitted from the payload, no raise. This enables
+      the read→modify-scalar→write roundtrip without dropping any user-intended write.
     """
     from godoo.client.errors import OdooValidationError  # lazy: avoids circular at module load
 
@@ -336,11 +367,12 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
         if extra_dict.get("odoo_readonly"):
             continue
 
-        # WRITE-05: raise only when the caller explicitly mutated an x2many field
-        # (post-construction attribute assignment). x2many values that came from a
-        # model_validate() read are silently excluded — they cannot be expressed via
-        # the scalar typed path anyway, and excluding them enables the
-        # read→modify-scalar→write roundtrip (CR-01).
+        # WRITE-05: raise whenever the USER wrote an x2many field — whether via a
+        # constructor kwarg or a post-construction assignment (both land in
+        # _user_set_fields per OdooBaseModel.model_post_init / __setattr__). No silent
+        # drops of user-intended writes. x2many values merely inherited from a read are
+        # NOT in _user_set_fields, so they are omitted (not raised) — this is what makes
+        # the read→modify-scalar→write roundtrip work (CR-01).
         if extra_dict.get("odoo_x2many"):
             if field_name in user_set:
                 raise OdooValidationError(
@@ -348,7 +380,7 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
                     f"typed path. Use client.write({instance.__odoo_model__!r}, [<ids>], "
                     f"{{{field_name!r}: [(6, 0, [<ids>])]}}) with command tuples instead."
                 )
-            # Populated from read path — skip silently.
+            # Read-inherited (never written by the caller) — omit from payload.
             continue
 
         value = getattr(instance, field_name)

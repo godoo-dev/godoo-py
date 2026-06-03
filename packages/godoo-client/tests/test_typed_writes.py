@@ -370,14 +370,19 @@ def test_cr02_generated_class_id_not_in_payload() -> None:
 def test_cr01_generated_class_read_then_modify_scalar_does_not_raise() -> None:
     """CR-01 contract (b): generated class read → modify scalar → serialize MUST NOT raise.
 
-    Simulates client.search_read returning a dict with x2many fields. Modifying one
-    scalar field and serializing must succeed even though line_ids is in model_fields_set.
+    Simulates client.search_read returning a dict with x2many fields (read-flagged
+    validation context). Modifying one scalar field and serializing must succeed even
+    though line_ids is in model_fields_set — the read-inherited x2many is omitted.
     """
-    from godoo.client._pydantic_transform import _serialize_for_write
+    from godoo.client._pydantic_transform import READ_VALIDATION_CONTEXT, _serialize_for_write
 
     ResPartner = _make_codegen_class()
-    # Simulate what model_validate receives from the Odoo JSON-RPC response
-    instance = ResPartner.model_validate({"id": 42, "name": "Original", "line_ids": [1, 2, 3]})  # type: ignore[call-arg]
+    # Simulate what _validate_typed receives from the Odoo JSON-RPC response: the read
+    # path passes context=READ_VALIDATION_CONTEXT so the instance is marked read-built.
+    instance = ResPartner.model_validate(
+        {"id": 42, "name": "Original", "line_ids": [1, 2, 3]},
+        context=READ_VALIDATION_CONTEXT,
+    )  # type: ignore[call-arg]
     # User modifies only a scalar — the canonical roundtrip case
     instance.name = "Updated"  # type: ignore[attr-defined]
 
@@ -387,8 +392,23 @@ def test_cr01_generated_class_read_then_modify_scalar_does_not_raise() -> None:
     assert "line_ids" not in payload
 
 
+def test_cr01_generated_class_x2many_constructor_kwarg_raises() -> None:
+    """CR-01 contract (c1): x2many passed as a CONSTRUCTOR kwarg on a generated class raises.
+
+    ResPartner(name='X', line_ids=[...]) is the natural "create with a relation" call —
+    a genuine user-provided x2many write. It MUST raise, not silently drop the relation.
+    """
+    from godoo.client._pydantic_transform import _serialize_for_write
+
+    ResPartner = _make_codegen_class()
+    instance = ResPartner(name="Acme", line_ids=[1, 2, 3])  # type: ignore[call-arg]  # ctor kwarg — (c1)
+
+    with pytest.raises(OdooValidationError, match="x2many"):
+        _serialize_for_write(instance)
+
+
 def test_cr01_generated_class_explicit_x2many_mutation_raises() -> None:
-    """CR-01 contract (c): explicit post-init x2many assignment on generated class raises.
+    """CR-01 contract (c2): explicit post-init x2many assignment on generated class raises.
 
     The user explicitly sets an x2many field and calls write — must raise
     OdooValidationError with a clear message.
@@ -397,7 +417,7 @@ def test_cr01_generated_class_explicit_x2many_mutation_raises() -> None:
 
     ResPartner = _make_codegen_class()
     instance = ResPartner(id=42, name="Acme")  # type: ignore[call-arg]
-    instance.line_ids = [5, 6, 7]  # type: ignore[attr-defined]  # explicit mutation — contract (c)
+    instance.line_ids = [5, 6, 7]  # type: ignore[attr-defined]  # explicit mutation — contract (c2)
 
     with pytest.raises(OdooValidationError, match="x2many"):
         _serialize_for_write(instance)

@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import ClassVar
 
 import pytest
-from godoo.client._pydantic_transform import OdooBaseModel, _serialize_for_write
+from godoo.client._pydantic_transform import READ_VALIDATION_CONTEXT, OdooBaseModel, _serialize_for_write
 from godoo.client.errors import OdooValidationError
 from godoo.client.typed import Ref
 from pydantic import Field
@@ -160,18 +160,29 @@ def test_computed_field_excluded_when_set() -> None:
 
 
 # ------------------------------------------------------------------
-# WRITE-05: x2many raises OdooValidationError only on explicit post-init mutation (CR-01)
+# WRITE-05: x2many write guard — no silent drops of user-written relations (CR-01)
 # ------------------------------------------------------------------
 
 
-def test_x2many_explicit_mutation_raises_validation_error() -> None:
-    """Contract (c): explicitly assigning an x2many field post-construction raises OdooValidationError.
+def test_x2many_constructor_kwarg_raises_validation_error() -> None:
+    """Contract (c1): passing an x2many as a CONSTRUCTOR kwarg raises OdooValidationError.
 
-    The guard fires on post-init attribute assignment (m.line_ids = [...]), not on
-    constructor kwargs — the caller is unambiguously attempting to write the relation.
+    Model(name='X', line_ids=[...]) is the natural "create with a relation" call and
+    is a genuine user-provided x2many write — it MUST raise, not silently drop.
+    """
+    instance = _WritePartner(id=1, line_ids=[1, 2, 3])  # x2many ctor kwarg — contract (c1)
+    with pytest.raises(OdooValidationError, match="line_ids"):
+        _serialize_for_write(instance)
+
+
+def test_x2many_explicit_mutation_raises_validation_error() -> None:
+    """Contract (c2): explicitly assigning an x2many field post-construction raises OdooValidationError.
+
+    The guard fires on post-init attribute assignment (m.line_ids = [...]) — the caller
+    is unambiguously attempting to write the relation.
     """
     instance = _WritePartner(id=1)
-    instance.line_ids = [1, 2, 3]  # explicit post-init mutation — contract (c)
+    instance.line_ids = [1, 2, 3]  # explicit post-init mutation — contract (c2)
     with pytest.raises(OdooValidationError, match="line_ids"):
         _serialize_for_write(instance)
 
@@ -197,19 +208,21 @@ def test_x2many_raises_before_any_rpc() -> None:
 
 
 def test_x2many_from_read_does_not_raise() -> None:
-    """Contract (b): x2many populated via model_validate (read path) does NOT raise on write.
+    """Contract (b): x2many populated via the READ path does NOT raise on write.
 
-    This is the canonical read→modify-scalar→write roundtrip. The caller never
-    explicitly touched the x2many field — it was stamped in by pydantic's model_validate.
+    This is the canonical read→modify-scalar→write roundtrip. The caller never wrote
+    the x2many field — it was inherited from the read (model_validate flagged with the
+    read context). Modifying a scalar and writing back omits the read-inherited x2many.
     """
-    # Simulate what client.search_read / client.read returns
+    # Simulate what client.search_read / client.read produces (read-flagged context)
     instance = _WritePartner.model_validate(
         {
             "id": 42,
             "name": "Acme",
             "line_ids": [1, 2, 3],  # x2many from Odoo response
             "tag_ids": [10, 20],
-        }
+        },
+        context=READ_VALIDATION_CONTEXT,
     )
     # Modify a scalar field only — the roundtrip case
     instance.name = "Acme Updated"
@@ -220,6 +233,17 @@ def test_x2many_from_read_does_not_raise() -> None:
     assert "name" in payload
     assert "line_ids" not in payload
     assert "tag_ids" not in payload
+
+
+def test_x2many_from_read_then_explicit_mutation_raises() -> None:
+    """Contract (c2) over a read: writing an x2many AFTER a read still raises (no silent drop)."""
+    instance = _WritePartner.model_validate(
+        {"id": 42, "name": "Acme", "line_ids": [1, 2, 3]},
+        context=READ_VALIDATION_CONTEXT,
+    )
+    instance.line_ids = [9, 10]  # user now explicitly writes the relation
+    with pytest.raises(OdooValidationError, match="line_ids"):
+        _serialize_for_write(instance)
 
 
 def test_x2many_from_constructor_does_not_raise() -> None:

@@ -101,11 +101,15 @@ def _validate_typed(target: type[Any], raw: dict[str, Any]) -> Any:
     the project's typed ``OdooValidationError`` so callers see the documented error contract
     instead of a raw pydantic exception (WR-02). pydantic is imported lazily here to honour
     the never-import-pydantic-at-module-level rule (D-04).
+
+    The ``READ_VALIDATION_CONTEXT`` flag marks the resulting instance as read-built so the
+    x2many write guard does not treat read-inherited x2many values as user writes (CR-01).
     """
+    from godoo.client._pydantic_transform import READ_VALIDATION_CONTEXT
     from pydantic import ValidationError
 
     try:
-        return target.model_validate(raw)
+        return target.model_validate(raw, context=READ_VALIDATION_CONTEXT)
     except ValidationError as exc:
         raise OdooValidationError(f"Could not validate {target.__name__} record from Odoo: {exc}") from exc
 
