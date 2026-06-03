@@ -87,6 +87,17 @@ that godoo-ts already ships.
 - ✓ `__odoo_model__: ClassVar[str]` on every generated model — pydantic-free `client.read(...)` dispatch — Phase 7 (TYPED-01)
 - ✓ `godoo-introspect generate` CLI entrypoint (typer); `pydantic>=2.13` + `typer>=0.26` as runtime deps — Phase 7 (TYPED-02)
 
+<!-- Validated in Phase 11: Codegen Metadata + Typed Writes (2026-06-03). -->
+
+- ✓ Codegen emits `json_schema_extra={"odoo_readonly": True}` for readonly/computed fields; conditional `from pydantic import Field` header — Phase 11 (GEN-01)
+- ✓ `client.create(instance)` accepts `OdooBaseModel` instance, returns new record id; only `model_fields_set` fields sent, readonly excluded — Phase 11 (WRITE-01)
+- ✓ `client.write(instance)` sends only explicitly-set fields (`__pydantic_fields_set__`); unset fields never sent as `None` — Phase 11 (WRITE-02)
+- ✓ Write serializer reverse wire transforms: `Ref`→int, `None`→Odoo `False`, date/datetime→ISO strings — Phase 11 (WRITE-03)
+- ✓ Readonly/computed fields excluded from write payloads via codegen `json_schema_extra` metadata — Phase 11 (WRITE-04)
+- ✓ x2many fields not serializable via typed-write path; explicit set raises `OdooValidationError` pointing to raw `write()` with command tuples; read-inherited x2many omitted cleanly (CR-01 fix) — Phase 11 (WRITE-05)
+- ✓ `id: int | None = None` in codegen output — typed `create()` possible without a bogus id (CR-02 fix) — Phase 11 (WRITE-01/GEN-01)
+- ✓ `test_codegen_read_write_roundtrip` end-to-end integration test passes on Odoo 18.0; codegen→typed-read→write roundtrip confirmed; backlog 999.3 closed — Phase 11 (TEST-01)
+
 <!-- Validated in milestone v1.1 (2026-06-02). -->
 
 - ✓ `packages/godoo` → `packages/godoo-client` directory rename via `git mv` (blame preserved); PEP 420 `godoo.*` namespace guard test — v1.1 (Phase 5 / PKG-01, PKG-02, PKG-03)
@@ -111,6 +122,7 @@ _Requirements being defined for milestone v1.2 — see REQUIREMENTS.md (in progr
 
 ## Context
 
+- **Phase 11 complete (2026-06-03).** Codegen metadata + typed writes. `GEN-01` (codegen `json_schema_extra` readonly metadata), `WRITE-01..05` (typed `create`/`write` dispatch, reverse wire transforms, readonly exclusion, x2many guard + CR-01 read-inherited fix), `TEST-01` (codegen→typed-read→write integration roundtrip on Odoo 18.0, closes backlog 999.3). Additional fix commit 6922d34 (strip inline comment before `Field()` embedding, found during integration run). Next: Phase 12 (tech-debt close-out: DEBT-01..04).
 - **v1.1 shipped (2026-06-02).** Typed models (Pydantic CLI generator + typed-read dispatch layer behind `godoo[typed]`), the `packages/godoo`→`packages/godoo-client` rename, a pluggable transport seam, and the Pyodide spike (ADR-0001 GO verdict, escalated to v2.0). 13/13 v1.1 requirements complete. GSD milestone tag: `milestone-v1.1`. No new PyPI release was required by the milestone itself; current package version is 0.2.0/0.2.1.
 - **v1.0 shipped (2026-05-22).** All three packages reached TS parity and were published
   to PyPI: `godoo-client`, `godoo-introspection`, `godoo-testcontainers` (plus a `godoo`
@@ -180,4 +192,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-02 — milestone v1.2 (Typed Relations, Writes & Error Surface) started*
+*Last updated: 2026-06-03 — Phase 11 (codegen metadata + typed writes) complete*
