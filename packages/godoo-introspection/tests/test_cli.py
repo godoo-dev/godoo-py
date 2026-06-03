@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 import httpx
@@ -89,10 +88,12 @@ def test_generate_auth_error_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyP
     """OdooAuthError raised inside asyncio.run is caught and exits with code 1."""
     exc_instance = OdooAuthError("bad creds")
 
-    def _raise(*_: object) -> None:
+    from godoo.introspection import cli as cli_module
+
+    async def _raise_async(*_: object) -> None:
         raise exc_instance
 
-    monkeypatch.setattr(asyncio, "run", _raise)
+    monkeypatch.setattr(cli_module, "_generate_async", _raise_async)
     result = runner.invoke(
         app,
         [
@@ -118,10 +119,12 @@ def test_generate_network_error_exits_1(tmp_path: Path, monkeypatch: pytest.Monk
     """OdooNetworkError raised inside asyncio.run is caught and exits with code 1."""
     exc_instance = OdooNetworkError("connection refused")
 
-    def _raise(*_: object) -> None:
+    from godoo.introspection import cli as cli_module
+
+    async def _raise_async(*_: object) -> None:
         raise exc_instance
 
-    monkeypatch.setattr(asyncio, "run", _raise)
+    monkeypatch.setattr(cli_module, "_generate_async", _raise_async)
     result = runner.invoke(
         app,
         [
@@ -148,10 +151,12 @@ def test_generate_odoo_error_password_not_in_output(tmp_path: Path, monkeypatch:
     secret_password = "super_secret_password_xyz"
     exc_instance = OdooAuthError("invalid login")
 
-    def _raise(*_: object) -> None:
+    from godoo.introspection import cli as cli_module
+
+    async def _raise_async(*_: object) -> None:
         raise exc_instance
 
-    monkeypatch.setattr(asyncio, "run", _raise)
+    monkeypatch.setattr(cli_module, "_generate_async", _raise_async)
     result = runner.invoke(
         app,
         [
