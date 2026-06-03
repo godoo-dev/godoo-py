@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Typed Relations, Writes & Error Surface
-status: ready_to_plan
-last_updated: 2026-06-03T10:27:29.307Z
+status: planning
+last_updated: "2026-06-03T11:21:14.549Z"
 last_activity: 2026-06-03
 progress:
   total_phases: 8
@@ -11,7 +11,6 @@ progress:
   total_plans: 6
   completed_plans: 6
   percent: 38
-stopped_at: Phase 11 complete (3/3) — ready to discuss Phase 12
 ---
 
 # Project State
@@ -143,8 +142,8 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 
 ## Session Continuity
 
-Last session: 2026-06-03T09:29:23.023Z
-Stopped at: Phase 11 Plan 02 complete — WRITE-01..05 typed write path committed
+Last session: 2026-06-03T11:21:14.534Z
+Stopped at: Phase 12 context gathered
 
 ## Operator Next Steps
 
