@@ -266,6 +266,9 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
 
     payload: dict[str, Any] = {}
     for field_name in instance.model_fields_set:
+        # 'id' is the record identifier, passed separately in the RPC call — never in the payload
+        if field_name == "id":
+            continue
         fi = instance.__class__.model_fields.get(field_name)
         if fi is None:
             continue
