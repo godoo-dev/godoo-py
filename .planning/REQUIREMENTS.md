@@ -49,7 +49,7 @@
 - [x] **DEBT-01**: `release.yml` Node 20 actions (checkout, setup-uv) bumped — deprecation warnings gone.
 - [x] **DEBT-02**: `run_spike.py` committed `password=admin` removed/neutralized.
 - [x] **DEBT-03**: `test_cli.py` error-path tests no longer leave unawaited coroutines (no `RuntimeWarning`).
-- [ ] **DEBT-04**: `snapshot.py` partial snapshot-key limitation fixed — direct `OdooTestContainer` users get the same complete key as `TestHarness` users.
+- [x] **DEBT-04**: `snapshot.py` partial snapshot-key limitation fixed — direct `OdooTestContainer` users get the same complete key as `TestHarness` users.
 
 ## Future Requirements
 
@@ -104,7 +104,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEBT-01 | Phase 12 | Complete |
 | DEBT-02 | Phase 12 | Complete |
 | DEBT-03 | Phase 12 | Complete |
-| DEBT-04 | Phase 12 | Pending |
+| DEBT-04 | Phase 12 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 22 total
