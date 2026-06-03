@@ -135,8 +135,8 @@ class CodeGenerator:
                 logger.warning("Field name %r is a Pydantic reserved name — skipping", field_name)
                 continue
 
-            # Finding #10: structural import detection — unpack 3-tuple from type_mapper
-            annotation, default, imports = pydantic_field_str(fs, self._in_set, _model_to_classname)
+            # Finding #10: structural import detection — unpack 4-tuple from type_mapper (GEN-01)
+            annotation, default, imports, _extra = pydantic_field_str(fs, self._in_set, _model_to_classname)
             field_lines.append(f"    {field_name}: {annotation} = {default}")
 
             # Track imports needed — set-membership checks on the imports frozenset

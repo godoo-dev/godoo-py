@@ -301,33 +301,33 @@ def _json_field(fname: str = "metadata") -> FieldSchema:
 
 
 def test_type_mapper_returns_imports_set() -> None:
-    """pydantic_field_str returns a 3-tuple (annotation, default, imports_set)."""
+    """pydantic_field_str returns a 4-tuple (annotation, default, imports_set, extra_dict)."""
     from godoo.introspection.type_mapper import pydantic_field_str
 
     # date field
-    _ann, _default, imports = pydantic_field_str(_date_field(), frozenset(), _model_to_classname)
+    _ann, _default, imports, _ = pydantic_field_str(_date_field(), frozenset(), _model_to_classname)
     assert "date" in imports, f"date field should have 'date' in imports, got {imports}"
 
     # datetime field
-    _ann, _default, imports = pydantic_field_str(_datetime_field(), frozenset(), _model_to_classname)
+    _ann, _default, imports, _ = pydantic_field_str(_datetime_field(), frozenset(), _model_to_classname)
     assert "datetime" in imports, f"datetime field should have 'datetime' in imports, got {imports}"
 
     # selection field with static values
-    _ann, _default, imports = pydantic_field_str(_selection_field(), frozenset(), _model_to_classname)
+    _ann, _default, imports, _ = pydantic_field_str(_selection_field(), frozenset(), _model_to_classname)
     assert "Literal" in imports, f"selection field should have 'Literal' in imports, got {imports}"
 
     # json field
-    _ann, _default, imports = pydantic_field_str(_json_field(), frozenset(), _model_to_classname)
+    _ann, _default, imports, _ = pydantic_field_str(_json_field(), frozenset(), _model_to_classname)
     assert "Any" in imports, f"json field should have 'Any' in imports, got {imports}"
 
     # many2one field
-    _ann, _default, imports = pydantic_field_str(
+    _ann, _default, imports, _ = pydantic_field_str(
         _m2o_field("partner_id", "res.partner"), frozenset(), _model_to_classname
     )
     assert "Ref" in imports, f"m2o field should have 'Ref' in imports, got {imports}"
 
     # char field — no special imports
-    _ann, _default, imports = pydantic_field_str(_char_field(), frozenset(), _model_to_classname)
+    _ann, _default, imports, _ = pydantic_field_str(_char_field(), frozenset(), _model_to_classname)
     assert len(imports) == 0, f"char field should have empty imports, got {imports}"
 
 

@@ -23,67 +23,67 @@ _fn = _model_to_classname
 
 
 def test_char() -> None:
-    ann, default, imports = pydantic_field_str(_field("char"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("char"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_text() -> None:
-    ann, default, imports = pydantic_field_str(_field("text"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("text"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_html() -> None:
-    ann, default, imports = pydantic_field_str(_field("html"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("html"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_image() -> None:
-    ann, default, imports = pydantic_field_str(_field("image"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("image"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_binary() -> None:
-    ann, default, imports = pydantic_field_str(_field("binary"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("binary"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_serialized() -> None:
-    ann, default, imports = pydantic_field_str(_field("serialized"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("serialized"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_reference() -> None:
-    ann, default, imports = pydantic_field_str(_field("reference"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("reference"), frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_integer() -> None:
-    ann, default, imports = pydantic_field_str(_field("integer"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("integer"), frozenset(), _fn)
     assert (ann, default) == ("Optional[int]", "None")
     assert imports == frozenset()
 
 
 def test_float() -> None:
-    ann, default, imports = pydantic_field_str(_field("float"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("float"), frozenset(), _fn)
     assert (ann, default) == ("Optional[float]", "None")
     assert imports == frozenset()
 
 
 def test_monetary() -> None:
-    ann, default, imports = pydantic_field_str(_field("monetary"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("monetary"), frozenset(), _fn)
     assert (ann, default) == ("Optional[float]", "None")
     assert imports == frozenset()
 
 
 def test_boolean() -> None:
-    annotation, default, imports = pydantic_field_str(_field("boolean"), frozenset(), _fn)
+    annotation, default, imports, _extra = pydantic_field_str(_field("boolean"), frozenset(), _fn)
     assert annotation == "bool"
     assert default == "False"
     assert "Optional" not in annotation
@@ -91,20 +91,20 @@ def test_boolean() -> None:
 
 
 def test_date() -> None:
-    ann, default, imports = pydantic_field_str(_field("date"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("date"), frozenset(), _fn)
     assert (ann, default) == ("Optional[date]", "None")
     assert imports == frozenset({"date"})
 
 
 def test_datetime() -> None:
-    ann, default, imports = pydantic_field_str(_field("datetime"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("datetime"), frozenset(), _fn)
     assert (ann, default) == ("Optional[datetime]", "None")
     assert imports == frozenset({"datetime"})
 
 
 def test_many2one_in_set() -> None:
     field = FieldSchema(name="f", ttype="many2one", relation="res.partner")
-    annotation, default, imports = pydantic_field_str(field, frozenset({"res.partner"}), _fn)
+    annotation, default, imports, _extra = pydantic_field_str(field, frozenset({"res.partner"}), _fn)
     assert annotation == "Optional[Ref[ResPartner]]"
     assert default == "None"
     assert imports == frozenset({"Ref"})
@@ -112,27 +112,27 @@ def test_many2one_in_set() -> None:
 
 def test_many2one_not_in_set() -> None:
     field = FieldSchema(name="f", ttype="many2one", relation="res.company")
-    annotation, default, imports = pydantic_field_str(field, frozenset(), _fn)
+    annotation, default, imports, _extra = pydantic_field_str(field, frozenset(), _fn)
     assert annotation == "Optional[Ref[int]]"
     assert default.startswith("None  # res.company")
     assert imports == frozenset({"Ref"})
 
 
 def test_one2many() -> None:
-    ann, default, imports = pydantic_field_str(_field("one2many"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("one2many"), frozenset(), _fn)
     assert (ann, default) == ("list[int]", "[]")
     assert imports == frozenset()
 
 
 def test_many2many() -> None:
-    ann, default, imports = pydantic_field_str(_field("many2many"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("many2many"), frozenset(), _fn)
     assert (ann, default) == ("list[int]", "[]")
     assert imports == frozenset()
 
 
 def test_selection_static() -> None:
     field = FieldSchema(name="f", ttype="selection", selection=[("draft", "Draft"), ("done", "Done")])
-    annotation, default, imports = pydantic_field_str(field, frozenset(), _fn)
+    annotation, default, imports, _extra = pydantic_field_str(field, frozenset(), _fn)
     assert annotation == "Optional[Literal['draft', 'done']]"
     assert default == "None"
     assert imports == frozenset({"Literal"})
@@ -140,25 +140,25 @@ def test_selection_static() -> None:
 
 def test_selection_dynamic_empty() -> None:
     field = FieldSchema(name="f", ttype="selection", selection=[])
-    ann, default, imports = pydantic_field_str(field, frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(field, frozenset(), _fn)
     assert (ann, default) == ("Optional[str]", "None")
     assert imports == frozenset()
 
 
 def test_json() -> None:
-    ann, default, imports = pydantic_field_str(_field("json"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("json"), frozenset(), _fn)
     assert (ann, default) == ("Optional[dict[str, Any]]", "None")
     assert imports == frozenset({"Any"})
 
 
 def test_properties() -> None:
-    ann, default, imports = pydantic_field_str(_field("properties"), frozenset(), _fn)
+    ann, default, imports, _extra = pydantic_field_str(_field("properties"), frozenset(), _fn)
     assert (ann, default) == ("Optional[dict[str, Any]]", "None")
     assert imports == frozenset({"Any"})
 
 
 def test_unknown_ttype_returns_optional_any() -> None:
-    annotation, default, imports = pydantic_field_str(_field("__custom__"), frozenset(), _fn)
+    annotation, default, imports, _extra = pydantic_field_str(_field("__custom__"), frozenset(), _fn)
     assert annotation.startswith("Optional[Any]")
     assert default == "None"
     assert imports == frozenset({"Any"})
