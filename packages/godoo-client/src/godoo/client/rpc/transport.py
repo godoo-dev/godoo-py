@@ -27,7 +27,12 @@ class JsonRpcTransport:
     def __init__(self, base_url: str, db: str, timeout: float | None = None) -> None:
         self._base_url = base_url.rstrip("/")
         self._db = db
-        self._client = httpx.AsyncClient(timeout=timeout)
+        # Single-worker Odoo drops pooled keep-alive connections between
+        # requests, so each RPC must open a fresh connection (see issue #1);
+        # httpx's retries= option does not cover mid-request
+        # RemoteProtocolError on an already-pooled connection.
+        self._limits = httpx.Limits(max_keepalive_connections=0)
+        self._client = httpx.AsyncClient(timeout=timeout, limits=self._limits)
         self._session: OdooSessionInfo | None = None
         self._password: str | None = None
 
