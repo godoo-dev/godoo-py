@@ -122,6 +122,7 @@ None — roadmap is clear; open design decisions require owner judgment (not res
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260601-w2x | Fix 10 phase 06/07 code-review findings (pydantic transform, typed dispatch, codegen, cli) | 2026-06-01 | b21e35c | [260601-w2x-fix-phase-06-07-code-review-findings-pyd](./quick/260601-w2x-fix-phase-06-07-code-review-findings-pyd/) |
+| 260709-pld | Disable httpx keep-alive pooling in JsonRpcTransport (fixes issue #1) | 2026-07-09 | 6a335f6 | [260709-pld-fix-pooled-httpx-keep-alive-connection-d](./quick/260709-pld-fix-pooled-httpx-keep-alive-connection-d/) |
 
 ## Deferred Items
 
