@@ -209,3 +209,8 @@ async def test_connect_timeout_raises_odoo_timeout_error(transport):
 def test_transport_timeout_param_accepted():
     t = JsonRpcTransport(BASE_URL, DB, timeout=30.0)
     assert t._client.timeout.read == 30.0
+
+
+def test_transport_disables_keepalive_pooling():
+    t = JsonRpcTransport(BASE_URL, DB)
+    assert t._limits.max_keepalive_connections == 0
