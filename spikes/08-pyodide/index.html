@@ -225,14 +225,14 @@ result
   log("Strategy 3 result:\n" + s3Result, passed ? "pass" : "fail");
   if (passed) {
     log("VERDICT signal: strategy 3 satisfies D-10 go-bar (maintainable + works).\n"
-      + "Record this result in 08-SPIKE.md and the go/no-go ADR.", "info");
+      + "Retain this result as private evidence and capture the outcome in the shared tracker.", "info");
   }
 } catch (err) {
   log("Strategy 3 outer error: " + err + "\n" + (err.stack || ""), "fail");
 }
 
 logSection("Spike run complete — see above for per-strategy pass/fail");
-log("Record tracebacks + devtools Network screenshots in .planning/phases/08-pyodide-spike/08-SPIKE.md", "info");
+log("Record tracebacks + devtools Network screenshots in ~/.share/agent-work/godoo-py/<task>/", "info");
 
 </script>
 </body>

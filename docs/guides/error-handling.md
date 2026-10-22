@@ -27,7 +27,7 @@ response.
 Raised when authentication fails or the session expires:
 
 ```python
-from godoo import OdooAuthError
+from godoo.client import OdooAuthError
 
 try:
     await client.authenticate()
@@ -41,7 +41,7 @@ Maps to Odoo's `ValidationError` and `UserError`.  Commonly raised when
 business rules are violated:
 
 ```python
-from godoo import OdooValidationError
+from godoo.client import OdooValidationError
 
 try:
     await client.write("sale.order", 42, {"state": "invalid"})
@@ -54,7 +54,7 @@ except OdooValidationError as e:
 ACL or record rule violation:
 
 ```python
-from godoo import OdooAccessError
+from godoo.client import OdooAccessError
 
 try:
     await client.read("hr.employee", [1], fields=["name"])
@@ -67,7 +67,7 @@ except OdooAccessError:
 The requested record does not exist:
 
 ```python
-from godoo import OdooMissingError
+from godoo.client import OdooMissingError
 
 try:
     await client.read("res.partner", [999999])
@@ -80,7 +80,7 @@ except OdooMissingError:
 Connection failures and timeouts:
 
 ```python
-from godoo import OdooNetworkError, OdooTimeoutError
+from godoo.client import OdooNetworkError, OdooTimeoutError
 
 try:
     partners = await client.search_read("res.partner", [])
@@ -96,7 +96,7 @@ Raised locally when a [safety guard](safety-guards.md) blocks an operation.
 No network call is made:
 
 ```python
-from godoo import OdooSafetyError
+from godoo.client import OdooSafetyError
 
 try:
     await client.unlink("res.partner", [1])
@@ -132,7 +132,7 @@ This two-step approach ensures correct classification across Odoo 17-19.
 
 ```python
 import asyncio
-from godoo import OdooNetworkError
+from godoo.client import OdooNetworkError
 
 async def resilient_read(client, model, ids, retries=3):
     for attempt in range(retries):
@@ -147,7 +147,7 @@ async def resilient_read(client, model, ids, retries=3):
 ### Catch-all with specifics
 
 ```python
-from godoo import OdooError, OdooAuthError, OdooValidationError
+from godoo.client import OdooError, OdooAuthError, OdooValidationError
 
 try:
     await client.create("sale.order", values)

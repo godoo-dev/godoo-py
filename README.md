@@ -1,68 +1,57 @@
-[![PyPI](https://img.shields.io/pypi/v/godoo)](https://pypi.org/project/godoo/) [![Downloads](https://img.shields.io/pypi/dm/godoo)](https://pypi.org/project/godoo/) [![CI](https://img.shields.io/github/actions/workflow/status/marcfargas/godoo/test.yml?branch=main)](https://github.com/marcfargas/godoo/actions) [![Coverage](https://img.shields.io/codecov/c/github/marcfargas/godoo)](https://codecov.io/gh/marcfargas/godoo) [![License](https://img.shields.io/github/license/marcfargas/godoo)](LICENSE) ![Odoo 17](https://img.shields.io/badge/Odoo-17-blueviolet) ![Odoo 18](https://img.shields.io/badge/Odoo-18-blueviolet) ![Odoo 19](https://img.shields.io/badge/Odoo-19-blueviolet)
+# godoo-py
 
-# godoo
+Async Python libraries for Odoo RPC, instance-derived types and disposable test
+environments. Python 3.14+; LGPL-3.0-or-later.
 
-Async Python SDK for Odoo JSON-RPC — typed, tested, ready.
+| Distribution | Import namespace | Purpose |
+| --- | --- | --- |
+| `godoo-client` | `godoo.client` | Async CRUD, safety guards and eight domain services |
+| `godoo-introspection` | `godoo.introspection` | Live schema discovery and Pydantic model generation |
+| `godoo-testcontainers` | `godoo.testcontainers` | Odoo/Postgres containers, harness and snapshots |
+| `godoo` | None | Metadata-only distribution reserving the family name |
 
-An async Python client for Odoo's JSON-RPC API with full type annotations and 8 domain services. Includes testcontainers integration for testing against real Odoo 17, 18, and 19 instances. Built with httpx, dataclasses, and mypy --strict.
+Install the client distribution for application code:
 
-## Packages
-
-| Package | PyPI | Description |
-|---|---|---|
-| **godoo** | `uv add godoo` | Core client + 8 domain services |
-| **godoo-testcontainers** | `uv add godoo-testcontainers` | Docker-based Odoo for integration testing |
-| **godoo-introspection** | `uv add godoo-introspection` | Schema discovery + codegen (coming soon) |
-
-## Install
-
-```bash
-uv add godoo
-# or
-pip install godoo
+```sh
+uv add godoo-client
+# Optional generated-model support:
+uv add 'godoo-client[typed]'
 ```
 
-## Quickstart
-
-Set `ODOO_URL`, `ODOO_DB`, `ODOO_USER`, and `ODOO_PASSWORD`, then:
+Set `ODOO_URL`, `ODOO_DB`, `ODOO_USER` and `ODOO_PASSWORD` for an instance you are
+authorized to read, then:
 
 ```python
 import asyncio
-from godoo import create_client
+from godoo.client import create_client
 
 async def main():
-    client = await create_client()  # reads ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASSWORD
-    partners = await client.search_read(
-        "res.partner",
-        [["is_company", "=", True]],
-        fields=["name", "email"],
-        limit=5,
-    )
-    for p in partners:
-        print(p["name"], p.get("email", ""))
+    client = await create_client()
+    try:
+        partners = await client.search_read(
+            "res.partner",
+            [["is_company", "=", True]],
+            fields=["name", "email"],
+            limit=5,
+        )
+        for partner in partners:
+            print(partner["name"], partner.get("email"))
+    finally:
+        await client.aclose()
 
 asyncio.run(main())
 ```
 
-## Services
+Use the [getting-started guide](docs/getting-started.md), [service guides](docs/index.md)
+and [API reference](docs/api/client.md) for usage. The [typed-model guide](docs/guides/typed-models.md)
+explains code generation and relation/write boundaries. See [testing](docs/testing.md)
+for disposable environments and [browser design](docs/browser.md) for the unshipped
+Pyodide path.
 
-| Service | Access | Description |
-|---|---|---|
-| [Mail](https://www.marcfargas.com/~godoo/services/mail/) | `client.mail` | Post notes and messages on record chatter |
-| [Modules](https://www.marcfargas.com/~godoo/services/modules/) | `client.modules` | Install, uninstall, upgrade Odoo modules |
-| [Attendance](https://www.marcfargas.com/~godoo/services/attendance/) | `client.attendance` | Clock in/out and presence tracking |
-| [Timesheets](https://www.marcfargas.com/~godoo/services/timesheets/) | `client.timesheets` | Timer-based and manual time logging |
-| [Accounting](https://www.marcfargas.com/~godoo/services/accounting/) | `client.accounting` | Cash discovery, reconciliation, balance |
-| [URLs](https://www.marcfargas.com/~godoo/services/urls/) | `client.urls` | Version-agnostic record and portal links |
-| [Properties](https://www.marcfargas.com/~godoo/services/properties/) | `client.properties` | Safe read-merge-write for property fields |
-| [CDC](https://www.marcfargas.com/~godoo/services/cdc/) | `client.cdc` | Change data capture via audit log |
+[Contributing](CONTRIBUTING.md) covers setup and checks;
+[development](docs/development.md) explains the package structure. Source manifests
+and a configured Odoo 17/18/19 CI matrix do not establish registry publication,
+current runtime compatibility or consumer acceptance.
 
-## Safety Guards
-
-Write and delete operations require opt-in confirmation before execution.
-Guards are configurable per-client or globally, protecting against accidental mutations.
-See the [documentation](https://www.marcfargas.com/~godoo/) for details.
-
----
-
-[Documentation](https://www.marcfargas.com/~godoo/) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
+The local [HQ library target](/home/marc/dev/godoo-dev/godoo-hq/docs/libraries.md)
+owns portfolio intent. Agent entrypoint: [AGENTS.md](AGENTS.md).

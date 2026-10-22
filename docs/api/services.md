@@ -1,17 +1,17 @@
 # Services
 
-::: godoo.MailService
+::: godoo.client.MailService
 
-::: godoo.ModuleManager
+::: godoo.client.ModuleManager
 
-::: godoo.AttendanceService
+::: godoo.client.AttendanceService
 
-::: godoo.TimesheetsService
+::: godoo.client.TimesheetsService
 
-::: godoo.AccountingService
+::: godoo.client.AccountingService
 
-::: godoo.UrlService
+::: godoo.client.UrlService
 
-::: godoo.PropertiesService
+::: godoo.client.PropertiesService
 
-::: godoo.CdcService
+::: godoo.client.CdcService

@@ -3,9 +3,9 @@
 ## Dev Setup
 
 ```bash
-git clone https://github.com/marcfargas/godoo.git
-cd odoopy
-uv sync
+git clone https://github.com/godoo-dev/godoo-py.git
+cd godoo-py
+uv sync --locked
 uv run pytest packages/ -m "not integration"  # verify setup
 ```
 
@@ -20,7 +20,7 @@ uv run pytest packages/ -v -m "not integration"
 ### Integration Tests (requires Docker)
 
 ```bash
-uv run pytest -m integration -v
+uv run pytest tests/integration/ -m integration -v
 ```
 
 Integration tests spin up real Odoo instances via testcontainers. First run pulls Docker images (~1-2 min), subsequent runs are faster with seed images.
@@ -28,18 +28,19 @@ Integration tests spin up real Odoo instances via testcontainers. First run pull
 Set `ODOO_VERSION` to test against a specific version (default: 17.0):
 
 ```bash
-ODOO_VERSION=18.0 uv run pytest -m integration -v
+ODOO_VERSION=18.0 uv run pytest tests/integration/ -m integration -v
 ```
 
 ## Linting & Type Checking
 
 ```bash
 uv run ruff check .
-uv run ruff format .
-uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src
+uv run ruff format --check .
+uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src
 ```
 
-All three must pass before committing.
+Use checks relevant to the change. Documentation edits need link/import checks and
+`git diff --check`; they do not require a Docker test campaign.
 
 ## Commit Conventions
 
@@ -65,13 +66,15 @@ The container is session-scoped — one Odoo instance shared across all integrat
 
 ## Adding a New Service
 
-1. Create `packages/godoo-client/src/godoo/services/{name}/`
+1. Create `packages/godoo-client/src/godoo/client/services/{name}/`
 2. Add four files following the pattern:
    - `types.py` — dataclasses for service types
    - `functions.py` — standalone async functions (take `client` as first arg)
    - `service.py` — service class delegating to functions
    - `__init__.py` — re-export public symbols
 3. Add `@cached_property` accessor in `client.py` (lazy import inside the property)
-4. Add re-export in `packages/godoo-client/src/godoo/__init__.py`
+4. Add re-export in `packages/godoo-client/src/godoo/client/__init__.py`
 5. Add tests in `packages/godoo-client/tests/test_{name}.py`
 6. Add docs page in `docs/services/{name}.md`
+
+See [development](docs/development.md) for the namespace and transport boundaries.

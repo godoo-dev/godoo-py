@@ -1,19 +1,19 @@
 # Errors
 
-::: godoo.OdooError
+::: godoo.client.OdooError
 
-::: godoo.OdooRpcError
+::: godoo.client.OdooRpcError
 
-::: godoo.OdooAuthError
+::: godoo.client.OdooAuthError
 
-::: godoo.OdooNetworkError
+::: godoo.client.OdooNetworkError
 
-::: godoo.OdooTimeoutError
+::: godoo.client.OdooTimeoutError
 
-::: godoo.OdooValidationError
+::: godoo.client.OdooValidationError
 
-::: godoo.OdooAccessError
+::: godoo.client.OdooAccessError
 
-::: godoo.OdooMissingError
+::: godoo.client.OdooMissingError
 
-::: godoo.OdooSafetyError
+::: godoo.client.OdooSafetyError

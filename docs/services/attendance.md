@@ -46,7 +46,7 @@ if status.is_clocked_in:
 List attendance records with filtering options:
 
 ```python
-from godoo.services.attendance.types import AttendanceListOptions
+from godoo.client.services.attendance.types import AttendanceListOptions
 
 records = await client.attendance.list_attendances(
     AttendanceListOptions(limit=10, order="check_in desc")
@@ -65,7 +65,7 @@ for r in records:
 ## Full example
 
 ```python
-from godoo import create_client
+from godoo.client import create_client
 
 client = await create_client()
 

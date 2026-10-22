@@ -29,7 +29,7 @@ export ODOO_STG_PASSWORD=stg_secret
 ## Usage
 
 ```python
-from godoo import create_client
+from godoo.client import create_client
 
 async def main():
     prod = await create_client("ODOO_PROD")
@@ -51,7 +51,7 @@ For environments where variables do not follow the prefix convention, build
 configs directly:
 
 ```python
-from godoo import OdooClient, OdooClientConfig
+from godoo.client import OdooClient, OdooClientConfig
 
 prod_config = OdooClientConfig(
     url="https://prod.mycompany.com",

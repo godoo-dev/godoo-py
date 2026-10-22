@@ -16,7 +16,7 @@ Requires Docker to be running on your machine or CI environment.
 
 ```python
 import pytest
-from godoo_testcontainers import OdooTestContainer
+from godoo.testcontainers import OdooTestContainer
 
 @pytest.fixture(scope="session")
 async def odoo():

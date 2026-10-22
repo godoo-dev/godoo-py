@@ -3,7 +3,8 @@
 **Async Python SDK for Odoo JSON-RPC**
 
 godoo gives you a fully typed, async-first client for Odoo's JSON-RPC API.
-Built on `httpx`, it works with Odoo 17, 18, and 19.
+Built on `httpx`; CI is configured for Odoo 17, 18 and 19. Current runtime
+acceptance requires execution evidence for the selected version.
 
 ## Highlights
 
@@ -13,25 +14,25 @@ Built on `httpx`, it works with Odoo 17, 18, and 19.
 - **Safety guards** -- optional confirmation callback before write/delete operations
 - **Structured errors** -- typed exception hierarchy with `to_json()` serialisation
 - **Testcontainers integration** -- spin up real Odoo instances in Docker for integration tests
-- **Supports Odoo 17, 18, and 19**
+- **Instance-derived models** with optional Pydantic typed reads/writes
 
 ## Quick install
 
 ```bash
-uv add godoo
+uv add godoo-client
 ```
 
 Or with pip:
 
 ```bash
-pip install godoo
+pip install godoo-client
 ```
 
 ## Hello, Odoo
 
 ```python
 import asyncio
-from godoo import create_client
+from godoo.client import create_client
 
 async def main():
     client = await create_client()  # reads ODOO_* env vars
@@ -53,4 +54,7 @@ asyncio.run(main())
 - [Getting Started](getting-started.md) -- install, configure, first CRUD operations
 - [Services](services/mail.md) -- high-level APIs for mail, attendance, accounting, and more
 - [Guides](guides/multi-environment.md) -- patterns for multi-environment, safety, error handling
-- [API Reference](api/client.md) -- full autodoc of every class and function
+- [API Reference](api/client.md) -- full autodoc of public client symbols
+- [Typed models](guides/typed-models.md) — generation, relations and write limits
+- [Browser design](browser.md) — Pyodide feasibility and shipping prerequisites
+- [Development](development.md) — package and transport boundaries
