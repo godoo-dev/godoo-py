@@ -124,7 +124,7 @@ When Odoo returns an error, godoo classifies it in two steps:
    `AccessError`, `MissingError`, etc.
 2. **Fall back to `data.name`** -- older Odoo versions use this field instead
 
-This two-step approach ensures correct classification across Odoo 17-19.
+This two-step approach classifies structured faults; runtime compatibility requires version-specific proof.
 
 ## Common patterns
 

@@ -111,10 +111,14 @@ class OdooTestContainer:
         network = Network()
         await asyncio.to_thread(network.create)
 
+        pg: Any = None
+        odoo: DockerContainer | None = None
+        client: OdooClient | None = None
+        snapshot_cfg: SnapshotConfig | None = None
         try:
             # Postgres
             if seed_info:
-                pg: Any = (
+                pg = (
                     DockerContainer(seed_info.seed_image)
                     .with_env("SEED_DB_NAME", self._database)
                     .with_exposed_ports(5432)
@@ -127,7 +131,7 @@ class OdooTestContainer:
             else:
                 # TESTC-01: build snapshot config before pg starts so we can bind-mount
                 # the cache dir into the Postgres container (rw — pg_dump writes there).
-                snapshot_cfg: SnapshotConfig | None = None
+                snapshot_cfg = None
                 if snapshot_enabled:
                     # WR-04: _hash_addons_path walks the filesystem synchronously, so
                     # build the config off the event loop.
@@ -276,7 +280,14 @@ class OdooTestContainer:
                 database=self._database,
                 _network=network,
             )
-        except Exception:
+        except BaseException:
+            if client is not None:
+                with contextlib.suppress(Exception):
+                    await client.aclose()
+            for owned in (odoo, pg):
+                if owned is not None:
+                    with contextlib.suppress(Exception):
+                        await asyncio.to_thread(owned.stop)
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(network.remove)
             raise

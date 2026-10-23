@@ -5,6 +5,9 @@ Product intent is maintained in the local [godoo HQ README](/home/marc/dev/godoo
 and its linked targets. This absolute local route also works from linked worktrees;
 it is not a prerequisite for users installing these libraries independently.
 
+Use [.agents/skills/godoo-py-verification/SKILL.md](.agents/skills/godoo-py-verification/SKILL.md)
+for native checks, installed-wheel proof and owned disposable Odoo18 verification.
+Its package/offline/service paths are separate from hosted policy or publication.
 Use the installed mafe-si procedures for scoped delivery and coordination. Work,
 open decisions and acceptance evidence belong in the locally bound
 `~~project tracker`. Resolve its command/root from local mafe-si guidance rather

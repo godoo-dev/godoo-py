@@ -28,7 +28,7 @@ Issues = "https://github.com/godoo-dev/godoo-py/issues"
 godoo-introspect = "godoo.introspection.cli:app"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

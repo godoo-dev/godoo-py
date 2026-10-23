@@ -49,9 +49,10 @@ for disposable environments and [browser design](docs/browser.md) for the unship
 Pyodide path.
 
 [Contributing](CONTRIBUTING.md) covers setup and checks;
-[development](docs/development.md) explains the package structure. Source manifests
-and a configured Odoo 17/18/19 CI matrix do not establish registry publication,
-current runtime compatibility or consumer acceptance.
+[development](docs/development.md) explains the package structure. Odoo 18 is the
+default required integration target; later-major qualification is explicit and
+follows the same candidate passing Odoo 18. Source manifests and CI
+configuration alone do not establish publication, runtime or consumer acceptance.
 
 The local [HQ library target](/home/marc/dev/godoo-dev/godoo-hq/docs/libraries.md)
 owns portfolio intent. Agent entrypoint: [AGENTS.md](AGENTS.md).

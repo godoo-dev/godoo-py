@@ -3,7 +3,7 @@
 **Async Python SDK for Odoo JSON-RPC**
 
 godoo gives you a fully typed, async-first client for Odoo's JSON-RPC API.
-Built on `httpx`; CI is configured for Odoo 17, 18 and 19. Current runtime
+Built on `httpx`; CI requires Odoo18 before explicit later-major qualification. Current runtime
 acceptance requires execution evidence for the selected version.
 
 ## Highlights

@@ -41,7 +41,8 @@ inside `asyncio.to_thread()`. Preserve cleanup on failure and keep seed/snapshot
 keys sensitive to their configuration; a cache hit must describe the requested
 Odoo state. Docker facilities do not run in a browser.
 
-Use [contributing](../CONTRIBUTING.md) for offline checks and explicit integration
-commands. The CI configuration selects Odoo 17.0/18.0/19.0; historical check output
+Use [contributing](https://github.com/godoo-dev/godoo-py/blob/develop/CONTRIBUTING.md) for offline checks and explicit integration
+commands. CI requires Odoo18; optional19 qualification follows successful18 for the same
+immutable wheels. Historical check output
 and current acceptance are separate evidence. [Browser support](browser.md) is a
 future packaging/interface decision, not a current install extra.

@@ -5,30 +5,54 @@
 ```bash
 git clone https://github.com/godoo-dev/godoo-py.git
 cd godoo-py
-uv sync --locked
-uv run pytest packages/ -m "not integration"  # verify setup
+uv sync --frozen --all-packages --all-extras
+uv run pytest packages/ tests/ --import-mode=importlib -m "not integration"  # verify setup
 ```
+
+## Candidate verification
+
+The CI harmonization uses one candidate built from the selected source revision:
+
+```bash
+uv sync --frozen --all-packages --all-extras
+./scripts/check.py offline --evidence /absolute/evidence/offline
+./scripts/check.py package --artifacts /absolute/candidate --evidence /absolute/evidence/package
+./scripts/check.py odoo18 --artifacts /absolute/candidate --evidence /absolute/evidence/odoo18
+```
+
+Package proof builds all four wheels, then imports and drives their public APIs
+in a noneditable consumer outside the checkout. Odoo proof installs the same
+hashed wheels, selects root and package integration suites, observes server major 18 and
+checks cleanup. Docker is required; missing Docker, skips and empty selection fail.
+The intentionally empty `godoo` distribution stays metadata-only.
+
+Version preparation produces reviewable manifest/changelog changes before final
+checks. Manual promotion accepts only a clean immutable SHA on `main`, runs the
+full required proof and publishes the exact tested wheels only when `publish`
+is explicitly selected. Ordinary validation and docs builds publish nothing.
+Hosted branch rules and protected publishing environments require separate setup.
 
 ## Running Tests
 
 ### Unit Tests (no Docker needed)
 
 ```bash
-uv run pytest packages/ -v -m "not integration"
+uv run pytest packages/ tests/ --import-mode=importlib -v -m "not integration"
 ```
 
 ### Integration Tests (requires Docker)
 
 ```bash
-uv run pytest tests/integration/ -m integration -v
+./scripts/check.py odoo18 --artifacts /absolute/candidate --evidence /absolute/proof/odoo18
 ```
 
 Integration tests spin up real Odoo instances via testcontainers. First run pulls Docker images (~1-2 min), subsequent runs are faster with seed images.
 
-Set `ODOO_VERSION` to test against a specific version (default: 17.0):
+The required command targets Odoo 18. Optional qualification of Odoo 19 requires
+successful Odoo 18 proof for the same candidate:
 
 ```bash
-ODOO_VERSION=18.0 uv run pytest tests/integration/ -m integration -v
+./scripts/check.py odoo19 --artifacts /absolute/candidate --baseline18 /absolute/proof/odoo18 --evidence /absolute/proof/odoo19
 ```
 
 ## Linting & Type Checking
@@ -50,7 +74,7 @@ We use conventional commits:
 - `fix(testcontainers): handle server restart`
 - `docs: update getting started guide`
 - `chore: bump dependencies`
-- `ci: add Odoo 19 to matrix`
+- `ci: qualify Odoo 19 after Odoo 18`
 
 ## How Integration Tests Work
 

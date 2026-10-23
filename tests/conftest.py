@@ -12,8 +12,10 @@ async def odoo():
         properties={},
     )
     started = await container.start()
-    yield started
-    await started.cleanup()
+    try:
+        yield started
+    finally:
+        await started.cleanup()
 
 
 @pytest_asyncio.fixture
