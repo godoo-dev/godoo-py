@@ -39,6 +39,22 @@ def test_required_accepts_only_complete_success() -> None:
     )
 
 
+@pytest.mark.parametrize("requested", [True, False])
+@pytest.mark.parametrize("state", ["success", "failure", "cancelled", "skipped", "pending", "missing", None])
+def test_requested_compatibility_contributes_to_required(requested: bool, state: str | None) -> None:
+    results = {k: {"result": "success"} for k in ("offline", "package", "odoo18")}
+    if state != "missing":
+        results["odoo19"] = {"result": state}
+    result = invoke(
+        ROOT,
+        "scripts/gate.py",
+        "required",
+        env={**os.environ, "RESULTS": json.dumps(results), "REQUESTED19": str(requested).lower()},
+    )
+    accepted = state == ("success" if requested else "skipped") or (not requested and state == "missing")
+    assert (result.returncode == 0) == accepted, result.stderr
+
+
 @pytest.fixture
 def candidate(tmp_path: Path):
     """Local gate simulation, not hosted proof; no canonical Git refs are changed."""

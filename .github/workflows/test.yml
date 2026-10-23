@@ -99,7 +99,7 @@ jobs:
 
   required:
     name: required
-    needs: [offline, package, odoo18]
+    needs: [offline, package, odoo18, odoo19]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -114,10 +114,11 @@ jobs:
       - name: Require every mandatory result
         env:
           RESULTS: ${{ toJSON(needs) }}
+          REQUESTED19: ${{ inputs.qualify19 == true }}
         run: ./scripts/gate.py required
 
   odoo19:
-    needs: [required, package, odoo18]
+    needs: [offline, package, odoo18]
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.qualify19 }}
     runs-on: ubuntu-latest
     timeout-minutes: 30

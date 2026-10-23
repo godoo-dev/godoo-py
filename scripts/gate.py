@@ -19,9 +19,17 @@ from check import ROOT, sha, source_identity, verify_manifest
 MANDATORY = {"offline", "package", "odoo18"}
 
 
-def required(results: dict) -> None:
-    if set(results) != MANDATORY or any(results[k].get("result") != "success" for k in MANDATORY):
+def required(results: dict, requested19: bool = False) -> None:
+    expected = MANDATORY | ({"odoo19"} if requested19 or "odoo19" in results else set())
+    if set(results) != expected or any(
+        not isinstance(results[k], dict) or results[k].get("result") != "success" for k in MANDATORY
+    ):
         raise RuntimeError(f"all mandatory jobs must succeed: {results}")
+    if "odoo19" in expected and (
+        not isinstance(results["odoo19"], dict)
+        or results["odoo19"].get("result") != ("success" if requested19 else "skipped")
+    ):
+        raise RuntimeError(f"requested compatibility result must match selection: {results}")
 
 
 def eligible(candidate: str) -> str:
@@ -59,7 +67,10 @@ def main() -> None:
     parser.add_argument("--proof", type=Path)
     args = parser.parse_args()
     if args.mode == "required":
-        required(json.loads(os.environ["RESULTS"]))
+        requested = os.environ.get("REQUESTED19", "false")
+        if requested not in {"true", "false"}:
+            raise RuntimeError("REQUESTED19 must be true or false")
+        required(json.loads(os.environ["RESULTS"]), requested == "true")
     elif args.mode == "resolve":
         print(eligible(args.candidate))
     elif args.artifacts and args.proof and args.candidate:
