@@ -2,6 +2,46 @@
 
 <!-- version list -->
 
+## v0.2.1 (2026-05-22)
+
+### Bug Fixes
+
+- **packaging**: Wire package READMEs so PyPI pages render
+  ([`d82320b`](https://github.com/godoo-dev/godoo-py/commit/d82320b249312828da237d7a789bfdb9eb6c2384))
+
+### Documentation
+
+- **04**: Phase verification passed — RELEASE-01/02/03 satisfied
+  ([`4a4b8a0`](https://github.com/godoo-dev/godoo-py/commit/4a4b8a00749b6656bee29e7e06c1603029b38a58))
+
+- **04-03**: Complete publish plan — SUMMARY, ROADMAP, STATE
+  ([`393a3de`](https://github.com/godoo-dev/godoo-py/commit/393a3de246fc91a40f7a15ec6b489c49b06fb871))
+
+- **04.1**: Add code review report
+  ([`9303230`](https://github.com/godoo-dev/godoo-py/commit/9303230f82557a335c042b7aa28f0eea30549972))
+
+- **04.1**: Add phase research — verified symbols, URLs, pre-alpha landmine
+  ([`641300f`](https://github.com/godoo-dev/godoo-py/commit/641300fb241bb6fdad486b0a4bc03147dd72cf4a))
+
+- **04.1**: Capture phase context
+  ([`1cb9c9b`](https://github.com/godoo-dev/godoo-py/commit/1cb9c9befc4961c3e4f833c0195013686d4ad878))
+
+- **04.1**: Create phase plan — wire readme keys + author three package READMEs
+  ([`44aba40`](https://github.com/godoo-dev/godoo-py/commit/44aba4003a2ac7991a3cf5f1dcb759fea7cbe569))
+
+- **04.1-01**: Complete plan — wire package READMEs execution summary
+  ([`9e64054`](https://github.com/godoo-dev/godoo-py/commit/9e64054c6342c0093f4424a86ce0a1b3ced0415f))
+
+- **phase-04.1**: Complete phase execution
+  ([`fb553e9`](https://github.com/godoo-dev/godoo-py/commit/fb553e9dd9ff696955caa5f0994cb50269b9be4c))
+
+- **phase-04.1**: Evolve PROJECT.md after phase completion
+  ([`52ba19f`](https://github.com/godoo-dev/godoo-py/commit/52ba19fe031132c929f41747efcfec61ad15d24d))
+
+- **state**: Record phase 04.1 context session
+  ([`c40ae6b`](https://github.com/godoo-dev/godoo-py/commit/c40ae6ba225794856f8f32e2d713b77ce12f1a66))
+
+
 ## v0.2.0 (2026-05-22)
 
 ### Bug Fixes
