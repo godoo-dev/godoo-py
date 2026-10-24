@@ -6,6 +6,12 @@ teach users to import the metadata-only `godoo` distribution. Each wheel include
 only its own namespace subtree. Package manifests own names, Python requirements,
 extras and entrypoints.
 
+The prepared 0.3.0 release keeps all four distribution versions coordinated.
+Its introspection and testcontainers metadata requires client 0.3.0 or newer;
+the older published 0.2.1 client does not provide the complete typed-model
+contract. The `godoo` distribution remains metadata-only. Version preparation
+does not publish these distributions or establish registry availability.
+
 ## Client, services and transport
 
 `packages/godoo-client/src/godoo/client/client.py` owns CRUD, typed dispatch,

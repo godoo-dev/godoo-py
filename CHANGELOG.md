@@ -2,6 +2,35 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-10-25)
+
+### Compatibility and migration
+
+- Require Python 3.14+ and use Odoo 18 as the disposable integration baseline.
+  Odoo 17 is unsupported; later majors require explicit qualification after 18.
+- `OdooTestContainer` now requires the keyword-only `properties` argument. Pass
+  `{}` when no system properties are needed so snapshot identity stays explicit.
+- Errors expose sanitized structured details; explicit debugging uses `.raw`.
+  Treat raw server faults as sensitive.
+
+### Client and introspection
+
+- Add pluggable transports, optional Pydantic typed reads and writes, `Ref[T]`
+  relation resolution, partial-model reads and generated model metadata.
+- Add the installed `godoo-introspect generate` command and Pydantic code
+  generation with reserved-name and invalid-identifier handling.
+- Reject unsupported constructor x2many writes instead of silently discarding
+  them, and preserve supported read-modify-write relations.
+- Disable httpx keep-alive pooling to avoid the reproduced stale-connection
+  failure. Preserve ordinary JSON-RPC operations and explicit client cleanup.
+- Require client 0.3.0+ for the matching introspection and testcontainers packages.
+
+### Candidate verification
+
+- Qualify all four coordinated wheels in isolated installed consumers, with
+  required offline and disposable Odoo 18 checks. Publication remains explicit
+  and uses the same tested wheel bytes.
+
 ## v0.2.1 (2026-05-22)
 
 ### Bug Fixes

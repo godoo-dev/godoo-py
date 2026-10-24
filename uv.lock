@@ -316,12 +316,12 @@ wheels = [
 
 [[package]]
 name = "godoo"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/godoo-meta" }
 
 [[package]]
 name = "godoo-client"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/godoo-client" }
 dependencies = [
     { name = "httpx" },
@@ -341,7 +341,7 @@ provides-extras = ["typed"]
 
 [[package]]
 name = "godoo-introspection"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/godoo-introspection" }
 dependencies = [
     { name = "godoo-client" },
@@ -358,7 +358,7 @@ requires-dist = [
 
 [[package]]
 name = "godoo-testcontainers"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/godoo-testcontainers" }
 dependencies = [
     { name = "godoo-client" },
