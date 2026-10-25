@@ -14,9 +14,9 @@ class SeedInfo:
 
 
 def normalise_odoo_version(raw: str | None) -> str:
-    """Normalise ODOO_VERSION into dotted form. None/'17' → '17.0'."""
+    """Normalise ODOO_VERSION into dotted form. None → '18.0'; historical explicit versions are parsed unchanged."""
     if not raw:
-        return "17.0"
+        return "18.0"
     if "." in raw:
         return raw
     return f"{raw}.0"

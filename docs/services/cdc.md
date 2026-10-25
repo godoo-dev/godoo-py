@@ -27,7 +27,7 @@ Returns a `CdcCheckResult` with `model`, `has_tracking`, and `tracked_fields`.
 Fetch all tracked changes for a single record:
 
 ```python
-from godoo.services.cdc.types import GetHistoryOptions
+from godoo.client.services.cdc.types import GetHistoryOptions
 
 events = await client.cdc.get_history(
     "sale.order",
@@ -45,7 +45,7 @@ for event in events:
 Async iterator over **all** changes for a model, paginated automatically:
 
 ```python
-from godoo.services.cdc.types import GetFeedOptions
+from godoo.client.services.cdc.types import GetFeedOptions
 
 feed = await client.cdc.get_feed(
     GetFeedOptions(model="sale.order", batch_size=200)

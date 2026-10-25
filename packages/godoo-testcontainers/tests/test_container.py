@@ -73,3 +73,31 @@ class TestOdooTestContainerNewParams:
     def test_cache_dir_custom(self, tmp_path: Path) -> None:
         c = OdooTestContainer(cache_dir=tmp_path, properties={})
         assert c._cache_dir == tmp_path
+
+
+async def test_start_failure_cleans_created_containers() -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    import pytest
+
+    network = MagicMock()
+    pg = MagicMock()
+    pg.with_network.return_value = pg
+    pg.with_network_aliases.return_value = pg
+    odoo = MagicMock()
+    for name in ("with_env", "with_exposed_ports", "with_command", "with_network"):
+        getattr(odoo, name).return_value = odoo
+    odoo.get_container_host_ip.return_value = "127.0.0.1"
+    odoo.get_exposed_port.return_value = "8069"
+    module = "godoo.testcontainers.container"
+    with (
+        patch(f"{module}.Network", return_value=network),
+        patch(f"{module}.PostgresContainer", return_value=pg),
+        patch(f"{module}.DockerContainer", return_value=odoo),
+        patch.object(OdooTestContainer, "_wait_for_odoo_ready", new=AsyncMock(side_effect=ValueError("not ready"))),
+        pytest.raises(ValueError, match="not ready"),
+    ):
+        await OdooTestContainer(snapshot=False, properties={}).start()
+    pg.stop.assert_called_once()
+    odoo.stop.assert_called_once()
+    network.remove.assert_called_once()

@@ -16,7 +16,7 @@ Requires Docker to be running on your machine or CI environment.
 
 ```python
 import pytest
-from godoo_testcontainers import OdooTestContainer
+from godoo.testcontainers import OdooTestContainer
 
 @pytest.fixture(scope="session")
 async def odoo():
@@ -82,31 +82,34 @@ export ODOO_SEED_IMAGE=registry.example.com/odoo-seed:18
 | `url` | `str` | Odoo base URL (localhost + mapped port) |
 | `database` | `str` | Database name |
 
-## CI matrix for multiple Odoo versions
+## Required candidate proof
 
-Test against Odoo 17, 18, and 19 in parallel by setting `ODOO_VERSION`:
+Odoo18 is the default and required runtime. The maintained candidate commands in
+[contributing](https://github.com/godoo-dev/godoo-py/blob/develop/CONTRIBUTING.md) build four wheels and run both integration
+suites through installed libraries outside the source tree:
 
-```yaml
-# .github/workflows/test.yml
-jobs:
-  test:
-    strategy:
-      matrix:
-        odoo-version: ["17.0", "18.0", "19.0"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync
-      - run: uv run pytest -m integration
-        env:
-          ODOO_VERSION: ${{ matrix.odoo-version }}
+```sh
+./scripts/check.py package --artifacts /absolute/candidate --evidence /absolute/proof/package
+./scripts/check.py odoo18 --artifacts /absolute/candidate --evidence /absolute/proof/odoo18
 ```
+
+Docker must be available. The required invocation fails for missing Docker, wrong
+observed major, skipped/empty suites or failed cleanup. Test data, snapshots,
+addons and networks are disposable; evidence and manifests survive teardown.
+
+Later-major qualification is explicit, after successful18 for the same wheels:
+
+```sh
+./scripts/check.py odoo19 --artifacts /absolute/candidate --baseline18 /absolute/proof/odoo18 --evidence /absolute/proof/odoo19
+```
+
+These commands grant no permission to test a shared or production instance.
 
 ## Environment variables
 
 | Variable | Description |
 |---|---|
-| `ODOO_VERSION` | Odoo Docker image tag (e.g. `18.0`, `17.0`). Defaults to latest. |
+| `ODOO_VERSION` | Odoo Docker image tag, default `18.0`. Required verification rejects another value. |
 | `ODOO_SEED_IMAGE` | Pre-seeded PostgreSQL image for faster startup |
 
 ## Tips

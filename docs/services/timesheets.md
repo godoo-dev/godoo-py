@@ -8,7 +8,7 @@ The timer workflow mirrors Odoo's UI timer -- start a timer with zero hours,
 then stop it to compute the elapsed duration automatically:
 
 ```python
-from godoo.services.timesheets.types import TimerStartOptions
+from godoo.client.services.timesheets.types import TimerStartOptions
 
 # Start a timer on a project
 entry = await client.timesheets.start_timer(
@@ -28,7 +28,7 @@ print(f"Logged {result['unit_amount']:.2f} hours")
 For time already completed, use `log_time` with explicit hours:
 
 ```python
-from godoo.services.timesheets.types import LogTimeOptions
+from godoo.client.services.timesheets.types import LogTimeOptions
 
 entry = await client.timesheets.log_time(
     LogTimeOptions(
@@ -73,7 +73,7 @@ record dict.
 List timesheet entries with optional filters:
 
 ```python
-from godoo.services.timesheets.types import TimesheetListOptions
+from godoo.client.services.timesheets.types import TimesheetListOptions
 
 entries = await client.timesheets.list_timesheets(
     TimesheetListOptions(project_id=3, limit=20, order="date desc")

@@ -183,7 +183,7 @@ transport strategies.  Capture:
 - Strategy 2 (pyodide-httpx 0.2.0): the call result or failure
 - Strategy 3 (custom PyfetchTransport): the successful `res.users` read result
 
-Record findings in `.planning/phases/08-pyodide-spike/08-SPIKE.md`.
+Record findings in `~/.share/agent-work/godoo-py/<task>/`.
 
 ---
 

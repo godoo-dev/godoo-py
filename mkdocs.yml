@@ -1,8 +1,8 @@
 site_name: godoo
 site_url: https://www.marcfargas.com/~godoo/
 site_description: Async Python SDK for Odoo JSON-RPC
-repo_url: https://github.com/marcfargas/godoo
-repo_name: marcfargas/godoo
+repo_url: https://github.com/godoo-dev/godoo-py
+repo_name: godoo-dev/godoo-py
 
 theme:
   name: material
@@ -33,14 +33,15 @@ nav:
     - Multi-Environment: guides/multi-environment.md
     - Safety Guards: guides/safety-guards.md
     - Error Handling: guides/error-handling.md
+    - Typed Models: guides/typed-models.md
   - API Reference:
     - Client: api/client.md
     - Errors: api/errors.md
     - Safety: api/safety.md
     - Services: api/services.md
   - Testing: testing.md
-  - ADR:
-    - Pyodide Browser Go/No-Go: adr/0001-pyodide-browser-go-no-go.md
+  - Browser Design: browser.md
+  - Development: development.md
 
 plugins:
   - search

@@ -28,7 +28,7 @@ msg_id = await client.mail.post_internal_note(
 Post a public message that triggers follower notifications:
 
 ```python
-from godoo.services.mail.types import PostMessageOptions
+from godoo.client.services.mail.types import PostMessageOptions
 
 msg_id = await client.mail.post_open_message(
     "sale.order",

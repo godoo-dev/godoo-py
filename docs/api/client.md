@@ -1,9 +1,9 @@
 # Client
 
-::: godoo.OdooClient
+::: godoo.client.OdooClient
 
-::: godoo.OdooClientConfig
+::: godoo.client.OdooClientConfig
 
-::: godoo.config_from_env
+::: godoo.client.config_from_env
 
-::: godoo.create_client
+::: godoo.client.create_client

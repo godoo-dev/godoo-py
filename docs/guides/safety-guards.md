@@ -18,7 +18,7 @@ describing what is about to happen.  If the callback returns `False`, the
 operation is blocked locally and `OdooSafetyError` is raised.
 
 ```python
-from godoo import SafetyContext, OperationInfo
+from godoo.client import SafetyContext, OperationInfo
 
 async def confirm_handler(op: OperationInfo) -> bool:
     print(f"About to {op.level} on {op.model}: {op.description}")
@@ -43,7 +43,7 @@ The level is inferred from the RPC method name via `infer_safety_level`.
 Pass the context when creating the config:
 
 ```python
-from godoo import OdooClient, OdooClientConfig
+from godoo.client import OdooClient, OdooClientConfig
 
 config = OdooClientConfig(
     url="https://prod.mycompany.com",
@@ -66,7 +66,7 @@ client.set_safety_context(safety)
 Set a default for all clients that do not have an explicit safety context:
 
 ```python
-from godoo.safety import set_default_safety_context
+from godoo.client.safety import set_default_safety_context
 
 set_default_safety_context(safety)
 ```
@@ -81,7 +81,7 @@ error** -- no RPC call is made.  It includes the `OperationInfo` that was
 rejected:
 
 ```python
-from godoo import OdooSafetyError
+from godoo.client import OdooSafetyError
 
 try:
     await client.unlink("res.partner", [1])

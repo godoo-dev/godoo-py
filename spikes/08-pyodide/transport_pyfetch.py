@@ -3,7 +3,6 @@ from __future__ import annotations
 # NON-SHIPPING spike artifact — lives in spikes/08-pyodide/, not packages/*/src/.
 # Exempt from the requires-python >=3.14 gate (D-09); runs under Pyodide CPython 3.13.
 # Seeds BROWSER-F1 on a "go" verdict.  Never import godoo here (D-07).
-
 import json
 import uuid
 from dataclasses import dataclass

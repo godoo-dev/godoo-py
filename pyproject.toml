@@ -1,5 +1,6 @@
 [tool.uv]
 dev-dependencies = [
+    "hatchling==1.27.0",
     "pytest>=8",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6",
@@ -73,7 +74,8 @@ commit_parser = "conventional"
 build_command = """
     uv build --package godoo-client && \
     uv build --package godoo-testcontainers && \
-    uv build --package godoo-introspection
+    uv build --package godoo-introspection && \
+    uv build --package godoo
 """
 
 [tool.semantic_release.commit_parser_options]

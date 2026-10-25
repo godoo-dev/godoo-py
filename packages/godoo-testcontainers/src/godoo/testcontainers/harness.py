@@ -55,9 +55,13 @@ class TestHarness:
             env=self._env,
         )
         self._started = await container.start()
-        if self._properties:
-            logger.info("Applying %d ir.config_parameter entries", len(self._properties))
-            await self.properties.set_many(self._properties)
+        try:
+            if self._properties:
+                logger.info("Applying %d ir.config_parameter entries", len(self._properties))
+                await self.properties.set_many(self._properties)
+        except BaseException:
+            await self._started.cleanup()
+            raise
         return self
 
     async def __aexit__(
