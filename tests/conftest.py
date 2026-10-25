@@ -9,10 +9,13 @@ async def odoo():
     """Session-scoped Odoo instance for all integration tests."""
     container = OdooTestContainer(
         modules=["crm", "sale", "project"],
+        properties={},
     )
     started = await container.start()
-    yield started
-    await started.cleanup()
+    try:
+        yield started
+    finally:
+        await started.cleanup()
 
 
 @pytest_asyncio.fixture

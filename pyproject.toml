@@ -1,5 +1,6 @@
 [tool.uv]
 dev-dependencies = [
+    "hatchling==1.27.0",
     "pytest>=8",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6",
@@ -9,6 +10,7 @@ dev-dependencies = [
     "mkdocs-material>=9",
     "mkdocstrings[python]>=0.27",
     "python-semantic-release>=9",
+    "typer>=0.26.5",
 ]
 
 [tool.uv.workspace]
@@ -32,7 +34,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 explicit_package_bases = true
 mypy_path = [
-    "packages/godoo/src",
+    "packages/godoo-client/src",
     "packages/godoo-introspection/src",
     "packages/godoo-testcontainers/src",
 ]
@@ -60,7 +62,7 @@ skip_empty = true
 
 [tool.semantic_release]
 version_toml = [
-    "packages/godoo/pyproject.toml:project.version",
+    "packages/godoo-client/pyproject.toml:project.version",
     "packages/godoo-testcontainers/pyproject.toml:project.version",
     "packages/godoo-introspection/pyproject.toml:project.version",
     "packages/godoo-meta/pyproject.toml:project.version",

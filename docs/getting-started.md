@@ -5,13 +5,13 @@
 === "uv"
 
     ```bash
-    uv add godoo
+    uv add godoo-client
     ```
 
 === "pip"
 
     ```bash
-    pip install godoo
+    pip install godoo-client
     ```
 
 ## Configuration
@@ -37,7 +37,7 @@ export ODOO_PASSWORD=secret
 The fastest way to get started is `create_client`, which reads the environment and authenticates in one call:
 
 ```python
-from godoo import create_client
+from godoo.client import create_client
 
 client = await create_client()
 ```
@@ -45,7 +45,7 @@ client = await create_client()
 For more control, build the config yourself:
 
 ```python
-from godoo import OdooClient, OdooClientConfig
+from godoo.client import OdooClient, OdooClientConfig
 
 config = OdooClientConfig(
     url="https://mycompany.odoo.com",

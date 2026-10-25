@@ -10,14 +10,14 @@ if TYPE_CHECKING:
 
 class TestOdooTestContainerDefaults:
     def test_default_options(self) -> None:
-        c = OdooTestContainer()
+        c = OdooTestContainer(properties={})
         assert c._modules == []
         assert c._database == "test_odoo"
         assert c._admin_password == "admin"
         assert c._startup_timeout == 300
 
     def test_default_env_is_empty(self) -> None:
-        c = OdooTestContainer()
+        c = OdooTestContainer(properties={})
         assert c._env == {}
 
     def test_custom_options(self) -> None:
@@ -26,6 +26,7 @@ class TestOdooTestContainerDefaults:
             database="mydb",
             admin_password="secret",
             startup_timeout=120,
+            properties={},
         )
         assert c._modules == ["crm", "sale"]
         assert c._database == "mydb"
@@ -33,42 +34,70 @@ class TestOdooTestContainerDefaults:
         assert c._startup_timeout == 120
 
     def test_custom_env(self) -> None:
-        c = OdooTestContainer(env={"LOG_LEVEL": "debug"})
+        c = OdooTestContainer(env={"LOG_LEVEL": "debug"}, properties={})
         assert c._env == {"LOG_LEVEL": "debug"}
 
     def test_modules_default_is_independent(self) -> None:
-        c1 = OdooTestContainer()
-        c2 = OdooTestContainer()
+        c1 = OdooTestContainer(properties={})
+        c2 = OdooTestContainer(properties={})
         c1._modules.append("crm")
         assert c2._modules == []
 
 
 class TestOdooTestContainerNewParams:
     def test_addons_path_default_none(self) -> None:
-        c = OdooTestContainer()
+        c = OdooTestContainer(properties={})
         assert c._addons_path is None
 
     def test_snapshot_default_true(self) -> None:
-        c = OdooTestContainer()
+        c = OdooTestContainer(properties={})
         assert c._snapshot_enabled is True
 
     def test_snapshot_false(self) -> None:
-        c = OdooTestContainer(snapshot=False)
+        c = OdooTestContainer(snapshot=False, properties={})
         assert c._snapshot_enabled is False
 
     def test_cache_dir_default_none(self) -> None:
-        c = OdooTestContainer()
+        c = OdooTestContainer(properties={})
         assert c._cache_dir is None
 
     def test_addons_path_single(self, tmp_path: Path) -> None:
-        c = OdooTestContainer(addons_path=tmp_path)
+        c = OdooTestContainer(addons_path=tmp_path, properties={})
         assert c._addons_path == tmp_path
 
     def test_addons_path_list(self, tmp_path: Path) -> None:
         paths = [tmp_path / "a", tmp_path / "b"]
-        c = OdooTestContainer(addons_path=paths)
+        c = OdooTestContainer(addons_path=paths, properties={})
         assert c._addons_path == paths
 
     def test_cache_dir_custom(self, tmp_path: Path) -> None:
-        c = OdooTestContainer(cache_dir=tmp_path)
+        c = OdooTestContainer(cache_dir=tmp_path, properties={})
         assert c._cache_dir == tmp_path
+
+
+async def test_start_failure_cleans_created_containers() -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    import pytest
+
+    network = MagicMock()
+    pg = MagicMock()
+    pg.with_network.return_value = pg
+    pg.with_network_aliases.return_value = pg
+    odoo = MagicMock()
+    for name in ("with_env", "with_exposed_ports", "with_command", "with_network"):
+        getattr(odoo, name).return_value = odoo
+    odoo.get_container_host_ip.return_value = "127.0.0.1"
+    odoo.get_exposed_port.return_value = "8069"
+    module = "godoo.testcontainers.container"
+    with (
+        patch(f"{module}.Network", return_value=network),
+        patch(f"{module}.PostgresContainer", return_value=pg),
+        patch(f"{module}.DockerContainer", return_value=odoo),
+        patch.object(OdooTestContainer, "_wait_for_odoo_ready", new=AsyncMock(side_effect=ValueError("not ready"))),
+        pytest.raises(ValueError, match="not ready"),
+    ):
+        await OdooTestContainer(snapshot=False, properties={}).start()
+    pg.stop.assert_called_once()
+    odoo.stop.assert_called_once()
+    network.remove.assert_called_once()

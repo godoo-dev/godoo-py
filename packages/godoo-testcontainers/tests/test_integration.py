@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from godoo.client.errors import OdooValidationError
-from godoo.testcontainers import TestHarness
+from godoo.testcontainers import TestHarness as Harness
 from godoo.testcontainers.seed_resolver import normalise_odoo_version
 from godoo.testcontainers.snapshot import has_snapshot, make_snapshot_config
 
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.integration
 
 async def test_harness_lifecycle_and_properties() -> None:
     """TESTC-07 + TESTC-06: async-cm starts a ready client and seeds ir.config_parameter."""
-    async with TestHarness(
+    async with Harness(
         modules=["base"],
         properties={"godoo.test.seeded": "hello-world"},
         snapshot=False,
@@ -78,7 +78,7 @@ async def test_snapshot_save_and_restore(tmp_path: Path) -> None:
 
     # First run: cold provision, snapshot saved on the way through.
     t0 = time.monotonic()
-    async with TestHarness(modules=["base"], snapshot=True, cache_dir=cache_dir) as h:
+    async with Harness(modules=["base"], snapshot=True, cache_dir=cache_dir) as h:
         assert await h.client.search_count("res.users") >= 1
     first_run = time.monotonic() - t0
 
@@ -87,7 +87,7 @@ async def test_snapshot_save_and_restore(tmp_path: Path) -> None:
 
     # Second run with identical inputs hits the cache and restores cleanly.
     t1 = time.monotonic()
-    async with TestHarness(modules=["base"], snapshot=True, cache_dir=cache_dir) as h:
+    async with Harness(modules=["base"], snapshot=True, cache_dir=cache_dir) as h:
         assert await h.client.search_count("res.users") >= 1
     second_run = time.monotonic() - t1
 
@@ -112,9 +112,16 @@ async def test_custom_addons_mount(tmp_path: Path) -> None:
         "}\n"
     )
 
-    async with TestHarness(
+    async with Harness(
         modules=["godoo_test_addon"],
         addons_path=addons_root,
         snapshot=False,
     ) as h:
         assert await h.modules.is_module_installed("godoo_test_addon")
+
+
+async def test_failed_property_seed_cleans_owned_state() -> None:
+    """A failed __aenter__ must release the already-started disposable instance."""
+    with pytest.raises(OdooValidationError):
+        async with Harness(properties={"": "rejected"}, snapshot=False):
+            pytest.fail("invalid property key must not enter the context")

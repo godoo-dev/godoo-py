@@ -25,3 +25,10 @@ htmlcov/
 
 docs/superpowers/
 site/
+
+# Claude Code local runtime state (NOT project config — keep .claude/ config/agents/skills tracked)
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# Compiled ARM templates (generated from the .bicep sources, which are tracked)
+spikes/08-pyodide/infra/*.json

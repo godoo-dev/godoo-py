@@ -17,11 +17,11 @@ if TYPE_CHECKING:
 
 
 class TestNormaliseOdooVersion:
-    def test_none_returns_17_0(self) -> None:
-        assert normalise_odoo_version(None) == "17.0"
+    def test_none_returns_18_0(self) -> None:
+        assert normalise_odoo_version(None) == "18.0"
 
-    def test_empty_string_returns_17_0(self) -> None:
-        assert normalise_odoo_version("") == "17.0"
+    def test_empty_string_returns_18_0(self) -> None:
+        assert normalise_odoo_version("") == "18.0"
 
     def test_already_dotted_passthrough(self) -> None:
         assert normalise_odoo_version("18.0") == "18.0"
