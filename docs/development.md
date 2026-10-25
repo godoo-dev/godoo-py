@@ -52,3 +52,12 @@ commands. CI requires Odoo18; optional19 qualification follows successful18 for 
 immutable wheels. Historical check output
 and current acceptance are separate evidence. [Browser support](browser.md) is a
 future packaging/interface decision, not a current install extra.
+
+## Secret scanning
+
+On Linux x86_64, `bash scripts/scan-secrets.sh` downloads the pinned open-source
+Gitleaks CLI, verifies its SHA-256 and scans Git history with findings redacted.
+CI runs it for PRs and pushes to develop/main with read-only permissions; it needs
+no organization Action license. `.gitleaksignore` lists only five reviewed
+historical occurrences of synthetic snapshot-cache keys, without ignoring entire
+files or disabling a detection rule.

@@ -1,0 +1,7 @@
+# Exact historical synthetic snapshot-cache filename keys, not credentials.
+# Preserve detection everywhere else, including new occurrences in these files.
+1b2c3833272e79ddb9c0ad33781af61822e304c2:packages/godoo-testcontainers/tests/test_snapshot.py:generic-api-key:209
+1b2c3833272e79ddb9c0ad33781af61822e304c2:packages/godoo-testcontainers/tests/test_snapshot.py:generic-api-key:215
+1b2c3833272e79ddb9c0ad33781af61822e304c2:packages/godoo-testcontainers/tests/test_snapshot.py:generic-api-key:221
+1b2c3833272e79ddb9c0ad33781af61822e304c2:packages/godoo-testcontainers/tests/test_snapshot.py:generic-api-key:228
+1bc4bcb070f284a8fd753a184ac1d20eabb8c81a:.planning/phases/03-testcontainers-parity/03-02-PLAN.md:generic-api-key:368
