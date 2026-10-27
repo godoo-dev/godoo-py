@@ -54,5 +54,8 @@ default required integration target; later-major qualification is explicit and
 follows the same candidate passing Odoo 18. Source manifests and CI
 configuration alone do not establish publication, runtime or consumer acceptance.
 
-The local [HQ library target](/home/marc/dev/godoo-dev/godoo-hq/docs/libraries.md)
-owns portfolio intent. Agent entrypoint: [AGENTS.md](AGENTS.md).
+[Python library targets](docs/library-targets.md) retain product intent and explicit
+language differences. The [organization overview](https://github.com/godoo-dev/.github/blob/main/profile/README.md)
+provides family orientation. Track work in this repository's
+[GitHub issues](https://github.com/godoo-dev/godoo-py/issues).
+Agent entrypoint: [AGENTS.md](AGENTS.md).
