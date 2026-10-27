@@ -58,3 +58,4 @@ asyncio.run(main())
 - [Typed models](guides/typed-models.md) — generation, relations and write limits
 - [Browser design](browser.md) — Pyodide feasibility and shipping prerequisites
 - [Development](development.md) — package and transport boundaries
+- [Library targets](library-targets.md) — intent, evidence limits and language differences

@@ -41,6 +41,7 @@ nav:
     - Services: api/services.md
   - Testing: testing.md
   - Browser Design: browser.md
+  - Library Targets: library-targets.md
   - Development: development.md
 
 plugins:
