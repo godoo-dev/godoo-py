@@ -2,6 +2,42 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-10-30)
+
+### Bug Fixes
+
+- **client**: Accept dictionary lists in bound create typing
+  ([`ccefbec`](https://github.com/godoo-dev/godoo-py/commit/ccefbecbf3e1f83d6bea181bb238c1df6d70a3d4))
+
+### Continuous Integration
+
+- Use main as the sole integration branch
+  ([`f3556a9`](https://github.com/godoo-dev/godoo-py/commit/f3556a94df66b716bd9c907a540a5a7fd074de4b))
+
+### Documentation
+
+- Establish project-owned work and library guidance
+  ([`6832491`](https://github.com/godoo-dev/godoo-py/commit/6832491c4a97aee23cbdc8b9382a1da012a5d86b))
+
+### Features
+
+- **client**: Create records through friendly property bindings
+  ([`7f93572`](https://github.com/godoo-dev/godoo-py/commit/7f935723c84a3dd4625505362fad9c670db33012))
+
+- **client**: Support dynamic properties and optional alias bindings
+  ([`71729ba`](https://github.com/godoo-dev/godoo-py/commit/71729ba1d6f6307e7112c4228047be66051c2945))
+
+### Refactoring
+
+- **client**: Simplify property validation and scope capture
+  ([`cd22980`](https://github.com/godoo-dev/godoo-py/commit/cd229806d67d042517d6eec76b1f9af08dd0c2c8))
+
+### Testing
+
+- **client**: Exercise bound creation from installed wheels
+  ([`c45d4d6`](https://github.com/godoo-dev/godoo-py/commit/c45d4d6eeb9d2596e18698af384edec46d7873a7))
+
+
 ## v0.3.0 (2026-10-25)
 
 ### Compatibility and migration
