@@ -6,10 +6,10 @@ import math
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
-from .types import PropertyDefinition, PropertyOption, PropertyOptions, PropertyValueError
+from .types import PropertyDefinition, PropertyLookupError, PropertyOption, PropertyOptions, PropertyValueError
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
 
 KINDS = frozenset(
     {"boolean", "integer", "float", "char", "date", "datetime", "many2one", "many2many", "selection", "tags"}
@@ -38,9 +38,7 @@ def parse_definitions(raw: Any) -> tuple[PropertyDefinition, ...]:
             raise PropertyValueError(f"Missing comodel for property {name!r}.")
         options = []
         option_ids = set()
-        for option in (
-            (entry.get("selection" if kind == "selection" else "tags") or []) if kind in ("selection", "tags") else []
-        ):
+        for option in (entry.get(kind) or []) if kind in ("selection", "tags") else []:
             size = 2 if kind == "selection" else 3
             if not isinstance(option, (list, tuple)) or len(option) != size:
                 raise PropertyValueError(f"Malformed option for property {name!r}.")
@@ -62,13 +60,9 @@ def value_for(definition: PropertyDefinition, value: Any, *, reading: bool = Fal
     kind = definition.type
     if kind not in KINDS:
         raise PropertyValueError(f"Unsupported property kind {kind!r} for {definition.id!r}.")
-    if value is None or (value is False and reading):
+    if value is None or value is False:
         if kind == "boolean":
             return False
-        if kind in ("many2many", "tags"):
-            return []
-        return None if reading else False
-    if value is False and kind != "boolean":
         if kind in ("many2many", "tags"):
             return []
         return None if reading else False
@@ -148,6 +142,21 @@ def decode_values(raw: Any, definitions: Mapping[str, PropertyDefinition]) -> di
 
 def encode_values(values: Mapping[str, Any], definitions: Mapping[str, PropertyDefinition]) -> dict[str, Any]:
     return {name: value_for(definitions[name], value) for name, value in values.items()}
+
+
+def patch_values(changes: Iterable[tuple[str, Any]], definitions: Mapping[str, PropertyDefinition]) -> dict[str, Any]:
+    """Validate sparse technical-ID changes, preserving None until final encoding."""
+    result = {}
+    for name, value in changes:
+        if name not in definitions:
+            raise PropertyLookupError(f"Unknown property ID or alias {name!r}.")
+        if name in result:
+            raise PropertyValueError(f"Property {name!r} selected twice in one patch.")
+        definition = definitions[name]
+        if value is False and definition.type != "boolean":
+            raise PropertyValueError(f"False is not a {definition.type} patch value; use None to clear.")
+        result[name] = None if value is None else value_for(definition, value)
+    return result
 
 
 def legacy_values(raw: Any) -> dict[str, Any]:

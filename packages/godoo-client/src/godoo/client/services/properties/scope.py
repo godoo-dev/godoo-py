@@ -63,19 +63,18 @@ class PropertyScope:
         return replace(self, parent_id=parent_id)
 
 
-async def discover(
+def capture_scope(
     client: OdooClient,
     model: str,
     property_field: str,
     *,
     context: dict[str, Any] | None = None,
-    parent_field: str | None = None,
-    definition_field: str | None = None,
+    action: str = "discovering",
 ) -> PropertyScope:
     session = client.get_session()
     if session is None:
-        raise OdooAuthError("Authenticate before discovering properties.")
-    scope = PropertyScope(
+        raise OdooAuthError(f"Authenticate before {action} properties.")
+    return PropertyScope(
         client,
         model,
         property_field,
@@ -87,6 +86,18 @@ async def discover(
         session,
         (session.uid, session.db, session.session_id),
     )
+
+
+async def discover(
+    client: OdooClient,
+    model: str,
+    property_field: str,
+    *,
+    context: dict[str, Any] | None = None,
+    parent_field: str | None = None,
+    definition_field: str | None = None,
+) -> PropertyScope:
+    scope = capture_scope(client, model, property_field, context=context)
     metadata = await scope.call(model, "fields_get", [], {})
     if not isinstance(metadata, dict) or not isinstance(metadata.get(property_field), dict):
         raise PropertyValueError(f"Properties field {property_field!r} is missing or inaccessible on {model!r}.")
@@ -149,8 +160,5 @@ def parent_id_for(scope: PropertyScope, row: Mapping[str, Any]) -> int:
 
 
 async def load_definitions(scope: PropertyScope) -> PropertyDefinitions:
-    scope.check_identity()
     rows = await read_rows(scope, scope.parent_model, [scope.parent_id], [scope.definition_field])
-    if scope.definition_field not in rows[0]:
-        raise PropertyValueError("The definition field was omitted from the parent read.")
     return PropertyDefinitions(parse_definitions(rows[0][scope.definition_field]), scope)

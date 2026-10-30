@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import keyword
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, overload
 
-from .codec import decode_values, encode_values, value_for
+from .codec import decode_values, encode_values, patch_values
 from .mutations import dispatch, require_acknowledged
 from .scope import load_definitions, parent_id_for, read_rows, record_ids
 from .types import (
@@ -44,7 +44,7 @@ def _select(collection: PropertyDefinitions | PropertyOptions, selector: Any) ->
         raise PropertyLookupError(f"Unknown property/option ID {value!r}.") from None
 
 
-def _alias_name(alias: str, technical_ids: Mapping[str, Any], used: set[str]) -> None:
+def _alias_name(alias: str, technical_ids: Mapping[str, Any]) -> None:
     if (
         not isinstance(alias, str)
         or not alias.isidentifier()
@@ -52,7 +52,6 @@ def _alias_name(alias: str, technical_ids: Mapping[str, Any], used: set[str]) ->
         or keyword.iskeyword(alias)
         or alias in dir(PropertyValues)
         or alias in technical_ids
-        or alias in used
     ):
         raise PropertyValueError(f"Invalid or colliding alias {alias!r}.")
 
@@ -66,7 +65,7 @@ class PropertyBinding:
         self._aliases: dict[str, _Alias] = {}
         property_ids: set[str] = set()
         for alias, spec in deepcopy(dict(aliases)).items():
-            _alias_name(alias, definitions, set())
+            _alias_name(alias, definitions)
             if not isinstance(spec, Mapping) or set(spec) - {"id", "label", "options"}:
                 raise PropertyValueError(f"Malformed alias declaration {alias!r}.")
             definition = _select(definitions, {k: v for k, v in spec.items() if k != "options"})
@@ -79,7 +78,7 @@ class PropertyBinding:
                 option_map = {}
                 option_ids: set[str] = set()
                 for option_alias, selector in spec["options"].items():
-                    _alias_name(option_alias, definition.options, set())
+                    _alias_name(option_alias, definition.options)
                     option = _select(definition.options, selector)
                     if option.id in option_ids:
                         raise PropertyValueError("Multiple option aliases target the same technical ID.")
@@ -151,10 +150,9 @@ class PropertyBinding:
             result.append(PropertyRecord(row["id"], row, PropertyValues(values, aliases), definitions))
         return result[0] if type(ids) is int else result
 
-    def _changes(self, changes: Mapping[str, Any], definitions: PropertyDefinitions) -> dict[str, Any]:
+    def _alias_changes(self, changes: Mapping[str, Any]) -> Iterator[tuple[str, Any]]:
         if not isinstance(changes, Mapping):
             raise PropertyValueError("Property changes must be a mapping.")
-        result = {}
         for key, value in changes.items():
             if key in self._aliases:
                 entry = self._aliases[key]
@@ -172,14 +170,7 @@ class PropertyBinding:
                     )
             else:
                 name = key
-            if name not in definitions:
-                raise PropertyLookupError(f"Unknown property ID or alias {key!r}.")
-            if name in result:
-                raise PropertyValueError(f"Property {name!r} selected twice in one patch.")
-            if value is False and definitions[name].type != "boolean":
-                raise PropertyValueError(f"False is not a {definitions[name].type} patch value; use None to clear.")
-            result[name] = None if value is None else value_for(definitions[name], value)
-        return result
+            yield name, value
 
     async def patch(self, record_id: int, changes: Mapping[str, Any], *, refresh: bool = True) -> None:
         receipts = await self.patch_each({record_id: changes}, concurrency=1, refresh=refresh)
@@ -218,7 +209,7 @@ class PropertyBinding:
             await self.refresh()
         definitions = self._definitions
         scope = definitions._scope
-        normalized = {rid: self._changes(patch, definitions) for rid, patch in patches.items()}
+        normalized = {rid: patch_values(self._alias_changes(patch), definitions) for rid, patch in patches.items()}
         rows = await read_rows(scope, scope.model, ids, [scope.parent_field, scope.field])
         payloads = {}
         for row in rows:

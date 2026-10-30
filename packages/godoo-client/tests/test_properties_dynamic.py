@@ -796,6 +796,26 @@ async def test_legacy_public_helpers_strip_relational_displays_and_send_merged_d
     assert transport.matching(PARENT, "read") == []
 
 
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ([], {}),
+        ([{"name": "x_color", "value": "red"}, {"name": "x_size", "value": 42}], {"x_color": "red", "x_size": 42}),
+    ],
+)
+def test_legacy_converter_accepts_untyped_scalars_and_empty_lists(raw, expected):
+    from godoo.client.services.properties import properties_to_write_format
+
+    assert properties_to_write_format(raw) == expected
+
+
+async def test_legacy_merge_supports_untyped_existing_and_new_scalar_keys(api):
+    client, transport = api
+    transport.raw[1] = [{"name": "x_color", "value": "blue"}, {"name": "x_size", "value": 10}]
+    await client.properties.update_safely(MODEL, 1, FIELD, {"x_color": "red", "x_new": "value"})
+    assert transport.writes[0][2] == [[1], {FIELD: {"x_color": "red", "x_size": 10, "x_new": "value"}}]
+
+
 async def test_public_converter_requires_relational_metadata_and_normalizes_displays(api):
     client, _ = api
     raw = [{**deepcopy(d), "value": deepcopy(VALUES.get(d["name"]))} for d in DEFINITIONS]

@@ -5,12 +5,9 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, overload
 
-from godoo.client.errors import OdooAuthError
-
-from .binding import PropertyBinding
-from .codec import decode_values, encode_values, legacy_values
+from .codec import decode_values, encode_values, legacy_values, patch_values
 from .mutations import dispatch, require_acknowledged
-from .scope import PropertyScope, discover, load_definitions, parent_id_for, read_rows, record_ids
+from .scope import capture_scope, discover, load_definitions, parent_id_for, read_rows, record_ids
 from .types import PropertyBatchError, PropertyDefinitions, PropertyRecord, PropertyValues
 
 if TYPE_CHECKING:
@@ -131,8 +128,9 @@ async def patch(
         definition_field=definition_field,
     )
     snapshot = record.property_definitions
+    snapshot._scope.check_identity()
     values = dict(record.properties)
-    values.update(PropertyBinding(snapshot, {})._changes(changes, snapshot))
+    values.update(patch_values(changes.items(), snapshot))
     payload = encode_values(values, snapshot)
     receipts = await dispatch(snapshot._scope, {record_id: payload}, 1)
     require_acknowledged(receipts[0])
@@ -141,24 +139,6 @@ async def patch(
 def properties_to_write_format(props_list: list[dict[str, Any]]) -> dict[str, Any]:
     """Convert inline property reads to value-only writes, stripping relational display names."""
     return legacy_values(props_list)
-
-
-def _legacy_scope(client: OdooClient, model: str, field: str) -> PropertyScope:
-    session = client.get_session()
-    if session is None:
-        raise OdooAuthError("Authenticate before updating properties.")
-    return PropertyScope(
-        client,
-        model,
-        field,
-        "",
-        "",
-        "",
-        0,
-        client._capture_context(),
-        session,
-        (session.uid, session.db, session.session_id),
-    )
 
 
 def _legacy_merge(current: Any, updates: dict[str, Any]) -> dict[str, Any]:
@@ -181,7 +161,7 @@ async def update_safely(
     updates: dict[str, Any],
 ) -> None:
     """Merge visible values; non-atomic and limited to inline metadata, without discovery."""
-    scope = _legacy_scope(client, model, field)
+    scope = capture_scope(client, model, field, action="updating")
     rows = await read_rows(scope, model, record_ids(record_id), [field])
     payload = _legacy_merge(rows[0][field], deepcopy(updates))
     receipts = await dispatch(scope, {record_id: payload}, 1)
@@ -202,7 +182,7 @@ async def update_safely_batch(
     ids = validate_ids(record_ids)
     if not ids:
         return
-    scope = _legacy_scope(client, model, field)
+    scope = capture_scope(client, model, field, action="updating")
     updates = deepcopy(updates)
     rows = await read_rows(scope, model, ids, [field])
     payloads = {row["id"]: _legacy_merge(row[field], updates) for row in rows}
