@@ -43,6 +43,9 @@ def main() -> None:
 
     from godoo.client import OdooClient, OdooClientConfig
     from godoo.client.rpc.types import OdooSessionInfo
+    from godoo.client.services.properties import PropertyBinding, PropertyRecord
+
+    assert "pydantic" not in sys.modules, "Dynamic properties must not import optional Pydantic"
     from godoo.introspection import CodeGenerator, FieldSchema, Introspector, ModelSchema
 
     class Transport:
@@ -51,6 +54,7 @@ def main() -> None:
         def __init__(self):
             self.session = None
             self.calls = []
+            self.property_value = 2
 
         async def authenticate(self, username, password):
             self.session = OdooSessionInfo(uid=7, session_id="disposable", db="fixture")
@@ -58,8 +62,35 @@ def main() -> None:
 
         async def call(self, model, method, args, kwargs):
             self.calls.append((model, method, args, kwargs))
-            assert model == "res.partner" and method == "search_read"
-            return [{"id": 42, "name": "Wheel consumer"}]
+            if model == "res.partner" and method == "search_read":
+                return [{"id": 42, "name": "Wheel consumer"}]
+            if model == "project.task" and method == "fields_get":
+                return {
+                    "task_properties": {
+                        "type": "properties",
+                        "definition_record": "project_id",
+                        "definition_record_field": "task_properties_definition",
+                    },
+                    "project_id": {"type": "many2one", "relation": "project.project"},
+                }
+            if model == "project.project" and method == "fields_get":
+                return {"task_properties_definition": {"type": "properties_definition"}}
+            definition = {"name": "effort_id", "string": "Effort", "type": "integer"}
+            if model == "project.project" and method == "read":
+                return [{"id": 9, "task_properties_definition": [definition]}]
+            if model == "project.task" and method == "read":
+                return [
+                    {
+                        "id": 5,
+                        "project_id": [9, "Project"],
+                        "task_properties": [{**definition, "value": self.property_value}],
+                    }
+                ]
+            if model == "project.task" and method == "write":
+                assert args == [[5], {"task_properties": {"effort_id": 0}}]
+                self.property_value = args[1]["task_properties"]["effort_id"]
+                return True
+            raise AssertionError((model, method, args, kwargs))
 
         def logout(self):
             self.session = None
@@ -82,6 +113,19 @@ def main() -> None:
             await client.authenticate()
             records = await client.search_read("res.partner", [], fields=["name"], limit=1)
             assert records == [{"id": 42, "name": "Wheel consumer"}]
+            definitions = await client.properties.definitions(
+                "project.task",
+                field="task_properties",
+                parent_id=9,
+            )
+            binding = definitions.bind({"effort": {"label": "Effort"}})
+            assert isinstance(binding, PropertyBinding)
+            task = await binding.read(5)
+            assert isinstance(task, PropertyRecord) and task.properties.effort == 2
+            await binding.patch(5, {"effort": 0})
+            task = await client.properties.read("project.task", 5, field="task_properties")
+            assert task.properties["effort_id"] == 0
+            assert task.property_definitions.by_label("Effort").id == "effort_id"
             output = Path.cwd() / "generated"
             output.mkdir()
             CodeGenerator(Introspector(client)).write(
@@ -105,7 +149,9 @@ def main() -> None:
         json.dumps(
             {
                 "origins": origins,
-                "public_api": "client search_read + generated model round trip",
+                "public_api": (
+                    "client search_read + dynamic property discovery/read/bind/patch + generated model round trip"
+                ),
                 "meta": "metadata-only; no dependencies",
                 "live_odoo": False,
             },

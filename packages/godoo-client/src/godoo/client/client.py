@@ -6,6 +6,7 @@ import base64
 import contextvars
 import logging
 from collections import defaultdict
+from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Final, TypeVar, cast, overload
@@ -57,6 +58,11 @@ _UNDEFINED: Final = _UndefinedType()
 _ambient_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "_ambient_context", default=None
 )
+
+# Internal service scopes replace ambient context and pin the authenticated session.
+_fixed_rpc_scope: contextvars.ContextVar[
+    tuple[object, OdooSessionInfo, tuple[int, str, str], dict[str, Any]] | None
+] = contextvars.ContextVar("_fixed_rpc_scope", default=None)
 
 
 class _OdooContextScope:
@@ -192,6 +198,13 @@ class OdooClient:
             description=f"{model}.{method}",
         )
         await self._guard(op)
+        fixed = _fixed_rpc_scope.get()
+        if fixed is not None and fixed[0] is self:
+            session = self.get_session()
+            if session is not fixed[1] or (session.uid, session.db, session.session_id) != fixed[2]:
+                raise OdooAuthError("Authentication changed during a scoped operation; discover properties again.")
+            kwargs = {**kwargs, "context": deepcopy(fixed[3])}
+            return await self._transport.call(model, method, args, kwargs)
         # Merge ambient context (from with_context block) with explicit per-call context (explicit wins)
         ambient = _ambient_context.get() or {}
         if ambient or "context" in kwargs:
@@ -199,6 +212,27 @@ class OdooClient:
             if merged_ctx:
                 kwargs = {**kwargs, "context": merged_ctx}
         return await self._transport.call(model, method, args, kwargs)
+
+    @staticmethod
+    def _capture_context(context: dict[str, Any] | None = None) -> dict[str, Any]:
+        return deepcopy({**(_ambient_context.get() or {}), **(context or {})})
+
+    async def _call_with_context(
+        self,
+        model: str,
+        method: str,
+        args: list[Any],
+        kwargs: dict[str, Any],
+        *,
+        context: dict[str, Any],
+        session: OdooSessionInfo,
+        identity: tuple[int, str, str],
+    ) -> Any:
+        token = _fixed_rpc_scope.set((self, session, identity, context))
+        try:
+            return await self.call(model, method, args, kwargs)
+        finally:
+            _fixed_rpc_scope.reset(token)
 
     # ------------------------------------------------------------------
     # CRUD helpers

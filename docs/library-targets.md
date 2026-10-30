@@ -55,6 +55,11 @@ Keep read-only inspection separate from module refresh/install. Preserve relatio
 commands, context and safety-error propagation. Adoption, ownership and resource
 ordering belong to Stateman rather than the client.
 
+Python property access is dynamic: runtime definitions, technical-ID value mappings
+and optional alias bindings share definition-aware codecs. See [properties](services/properties.md)
+for sparse patches, bounded batch outcomes and non-atomicity limits. Fixed Python
+schemas are not required; aliases do not imply statically inferred property types.
+
 ## Chatter and declarative state
 
 The Python mail body-format extension `body_is_html` defaults to true for existing
