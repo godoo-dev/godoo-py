@@ -521,3 +521,113 @@ async def test_unmapped_live_option_is_an_explicit_read_error(property_sandbox: 
     with pytest.raises(PropertyValueError, match=ids["low"]):
         await binding.read(task_id)
     assert (await sandbox.client.properties.read(MODEL, task_id, field=FIELD)).properties[ids["priority"]] == ids["low"]
+
+
+async def test_bound_create_single_and_batch_read_back_all_kinds(property_sandbox: PropertySandbox) -> None:
+    sandbox = property_sandbox
+    ids = sandbox.ids
+    bound = await sandbox.binding()
+    assert await sandbox.client.search(MODEL, [["project_id", "=", sandbox.project_id]]) == []
+    properties = sandbox.initial_values()
+    for name in ("priority", "tags", "estimate"):
+        del properties[ids[name]]
+    properties.update({"priority": "low", "tags": ["blue"], "estimate": 0})
+    task_id = await bound.create({"name": "Created with aliases", FIELD: properties})
+    sandbox.tasks.append(task_id)
+    task = await bound.read(task_id)
+    assert task.record["name"] == "Created with aliases"
+    assert task.record["project_id"][0] == sandbox.project_id
+    assert task.properties.priority == "low"
+    assert task.properties.tags == ["blue"]
+    assert dict(task.properties) == sandbox.initial_values() | {
+        ids["priority"]: ids["low"],
+        ids["tags"]: [ids["blue"]],
+        ids["estimate"]: 0,
+    }
+
+    task_ids = await bound.create(
+        [
+            {
+                "name": "Falsy values",
+                FIELD: {
+                    "priority": None,
+                    "tags": [],
+                    "estimate": 0,
+                    ids["active"]: False,
+                    ids["ratio"]: 0.0,
+                    ids["note"]: "",
+                    ids["owner"]: None,
+                    ids["reviewers"]: [],
+                    ids["day"]: None,
+                    ids["moment"]: None,
+                },
+            },
+            {"name": "Technical IDs", "project_id": sandbox.project_id, FIELD: sandbox.initial_values()},
+        ]
+    )
+    sandbox.tasks.extend(task_ids)
+    tasks = await bound.read(task_ids)
+    assert [task.record["name"] for task in tasks] == ["Falsy values", "Technical IDs"]
+    assert dict(tasks[0].properties) == {
+        ids["priority"]: None,
+        ids["tags"]: [],
+        ids["estimate"]: 0,
+        ids["active"]: False,
+        ids["ratio"]: 0.0,
+        ids["note"]: None,
+        ids["owner"]: None,
+        ids["reviewers"]: [],
+        ids["day"]: None,
+        ids["moment"]: None,
+    }
+    assert type(tasks[0].properties[ids["estimate"]]) is int
+    assert tasks[0].properties[ids["active"]] is False
+    assert dict(tasks[1].properties) == sandbox.initial_values()
+    assert await sandbox.parent_definitions() == sandbox.definitions
+
+
+async def test_bound_create_uses_server_defaults_and_captured_parent(property_sandbox: PropertySandbox) -> None:
+    sandbox = property_sandbox
+    ids = sandbox.ids
+    definitions = deepcopy(sandbox.definitions)
+    for definition in definitions:
+        if definition["name"] == ids["priority"]:
+            definition["default"] = ids["high"]
+        elif definition["name"] == ids["estimate"]:
+            definition["default"] = 7
+    await sandbox.set_definitions(definitions)
+    with sandbox.client.with_context(default_project_id=sandbox.projects[1]):
+        snapshot = await sandbox.discover()
+    bound = snapshot.bind({"priority": {"id": ids["priority"]}})
+    task_ids = await bound.create(
+        [
+            {"name": "Omitted properties"},
+            {"name": "Empty properties", FIELD: {}},
+            {"name": "Sparse properties", FIELD: {"priority": ids["low"]}},
+            {"name": "Explicit clears", FIELD: {"priority": None, ids["estimate"]: None}},
+        ]
+    )
+    sandbox.tasks.extend(task_ids)
+    tasks = await bound.read(task_ids)
+    assert all(task.record["project_id"][0] == sandbox.project_id for task in tasks)
+    assert [task.properties[ids["priority"]] for task in tasks] == [ids["high"], ids["high"], ids["low"], None]
+    assert [task.properties[ids["estimate"]] for task in tasks] == [7, 7, 7, None]
+    assert await sandbox.parent_definitions() == definitions
+
+
+async def test_bound_create_preflights_batch_and_drift_without_creating_records(
+    property_sandbox: PropertySandbox,
+) -> None:
+    sandbox = property_sandbox
+    bound = await sandbox.binding()
+    for invalid in ({"project_id": sandbox.projects[1]}, {FIELD: {"priority": "missing"}}):
+        with pytest.raises((PropertyScopeError, PropertyValueError)):
+            await bound.create([{"name": "Must not exist", FIELD: {"estimate": 0}}, invalid])
+        assert await sandbox.client.search(MODEL, [["project_id", "=", sandbox.project_id]]) == []
+    changed = deepcopy(sandbox.definitions)
+    changed[0]["selection"] = [[sandbox.ids["low"], "Low"]]
+    await sandbox.set_definitions(changed)
+    with pytest.raises(PropertyDriftError):
+        await bound.create({"name": "Must not exist", FIELD: {"estimate": 0}})
+    assert await sandbox.client.search(MODEL, [["project_id", "=", sandbox.project_id]]) == []
+    assert await sandbox.parent_definitions() == changed

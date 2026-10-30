@@ -6,7 +6,7 @@ import keyword
 from collections.abc import Iterator, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, overload
+from typing import Any, cast, overload
 
 from .codec import decode_values, encode_values, patch_values
 from .mutations import dispatch, require_acknowledged
@@ -19,6 +19,7 @@ from .types import (
     PropertyOptions,
     PropertyReceipt,
     PropertyRecord,
+    PropertyScopeError,
     PropertyValueError,
     PropertyValues,
 )
@@ -171,6 +172,41 @@ class PropertyBinding:
             else:
                 name = key
             yield name, value
+
+    @overload
+    async def create(self, values: Mapping[str, Any], *, refresh: bool = True) -> int: ...
+
+    @overload
+    async def create[T: Mapping[str, Any]](self, values: list[T], *, refresh: bool = True) -> list[int]: ...
+
+    async def create[T: Mapping[str, Any]](self, values: T | list[T], *, refresh: bool = True) -> int | list[int]:
+        """Create records in this parent, translating property and option aliases.
+
+        A supplied properties field must be a sparse mapping; omission leaves
+        defaults to Odoo. Preflight the whole batch before one ordinary create RPC.
+        """
+        batch = isinstance(values, list)
+        rows = values if isinstance(values, list) else [values]
+        if not rows or any(not isinstance(row, Mapping) for row in rows):
+            raise PropertyValueError("Create requires a mapping or a nonempty list of mappings.")
+        # Snapshot all nested ordinary/property values before refresh can yield.
+        payloads = [deepcopy(dict(row)) for row in rows]
+        scope = self._definitions._scope
+        for payload in payloads:
+            parent = payload.setdefault(scope.parent_field, scope.parent_id)
+            if type(parent) is not int or parent != scope.parent_id:
+                raise PropertyScopeError(f"Create parent must be {scope.parent_id}.")
+            if scope.field in payload and not isinstance(payload[scope.field], Mapping):
+                raise PropertyValueError("Create properties must be a mapping.")
+        if refresh:
+            await self.refresh()
+        definitions = self._definitions
+        for payload in payloads:
+            if scope.field in payload:
+                changes = patch_values(self._alias_changes(payload[scope.field]), definitions)
+                payload[scope.field] = encode_values(changes, definitions)
+        result = await scope.call(scope.model, "create", [payloads if batch else payloads[0]], {})
+        return cast("int | list[int]", result)
 
     async def patch(self, record_id: int, changes: Mapping[str, Any], *, refresh: bool = True) -> None:
         receipts = await self.patch_each({record_id: changes}, concurrency=1, refresh=refresh)

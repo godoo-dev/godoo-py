@@ -90,6 +90,7 @@ class Transport:
         self.read_error: Exception | None = None
         self.responses: dict[int, Any] = {}
         self.write_hook: Callable[[int], Awaitable[Any]] | None = None
+        self.create_hook: Callable[[], Awaitable[Any]] | None = None
 
     async def authenticate(self, username, password):
         assert (username, password) == ("fixture", "fixture")
@@ -127,6 +128,10 @@ class Transport:
                 fields = kwargs.get("fields")
                 rows.append(row if fields is None else {k: v for k, v in row.items() if k == "id" or k in fields})
             return rows
+        if (model, method) == (MODEL, "create"):
+            if self.create_hook is not None:
+                return await self.create_hook()
+            return list(range(10, 10 + len(args[0]))) if isinstance(args[0], list) else 10
         assert (model, method) == (MODEL, "write"), (model, method)
         ids, values = args
         assert len(ids) == 1 and set(values) == {FIELD}
@@ -694,23 +699,27 @@ async def test_binding_rejects_authentication_identity_changes_before_rpc(api, c
         await bound.read(1)
     with pytest.raises(PropertyScopeError):
         await bound.patch(1, {"estimate": 0})
+    with pytest.raises(PropertyScopeError):
+        await bound.create({FIELD: {"estimate": 0}}, refresh=False)
     assert transport.calls == []
 
 
-async def test_authentication_changed_during_safety_await_blocks_wire_dispatch(api):
+@pytest.mark.parametrize("method", ["write", "create"])
+async def test_authentication_changed_during_safety_await_blocks_wire_dispatch(api, method):
     client, transport = api
     bound = await binding(client)
     confirming = asyncio.Event()
     release = asyncio.Event()
 
     async def confirm(op):
-        assert (op.model, op.name, op.level) == (MODEL, "write", "WRITE")
+        assert (op.model, op.name, op.level) == (MODEL, method, "WRITE")
         confirming.set()
         await release.wait()
         return True
 
     client.set_safety_context(SafetyContext(confirm=confirm))
-    job = asyncio.create_task(bound.patch(1, {"estimate": 0}))
+    operation = bound.patch(1, {"estimate": 0}) if method == "write" else bound.create({FIELD: {"estimate": 0}})
+    job = asyncio.create_task(operation)
     try:
         await asyncio.wait_for(confirming.wait(), 2)
         await client.authenticate()
@@ -719,6 +728,7 @@ async def test_authentication_changed_during_safety_await_blocks_wire_dispatch(a
     with pytest.raises((OdooAuthError, PropertyScopeError)):
         await asyncio.wait_for(job, 2)
     assert transport.writes == []
+    assert transport.matching(MODEL, "create") == []
 
 
 async def test_fixed_context_preserves_live_safety_guards(api):
@@ -883,3 +893,176 @@ async def test_interleaved_writers_can_overwrite_an_untouched_value(api):
             await asyncio.gather(first, return_exceptions=True)
     assert stored == {**WIRE, "x_estimate": 0}
     assert len(transport.writes) == 2
+
+
+async def test_bound_create_single_and_batch_normalize_without_changing_inputs(api):
+    client, transport = api
+    bound = await binding(client)
+    properties = {
+        **WIRE,
+        "priority": "low",
+        "estimate": 0,
+        "labels": [],
+        "x_text": "",
+        "x_flag": False,
+        "x_cost": 0.0,
+        "x_owner": None,
+    }
+    for key in ("x_priority", "x_estimate", "x_tags"):
+        del properties[key]
+    values = {"name": "New task", FIELD: properties, "user_ids": [[6, 0, [7]]]}
+    before = deepcopy(values)
+    assert await bound.create(values) == 10
+    assert values == before
+    expected = {
+        **WIRE,
+        "x_priority": "p_lo",
+        "x_estimate": 0,
+        "x_tags": [],
+        "x_text": "",
+        "x_flag": False,
+        "x_cost": 0.0,
+        "x_owner": False,
+    }
+    assert transport.calls[-1][2] == [{**values, "project_id": 42, FIELD: expected}]
+    actual = transport.calls[-1][2][0][FIELD]
+    assert type(actual["x_estimate"]) is int
+    assert type(actual["x_cost"]) is float
+    assert actual["x_flag"] is False
+    transport.calls.clear()
+    rows = [{"name": "Defaults"}, {"project_id": 42, FIELD: {}}, {FIELD: {"priority": None}}]
+    before = deepcopy(rows)
+    assert await bound.create(rows, refresh=False) == [10, 11, 12]
+    assert rows == before
+    assert transport.calls == [
+        (
+            MODEL,
+            "create",
+            [
+                [
+                    {"name": "Defaults", "project_id": 42},
+                    {"project_id": 42, FIELD: {}},
+                    {"project_id": 42, FIELD: {"x_priority": False}},
+                ]
+            ],
+            {"context": {}},
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [],
+        None,
+        "task",
+        [None],
+        {"project_id": 43},
+        {"project_id": True},
+        {"project_id": [42, "Project"]},
+        {FIELD: None},
+        {FIELD: []},
+        {FIELD: False},
+        {FIELD: {"priority": "p_hi"}},
+        {FIELD: {"labels": "red"}},
+        {FIELD: {"estimate": False}},
+        {FIELD: {"estimate": 1, "x_estimate": 2}},
+        {FIELD: {"x_section": 1}},
+        {FIELD: {"missing": 1}},
+        {FIELD: {"x_owner": True}},
+        {FIELD: {"x_watchers": [[6, 0, [7]]]}},
+        {FIELD: {"x_cost": float("inf")}},
+    ],
+)
+async def test_bound_create_rejects_invalid_whole_batch_before_create(api, values):
+    client, transport = api
+    bound = await binding(client)
+    for payload in (values, [{"name": "Valid", FIELD: {"estimate": 0}}, values]):
+        with pytest.raises((PropertyValueError, PropertyScopeError, PropertyLookupError)):
+            await bound.create(payload)
+    assert transport.matching(MODEL, "create") == []
+
+
+async def test_bound_create_refreshes_and_rejects_drift(api):
+    client, transport = api
+    bound = await binding(client)
+    transport.definitions[0]["string"] = "Renamed"
+    transport.definitions[0]["selection"][0][1] = "Renamed option"
+    await bound.create({FIELD: {"priority": "high"}})
+    assert transport.calls[-1][2] == [{"project_id": 42, FIELD: {"x_priority": "p_hi"}}]
+    transport.calls.clear()
+    transport.definitions[0]["selection"] = [["p_lo", "Low"]]
+    with pytest.raises(PropertyDriftError):
+        await bound.create({FIELD: {"estimate": 0}})
+    assert transport.matching(MODEL, "create") == []
+
+
+async def test_bound_create_copies_inputs_before_refresh_yields(api):
+    client, transport = api
+    bound = await binding(client)
+    values = [{FIELD: {"labels": ["red"]}, "user_ids": [[6, 0, [7]]]}]
+    original_call = transport.call
+
+    async def mutate(model, method, args, kwargs):
+        if (model, method) == (PARENT, "read"):
+            values[0][FIELD]["labels"].append("blue")
+            values[0]["user_ids"][0][2].append(9)
+            values.append({"project_id": 99})
+        return await original_call(model, method, args, kwargs)
+
+    transport.call = mutate
+    assert await bound.create(values) == [10]
+    assert transport.calls[-1][2] == [
+        [
+            {
+                "project_id": 42,
+                FIELD: {"x_tags": ["t_red"]},
+                "user_ids": [[6, 0, [7]]],
+            }
+        ]
+    ]
+
+
+async def test_bound_create_context_safety_and_authentication(api):
+    client, transport = api
+    with client.with_context(lang="en_US", default_project_id=99):
+        bound = await binding(client)
+    transport.calls.clear()
+    with client.with_context(lang="es_ES", extra="excluded"):
+        await bound.create({"name": "Scoped"})
+    assert all(call[3]["context"] == {"lang": "en_US", "default_project_id": 99} for call in transport.calls)
+    assert transport.calls[-1][2] == [{"name": "Scoped", "project_id": 42}]
+    operations = []
+
+    async def deny(op):
+        operations.append((op.model, op.name, op.level))
+        return False
+
+    client.set_safety_context(SafetyContext(confirm=deny))
+    transport.calls.clear()
+    with pytest.raises(OdooSafetyError):
+        await bound.create({"name": "Blocked"}, refresh=False)
+    assert operations == [(MODEL, "create", "WRITE")]
+    assert transport.calls == []
+    client.set_safety_context(None)
+    await client.authenticate()
+    with pytest.raises(PropertyScopeError):
+        await bound.create({"name": "Wrong session"}, refresh=False)
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    "error", [OdooNetworkError("Lost response"), OdooAccessError("Denied"), asyncio.CancelledError()]
+)
+async def test_bound_create_never_retries_uncertain_or_rejected_operations(api, error):
+    client, transport = api
+    bound = await binding(client)
+
+    async def fail():
+        raise error
+
+    transport.create_hook = fail
+    with pytest.raises(type(error)) as caught:
+        await bound.create({"name": "Once"})
+    assert caught.value is error
+    assert len(transport.matching(MODEL, "create")) == 1
