@@ -10,7 +10,7 @@ through `OdooClientConfig.transport_factory`. It recorded cross-origin HTTPS
 JSON-RPC authentication and a read using Pyodide 0.29.4 / CPython 3.13 in isolation;
 that did not install the current >=3.14 distributions or prove a shipped browser
 product. The prototype is retained at
-[`spikes/08-pyodide/transport_pyfetch.py`](https://github.com/godoo-dev/godoo-py/blob/develop/spikes/08-pyodide/transport_pyfetch.py).
+[`spikes/08-pyodide/transport_pyfetch.py`](https://github.com/godoo-dev/godoo-py/blob/main/spikes/08-pyodide/transport_pyfetch.py).
 Tracked Git history retains the original decision and work records.
 
 The custom path depends on Pyodide's built-in `pyfetch`. The spike also reported

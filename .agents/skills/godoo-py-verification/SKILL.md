@@ -93,7 +93,7 @@ A requested19 failure is a failed qualification; it is never a default18 claim.
 ## Consume proof and maintain the route
 
 [Test](../../../.github/workflows/test.yml) runs offline, package and18 for PRs
-and pushes to develop/main and manual validation, without path filters.
+and pushes to main and manual validation, without path filters.
 `required` runs always and requires offline/package/18 success. It waits for19;
 explicitly requested19 must succeed, while an unrequested19 must be skipped.
 [Release](../../../.github/workflows/release.yml) reuses that validation for an

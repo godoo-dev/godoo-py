@@ -9,6 +9,13 @@ uv sync --frozen --all-packages --all-extras
 uv run pytest packages/ tests/ --import-mode=importlib -m "not integration"  # verify setup
 ```
 
+## Integration branch
+
+`main` is the sole long-lived integration and release branch. Start temporary
+feature branches from current `origin/main` and target `main` for review.
+Keep dirty or active checkouts on their existing branches until their work is
+preserved and their owners can move them safely.
+
 ## Candidate verification
 
 The CI harmonization uses one candidate built from the selected source revision:
@@ -31,6 +38,30 @@ checks. Manual promotion accepts only a clean immutable SHA on `main`, runs the
 full required proof and publishes the exact tested wheels only when `publish`
 is explicitly selected. Ordinary validation and docs builds publish nothing.
 Hosted branch rules and protected publishing environments require separate setup.
+
+## Release-finish cleanup
+
+After a release, assess completed temporary branches and disposable worktrees as
+a deliberate finish step. Cleanup is not automatic and does not publish a release.
+Fetch current refs, inspect `git worktree list --porcelain`, and establish each
+checkout's clean status (including untracked files), completed delivery, ownership,
+thread activity, process references and container mounts. Keep primary, pinned,
+active or ambiguous checkouts, tags and required release evidence.
+
+Compare each candidate with current `origin/main` using ancestry and
+`git cherry -v origin/main <branch>`. Inspect patch-equivalent changes before
+concluding that the full behavior is integrated. Preserve unique dirty or unmerged
+work through normal commits or retained evidence, and verify that preservation.
+Do not merge stale changes just to make cleanup possible.
+
+When completion, integration and lack of use are established and cleanup is
+authorized, remove a clean disposable checkout with `git worktree remove <path>`
+without force. Delete its local branch with `git branch -d <branch>` only after
+verifying its integration into main; review remote consumers and delete an
+explicit remote branch with `git push origin --delete <branch>` only when they
+have migrated. Retain main. Recheck worktree registrations and remote refs, and
+record actual removals and unresolved work in the delivery issue. On managed
+hosts, use the installed worktree-housekeeping procedure and guarded inventory.
 
 ## Running Tests
 

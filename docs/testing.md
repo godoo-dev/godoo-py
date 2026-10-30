@@ -85,7 +85,7 @@ export ODOO_SEED_IMAGE=registry.example.com/odoo-seed:18
 ## Required candidate proof
 
 Odoo18 is the default and required runtime. The maintained candidate commands in
-[contributing](https://github.com/godoo-dev/godoo-py/blob/develop/CONTRIBUTING.md) build four wheels and run both integration
+[contributing](https://github.com/godoo-dev/godoo-py/blob/main/CONTRIBUTING.md) build four wheels and run both integration
 suites through installed libraries outside the source tree:
 
 ```sh

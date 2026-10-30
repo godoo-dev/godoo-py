@@ -47,7 +47,7 @@ inside `asyncio.to_thread()`. Preserve cleanup on failure and keep seed/snapshot
 keys sensitive to their configuration; a cache hit must describe the requested
 Odoo state. Docker facilities do not run in a browser.
 
-Use [contributing](https://github.com/godoo-dev/godoo-py/blob/develop/CONTRIBUTING.md) for offline checks and explicit integration
+Use [contributing](https://github.com/godoo-dev/godoo-py/blob/main/CONTRIBUTING.md) for offline checks and explicit integration
 commands. CI requires Odoo18; optional19 qualification follows successful18 for the same
 immutable wheels. Historical check output
 and current acceptance are separate evidence. [Browser support](browser.md) is a
@@ -57,7 +57,7 @@ future packaging/interface decision, not a current install extra.
 
 On Linux x86_64, `bash scripts/scan-secrets.sh` downloads the pinned open-source
 Gitleaks CLI, verifies its SHA-256 and scans Git history with findings redacted.
-CI runs it for PRs and pushes to develop/main with read-only permissions; it needs
+CI runs it for PRs and pushes to main with read-only permissions; it needs
 no organization Action license. `.gitleaksignore` lists only five reviewed
 historical occurrences of synthetic snapshot-cache keys, without ignoring entire
 files or disabling a detection rule.
