@@ -93,6 +93,49 @@ the effective context. Later ambient context changes do not enter its calls.
 Reauthentication requires fresh discovery. Calls retain the client's current
 safety guards, including checks immediately before transport dispatch.
 
+## Create records with properties
+
+Discover definitions and bind aliases before creating a child. Pass ordinary record
+values and a property mapping under the discovered properties field:
+
+```python
+task_id = await property_binding.create({
+    "name": "Plan the release",
+    "task_properties": {"priority": "high", "estimate": 0},
+})
+task_ids = await property_binding.create([
+    {"name": "First task", "task_properties": {"priority": "low"}},
+    {"name": "Second task", "task_properties": {"priority": None}},
+])
+task = await property_binding.read(task_id)
+```
+
+`create()` returns an ID for one mapping and an ID list for a nonempty list of
+mappings, following `client.create()`. It supplies the binding's parent relation
+when omitted; an explicit parent must be the same positive integer ID. This
+overrides any parent default in the captured context. Other ordinary fields pass
+through unchanged. Property keys accept aliases or technical IDs using the same
+option and value rules as patches, including duplicate-target rejection.
+
+Omitting the properties field leaves its defaults to Odoo. A supplied mapping is
+sparse: only supplied keys are encoded, and omitted property defaults remain
+server-owned. `None` explicitly clears a supplied property. An empty mapping is
+valid; a non-mapping properties value is rejected.
+
+Definitions refresh by default, with the same drift checks as patches;
+`refresh=False` uses the retained snapshot. All input mappings are copied before
+the first await, and the whole batch is validated before a single `create` RPC.
+Creation retains the captured context/authentication and current safety guards.
+The server may still reject ordinary fields or change definitions after preflight.
+
+Creation uses the ordinary create response and exception contract, without patch
+receipts or automatic retries. An ID response is acknowledgment, not readback
+verification. After a transport error or cancellation, reconcile server state
+before retrying to avoid duplicate records. Typed instances remain supported by
+`client.create()` with their existing serialization; they are not accepted by
+`PropertyBinding.create()`. Use `property_definitions.bind({})` for definition-aware
+creation using technical IDs only.
+
 ## Patch values
 
 An omitted key leaves the property untouched. `None` requests clearing. Explicit
