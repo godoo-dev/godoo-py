@@ -90,6 +90,11 @@ def main() -> None:
                 assert args == [[5], {"task_properties": {"effort_id": 0}}]
                 self.property_value = args[1]["task_properties"]["effort_id"]
                 return True
+            if model == "project.task" and method == "create":
+                batch = isinstance(args[0], list)
+                rows = args[0] if batch else [args[0]]
+                assert rows == [{"name": "Created", "project_id": 9, "task_properties": {"effort_id": 0}}]
+                return [6] if batch else 6
             raise AssertionError((model, method, args, kwargs))
 
         def logout(self):
@@ -126,6 +131,10 @@ def main() -> None:
             task = await client.properties.read("project.task", 5, field="task_properties")
             assert task.properties["effort_id"] == 0
             assert task.property_definitions.by_label("Effort").id == "effort_id"
+            values = {"name": "Created", "task_properties": {"effort": 0}}
+            assert await binding.create(values) == 6
+            assert await binding.create([values]) == [6]
+            assert "pydantic" not in sys.modules, "Bound creation must not import optional Pydantic"
             output = Path.cwd() / "generated"
             output.mkdir()
             CodeGenerator(Introspector(client)).write(
