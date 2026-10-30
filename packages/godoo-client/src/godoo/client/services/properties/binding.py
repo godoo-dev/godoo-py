@@ -177,11 +177,9 @@ class PropertyBinding:
     async def create(self, values: Mapping[str, Any], *, refresh: bool = True) -> int: ...
 
     @overload
-    async def create(self, values: list[Mapping[str, Any]], *, refresh: bool = True) -> list[int]: ...
+    async def create[T: Mapping[str, Any]](self, values: list[T], *, refresh: bool = True) -> list[int]: ...
 
-    async def create(
-        self, values: Mapping[str, Any] | list[Mapping[str, Any]], *, refresh: bool = True
-    ) -> int | list[int]:
+    async def create[T: Mapping[str, Any]](self, values: T | list[T], *, refresh: bool = True) -> int | list[int]:
         """Create records in this parent, translating property and option aliases.
 
         A supplied properties field must be a sparse mapping; omission leaves

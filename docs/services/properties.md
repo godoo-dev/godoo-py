@@ -2,7 +2,8 @@
 
 Access Odoo's runtime-defined properties through `client.properties`. Applications
 do not need a Python schema or Pydantic. These additions are implemented in source
-for [issue #9](https://github.com/godoo-dev/godoo-py/issues/9); this guide does not
+for [issue #9](https://github.com/godoo-dev/godoo-py/issues/9) and creation coverage in
+[issue #11](https://github.com/godoo-dev/godoo-py/issues/11); this guide does not
 establish registry publication.
 
 ## Read properties and definitions
