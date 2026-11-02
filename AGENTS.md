@@ -27,7 +27,8 @@ Preserve unrelated edits. Check status, branch, worktree ownership and active us
 before changes; do not switch/reset the primary branch or alter another worker's
 checkout. Use owner-paths for notes and evidence outside source. Report cross-project
 dependencies, conflicts and needed handoffs to Marc in the current conversation.
-Inter-agent communication, delegates, inboxes and agent messages through shared files or trackers are forbidden. Existing grants and
+Do not use unrelated cross-project agent conversations, inboxes or shared
+files/trackers as message relays. Existing grants and
 resource holdings survive routing changes.
 
 Python 3.14+, uv workspace and PEP 420 `godoo.*` namespace packages. Public imports
