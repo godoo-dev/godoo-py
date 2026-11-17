@@ -5,8 +5,10 @@ description: Check a godoo-py change — the offline check command, the installe
 
 # Verify godoo-py
 
-Work in the selected godoo-py checkout. The workflows pin uv 0.12.5 and the
-scripts pin Python 3.14.8. Install the workspace once:
+Work in the selected godoo-py checkout. uv's version is pinned by
+`required-version` in `pyproject.toml` and Python's by `.python-version`. setup-uv and
+setup-python read them in CI, uv enforces its pin, and the scripts use Python from
+`.python-version`. Install the workspace once:
 
 ```sh
 uv sync --frozen --all-packages --all-extras

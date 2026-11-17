@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = "==3.14.8"
+# requires-python = ">=3.14"
 # dependencies = []
 # ///
 """Fail-closed CI aggregation and immutable main-line candidate promotion checks."""

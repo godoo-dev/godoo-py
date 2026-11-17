@@ -1,4 +1,6 @@
 [tool.uv]
+# The workflows read this pin through setup-uv; bump it by hand.
+required-version = "==0.13.9"
 dev-dependencies = [
     "hatchling==1.27.0",
     "pytest>=8",

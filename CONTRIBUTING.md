@@ -108,9 +108,17 @@ editor or agent with the workspace environment active (for example
 `.scratch/` directory. Maintainer procedures for agents are in `.agents/skills/`.
 
 Dependabot (`.github/dependabot.yml`) updates the uv lock and pinned workflow
-actions. It does not update the uv and Python versions pinned in workflows and
-scripts, or the Odoo and Postgres image tags in `godoo-testcontainers` and the
-seed-database build; bump those by hand.
+actions. It has no ecosystem for the tool pins, so each lives in one place and is
+bumped by hand in its own PR:
+
+- uv: `required-version` under `[tool.uv]` in `pyproject.toml`, which `setup-uv`
+  reads in CI. A different local uv refuses to run in this workspace.
+- Python: `.python-version`, read by `setup-python`, uv and the installed-wheel
+  consumer in `scripts/check.py`.
+  Choose a version that the pinned uv can download.
+- Odoo and Postgres images: the major-version tags in `godoo-testcontainers`
+  (`odoo:<major>`, `postgres:15-alpine`) and the seed-database build. These tags
+  float within a major version, so a bump is a deliberate compatibility change.
 
 Use checks relevant to the change. Documentation edits need link/import checks and
 `git diff --check`; they do not require a Docker test campaign.

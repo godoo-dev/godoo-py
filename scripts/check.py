@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = "==3.14.8"
+# requires-python = ">=3.14"
 # dependencies = []
 # ///
 """Native checks. Evidence and immutable candidates are explicit external directories."""
@@ -121,7 +121,8 @@ def _verify_wheels(artifacts: Path, wheels: list[dict], versions: dict[str, str]
 def consumer(artifacts: Path, scratch: Path, evidence: Path) -> Path:
     verify_manifest(artifacts)
     python = scratch / "venv/bin/python"
-    run(["uv", "venv", "--python", "3.14.8", str(scratch / "venv")], evidence, "consumer-venv")
+    python_version = (ROOT / ".python-version").read_text().strip()
+    run(["uv", "venv", "--python", python_version, str(scratch / "venv")], evidence, "consumer-venv")
     run(
         [
             "uv",

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = "==3.14.8"
+# requires-python = ">=3.14"
 # dependencies = []
 # ///
 """Executed with the isolated consumer interpreter, never with workspace imports."""
