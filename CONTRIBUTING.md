@@ -107,9 +107,7 @@ editor or agent with the workspace environment active (for example
 `source .venv/bin/activate`). Agent working files go in the git-ignored
 `.scratch/` directory. Maintainer procedures for agents are in `.agents/skills/`.
 
-Dependabot (`.github/dependabot.yml`) updates the uv lock and pinned workflow
-actions. It has no ecosystem for the tool pins, so each lives in one place and is
-bumped by hand in its own PR:
+Each tool pin lives in one place and is bumped by hand in its own PR:
 
 - uv: `required-version` under `[tool.uv]` in `pyproject.toml`, which `setup-uv`
   reads in CI. A different local uv refuses to run in this workspace.
