@@ -1,118 +1,107 @@
 ---
 name: godoo-py-verification
-description: Verify godoo-py native checks, four installed wheels and disposable Odoo18 public behavior, or maintain this proof path after interface changes. Hosted policy, registry publication and deployment remain separate.
+description: Check a godoo-py change — the offline check command, the installed-wheel package tier and disposable Odoo 18/19 integration — and maintain that check path when interfaces change. Publication and deployment are separate operations.
 ---
 
-# Verify the Python libraries
+# Verify godoo-py
 
-Work in the explicitly selected godoo-py checkout. Read its AGENTS.md and
-[contributing guide](../../../CONTRIBUTING.md). Establish HEAD, branch, dirty and
-untracked state, checkout ownership and requested proof scope first. These
-instructions grant no shared-state, publication or deployment authority.
-
-## Prepare and choose the proof
-
-Use uv 0.12.5, Python 3.14.8 and the committed `uv.lock`. The maintained
-[check entrypoint](../../../scripts/check.py) works from any current directory:
-
-```sh
-/absolute/godoo-py/scripts/check.py --help
-```
-
-Choose external absolute paths for a new empty candidate directory and separate
-proof directories. Respect owner-paths or explicit task destinations. Then run:
+Work in the selected godoo-py checkout with uv 0.12.5 and Python 3.14.8, which
+the scripts pin. Install the workspace once:
 
 ```sh
 uv sync --frozen --all-packages --all-extras
-./scripts/check.py offline --evidence /absolute/proof/offline
-./scripts/check.py package --artifacts /absolute/candidate --evidence /absolute/proof/package
 ```
 
-`offline` runs Ruff check/format, all three existing strict mypy roots, all
-nonintegration tests under packages **and** tests, and a strict documentation
-build. A test skip or empty collection fails this required invocation.
+## Check command
 
-`package` builds all four wheels once with pinned Hatchling, exports hashed
-locked dependencies and installs exact wheel files without dependencies or editable
-links into an isolated consumer outside source. It checks all three namespaces'
-import origins and `py.typed`, distribution versions and installed archive hashes and extracted file bytes,
-metadata-only `godoo` with no dependencies, a public client `search_read` through
-the supported transport factory, generated Pydantic output and the installed
-`godoo-introspect --help`. The transport fixture proves the installed API and
-codegen contract; it does not establish real server compatibility.
-
-Keep the candidate immutable. `manifest.json` records source SHA, relevant tree
-hash, dirty patch hash, lock/tools, versions and every wheel SHA256. A change to
-source, scripts, tests, lock, docs or this skill invalidates reuse: rerun offline
-and build into a new empty candidate directory. Never overwrite a tested set or
-call a local wheel a published registry release.
-
-## Exercise owned Odoo18
-
-Docker must be available and owned disposable containers/networks permitted.
-Inspect existing resources read-only; do not stop unrelated sessions. Run:
+The default check is:
 
 ```sh
-./scripts/check.py odoo18 --artifacts /absolute/candidate --evidence /absolute/proof/odoo18
+./scripts/check.py offline --evidence /tmp/godoo-py-offline
 ```
 
-The entrypoint checks Docker readiness, verifies candidate hashes/source, installs
-those same wheels, copies root `tests/integration` and every package test directory (including
-`godoo-testcontainers/tests/test_integration.py` and the client typed round trip) into the isolated consumer and
-selects every integration-marked test. It overrides business connection/seed settings, disables shared Ryuk,
-and owns only newly created containers, random networks, mapped ports, disposable
-Postgres data and temporary snapshot/addon files. No external Odoo credentials are
-used. Explicit wrong `ODOO_VERSION` values fail before provisioning.
+It runs Ruff lint (including complexity), Ruff format, strict mypy on the three
+source packages, every non-integration test under `packages/` and `tests/`, and a
+strict mkdocs build. An empty or skipped suite fails. Its exit status is the
+result. `--evidence` must be outside the checkout; it holds the tool logs.
 
-The installed proof observer requests server version info after authentication,
-asserts actual major 18 and records image IDs/digests, container/network IDs and
-installed modules. Tests drive CRUD/readback/deletion, module queries, live
-introspection/codegen, TestHarness property seeding, actual snapshot save/restore
-and custom addon installation. These writes affect only disposable test databases.
-Missing Docker, wrong major, empty selection, missing suite, any skip/failure or
-unclean teardown fails. Read `integration.log`, JUnit, `observed-odoo.json`,
-`resources.json` and `cleanup.json`; a listening container alone is insufficient.
-
-On surprising failure, recheck Docker health and the observed server/image,
-inspect retained logs, and distinguish missing readiness from a product defect.
-The helper tracks exact run-owned IDs and attempts cleanup even after failure.
-Confirm `cleanup.json` has no remaining IDs/errors/rescued leaks, and independently
-query recorded IDs if execution was interrupted. Remove only recorded owned
-resources; never prune Docker globally. Evidence lives outside temporary state
-and survives the consumer and containers being removed.
-
-Odoo17 is unsupported by these entrypoints. Odoo19 is optional and must use the
-same candidate after successful18 with an explicit invocation:
+For iteration, run the focused tools:
 
 ```sh
-./scripts/check.py odoo19 --artifacts /absolute/candidate --baseline18 /absolute/proof/odoo18 --evidence /absolute/proof/odoo19
+uv run --frozen ruff check . && uv run --frozen ruff format --check .
+uv run --frozen mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src
+uv run --frozen pytest packages/ tests/ --import-mode=importlib -m "not integration" -k NAME
 ```
 
-A requested19 failure is a failed qualification; it is never a default18 claim.
+CI ([test.yml](../../../.github/workflows/test.yml), GitHub-hosted
+`ubuntu-latest`) runs `offline`, `package` and `odoo18` on every PR to `main`
+and every push to `main`. The `required` job requires all three. A newer push to
+the same PR cancels the older run. Do not repeat the full check locally when the
+PR's CI will run it.
 
-## Consume proof and maintain the route
+## Complexity
 
-[Test](../../../.github/workflows/test.yml) runs offline, package and18 for PRs
-and pushes to main and manual validation, without path filters.
-`required` runs always and requires offline/package/18 success. It waits for19;
-explicitly requested19 must succeed, while an unrequested19 must be skipped.
-[Release](../../../.github/workflows/release.yml) reuses that validation for an
-immutable reviewed main SHA, checks all results against the wheel manifest, and
-publishes only those tested bytes behind explicit `publish` and a protected
-environment. Version preparation is a separate reviewable patch operation;
-documentation remains an artifact. Local gate fixtures exercise rejection of
-failed/skipped/cancelled/missing results and mismatched refs/artifacts/proof.
-They do not establish GitHub branch protection or a configured trusted publisher.
+Ruff `C901` blocks at `max-complexity = 10` (`pyproject.toml`). Refactor a new
+violation without changing behaviour, adding characterization tests where
+coverage is missing. If a function cannot be fixed safely, report it to the
+owner with its complexity and the reason. An approved exception is a
+`# noqa: C901` on that function with its reason and "owner-approved".
 
-Report actual command exits, test counts/skips, observed source/tree/wheel identity,
-public behavior and checked cleanup. Separate local execution, hosted CI, remote
-required-check enforcement, publication and user acceptance. Retain gaps through
-the project's capture route (or return them to a parent who owns tracker writes).
-No new tracker or evidence collection belongs in source.
+## Slow tiers
 
-For changed public interfaces, audit the affected instructions against source,
-tests and delivery callers. Fix stale instructions or owned harness gaps and
-rerun the affected public proof. Preserve expected behavior and failed evidence
-for product regressions rather than relaxing assertions. Full skill authoring
-uses the verification maker plus skill-creator; ordinary verification does not
-change provenance, install plugins or start a schedule.
+Run these when the owner asks or when the change touches what the tier covers.
+CI runs `package` and `odoo18` on every PR anyway.
+
+- **Package:** use it for packaging, entrypoints, namespaces, dependencies or
+  the public API seen from an installed wheel.
+
+  ```sh
+  ./scripts/check.py package --artifacts /tmp/godoo-py-candidate --evidence /tmp/godoo-py-package
+  ```
+
+  `--artifacts` must be a new or empty directory outside the checkout. It
+  builds the four wheels there, installs them without
+  editable links into an isolated consumer, and drives the public client,
+  dynamic-property and code-generation APIs through an in-process transport. It
+  does not contact a real Odoo server.
+
+- **Odoo 18:** use it for RPC behaviour, services, introspection against a live
+  schema, testcontainers, the harness or snapshots. It needs Docker.
+
+  ```sh
+  ./scripts/check.py odoo18 --artifacts /tmp/godoo-py-candidate --evidence /tmp/godoo-py-odoo18
+  ```
+
+  It installs the same wheels, runs every integration-marked test from
+  `tests/integration` and the package test directories against disposable Odoo
+  and Postgres containers, and checks that the server reports major version 18.
+
+- **Odoo 19:** this tier is optional. Run it only on request and after Odoo 18
+  passes for the same candidate. In CI it runs through manual dispatch with
+  `qualify19`.
+
+  ```sh
+  ./scripts/check.py odoo19 --artifacts /tmp/godoo-py-candidate --baseline18 /tmp/godoo-py-odoo18 --evidence /tmp/godoo-py-odoo19
+  ```
+
+Each Odoo tier creates its own containers, a random network, mapped ports and
+temporary Postgres data, and removes them on exit, even after a failure. If a
+run is interrupted, find what it left with `docker ps -a` and
+`docker network ls`, and remove only those resources. Never prune Docker
+globally or stop containers that another session owns. Odoo 17 is unsupported.
+
+## Release path
+
+[release.yml](../../../.github/workflows/release.yml) is manual. It reruns
+`test.yml` for a reviewed SHA on `main`. `scripts/gate.py` then checks the
+results and the wheel `manifest.json`, and the job publishes those exact wheels
+only when `publish` is selected. That release gate is the consumer of the
+manifest and proof artifacts that `check.py` writes. Version preparation
+(`prepare-version.yml`) is a separate reviewable change.
+
+## Maintain this path
+
+When a public interface changes, update the affected commands here, in
+`CONTRIBUTING.md` and in `scripts/check.py`. Keep failing assertions that
+protect real behaviour rather than relaxing them. Hosted branch protection and
+PyPI trusted publishing are configured outside this repository.

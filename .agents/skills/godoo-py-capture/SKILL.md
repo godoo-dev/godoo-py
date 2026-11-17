@@ -1,116 +1,120 @@
 ---
 name: godoo-py-capture
-description: Capture, triage, retrieve and reconcile godoo-py work in its GitHub issues, including incoming requirements, recovered findings and consequential delivery updates.
+description: Capture, triage, retrieve and update godoo-py work in its GitHub issues — requests, breakdowns, decisions, deferred observations and delivery updates — and route knowledge godoo-py does not own, including Odoo-server behaviour to Atlas intake. Documentation edits use godoo-py-docs.
 ---
 
-# Retain Python project work
+# Capture godoo-py work
 
-Work belongs in https://github.com/godoo-dev/godoo-py/issues. Confirm the selected
-checkout's `git remote get-url origin` and `gh repo view godoo-dev/godoo-py
---json nameWithOwner,isPrivate,url` before provider writes. Use explicit
-`--repo godoo-dev/godoo-py` throughout; an inherited tracker binding is not intake.
-Local category values live in ignored `.mafe-si.toml`; tracked instructions must
-remain usable without machine paths or HQ. Read AGENTS.md for authority.
+Work records live in the public
+[godoo-py issues](https://github.com/godoo-dev/godoo-py/issues). Pass
+`--repo godoo-dev/godoo-py` on every `gh` command. Private values, such as the
+local evidence root, live in the ignored `.mafe-si.toml` of the main checkout.
+Read them there and never copy them into the repository or an issue.
 
-## Choose the home
+Lasting knowledge that godoo-py owns goes in its docs through
+[godoo-py-docs](../godoo-py-docs/SKILL.md). Working notes go in `.scratch/`.
 
-Retain the actionable request, open decision, impact, uncertainty and next check
-in an issue early. Useful execution pieces can be a checklist; create linked
-issues only for independently useful outcomes, acceptance or distinct ownership.
-Preserve the original outcome when discovery changes the breakdown. Completing
-one piece does not complete the integrated outcome.
+## Decide whether to write
 
-Canonical API/target guidance belongs in README.md and docs/ through
-[godoo-py-docs](../godoo-py-docs/SKILL.md). Provisional research, designs and private
-evidence use owner-paths (or an explicit owner destination), outside source.
-Link public supporting material only when accessible to the issue's readers;
-keep essential qualified meaning self-contained if evidence is private or missing.
-Missing supporting storage must not suppress a supported work-only capture.
-When Marc or established practice selects a detailed issue discussion, keep its
-useful tradeoffs and sources there; do not force a duplicate document. Routine
-progress stays in the session. Use reporting-for-humans for the selected readers
-when available, otherwise write the problem/result, limits and next action plainly.
+Create an issue for an explicit request, an actionable follow-up, a blocker or
+an open decision. Update the existing issue when the outcome, scope, decision or
+next actor changes. Write nothing for routine progress, a passed check, a merge
+or a handback; the conversation or the PR is enough. A tiny settled task can
+skip an issue and go straight to a PR.
 
-## Find existing coverage and preserve source identity
+## Find existing coverage
 
-Open an explicit issue first, including relevant comments and linked current
-summaries:
+Open an issue that someone names, together with its comments:
 
 ```sh
-gh issue view NUMBER --repo godoo-dev/godoo-py --json number,title,body,state,stateReason,labels,comments,url,updatedAt
+gh issue view NUMBER --repo godoo-dev/godoo-py --comments
 ```
 
-Otherwise use `gh issue list --repo godoo-dev/godoo-py --state all --limit 100
---search 'TERMS' --json number,title,body,state,url,labels`. Search related terms
-and inspect likely matches, including closed records and linked PRs. If limited,
-paginate with `gh api --paginate 'repos/godoo-dev/godoo-py/issues?state=all&per_page=100'`
-and distinguish issues from PRs. A closed delivery is dated evidence, not an
-invitation to reopen it. Existing canonical coverage stays canonical.
-
-For imported intake, retain the complete deduplication tuple: repository
-`godoo-dev/godoo-py`, source namespace and immutable source reference. For private
-sources publish only `Source identity: sha256:<digest>`, where digest is SHA256 of
-UTF-8 `namespace + "\n" + source_reference`, without a trailing newline. Keep the
-original tuple and mapping in private owner evidence. Reuse that identity on a
-retry, including after an uncertain response; never blindly repeat a create.
-Search all states for the digest and read the matching body before mutation.
-GitHub provides no uniqueness constraint: recheck before creating, and stop on
-ambiguous or concurrent ownership rather than choosing a second canonical issue.
-Distinct corrections or independently tracked splits use distinct stable source
-references and link the original; preserve its closed history.
-
-Public titles, bodies, labels, comments, links and attachments must exclude private
-company/customer identities, supplier details, thread IDs, local paths and raw
-source keys. Sanitize before sending, including provider metadata. A SHA digest
-identifies the source; it does not make a raw private payload safe to publish.
-
-## Capture and triage
-
-Write a reviewed body to an external file, then:
+Otherwise search all states, including closed issues and linked PRs:
 
 ```sh
-gh issue create --repo godoo-dev/godoo-py --title 'Desired outcome' --body-file /absolute/body.md
-gh issue edit NUMBER --repo godoo-dev/godoo-py --body-file /absolute/body.md
+gh issue list --repo godoo-dev/godoo-py --state all --limit 100 --search 'TERMS'
 ```
 
-New incoming work is open with `Triage: untriaged` in the body, not an accepted
-execution commitment. Use body fields for `needs-info` (missing evidence and next
-actor), `deferred` (reason and revisit condition), or accepted work under actual
-owner direction. Do not invent labels, dates, priorities, assignees or schedules;
-use existing descriptive labels only when useful. Keep needs-info/deferred issues
-open. For supported closure, explain duplicate/superseded/withdrawn versus verified
-completion in the body, link canonical remaining coverage, then use `gh issue close
-NUMBER --repo godoo-dev/godoo-py --reason 'not planned'` or `--reason completed`
-according to actual disposition. Migration closure means tracking migrated, not
-problem fixed. Read back the result and state the remaining next actor.
+A same-outcome issue is a duplicate, so update it instead. A related issue gets
+a link. A closed delivery is dated history, not something to reopen.
 
-Keep historical recovered findings as re-triage leads until current evidence
-establishes each one. Separate observation, proposed solution, selected decision,
-source/test result, publication/runtime and consumer acceptance. Retain authority,
-attribution, dates and meaningful scope qualifications. A known supplier dependency
-stays qualified in the issue; report needed owner decisions to Marc here without
-contacting another project. Capture does not commission engineering or release
-holdings. No inbox, dispatch, notification, schedule or delegate follows capture.
+## Write a record
 
-## Reconcile a consequential handback
+Use reporting-for-humans to write, and run pre-post immediately before each
+command that posts tracker text. Compose the body once from what the reader needs:
+the outcome, why it matters, what is known and uncertain, and the next step. Link
+supporting material rather than copying it.
 
-Before handing back a changed result, blocker or next actor, reread the canonical
-issue and compose its whole current body afresh. Preserve useful context, actual
-acceptance, unresolved pieces and sources; remove superseded present-tense claims
-and resolved detours. Reconcile known contradictory linked active summaries,
-including a selected detailed discussion, under the same write authority. Keep
-dated proposals and closed delivery accounts as dated history; a later evaluation
-decision need not authorize production. A failure stays in the summary only while
-it explains a current limit or next action. Unchanged routine progress warrants
-no write. Comments are for substantive discussion explicitly in scope, never
-migration narration, receipts or agent messages.
+```sh
+gh issue create --repo godoo-dev/godoo-py --title 'Desired outcome' --body-file .scratch/issue.md
+gh issue edit NUMBER --repo godoo-dev/godoo-py --body-file .scratch/issue.md
+gh issue comment NUMBER --repo godoo-dev/godoo-py --body-file .scratch/comment.md
+```
 
-Read `updatedAt`/body again immediately before an edit; GitHub issue edits have no
-compare-and-swap guarantee. Preserve concurrent changes or stop overlapping writes.
-Read back every real result with the view command above, including labels, comments,
-source identity, privacy and links. On a lost response, reconcile canonical source
-coverage before retrying. Return the URL, created/updated/already-covered outcome,
-actual disposition, authority limits and next actor through the current invocation.
-For delivery corrections, amend the same open PR where appropriate; a post-merge
-operational fix still needs its normal source checks and separate operation authority.
-Linked remaining work survives either path. Read-only retrieval changes nothing.
+Read the record back only if a command reported an error. After an uncertain
+response, search before you retry so that you do not create a duplicate.
+
+This repository is public. Leave out customer and supplier identities, private
+thread IDs, local paths and raw private source keys. When imported intake needs
+a stable identity, publish only `Source identity: sha256:<digest>` and keep the
+mapping in private owner evidence. The digest is the SHA-256 of
+`namespace + "\n" + source_reference`.
+
+## Breakdowns, triage and lifecycle
+
+- **Requests:** new intake gets `Triage: untriaged` in the body. That records the
+  request but does not commit to doing it.
+- **Breakdowns:** use a checklist in the body for steps. Create linked issues or
+  sub-issues only for outcomes that someone can deliver or accept independently.
+  Keep the original outcome, because finishing one piece does not finish the
+  whole.
+- **States:** issues are open or closed, and there is no project board. Record
+  `needs-info` (what is missing and who supplies it) or `deferred` (why, and
+  when to revisit) in the body, and keep the issue open. Use existing labels only
+  when they help. Do not invent labels, priorities, assignees or dates.
+- **Closing:** state the reason in the body. Then run
+  `gh issue close NUMBER --repo godoo-dev/godoo-py --reason completed` or
+  `--reason 'not planned'`. Closing for duplicates, withdrawals or migration
+  needs the owner's direction or an evident duplicate.
+- **Dependencies:** GitHub supports native blocked-by links and sub-issues
+  through the REST API:
+
+  ```sh
+  ID=$(gh api repos/godoo-dev/godoo-py/issues/BLOCKER --jq .id)
+  gh api -X POST repos/godoo-dev/godoo-py/issues/NUMBER/dependencies/blocked_by -F issue_id="$ID"
+  gh api -X DELETE repos/godoo-dev/godoo-py/issues/NUMBER/dependencies/blocked_by/"$ID"
+  gh api -X POST repos/godoo-dev/godoo-py/issues/PARENT/sub_issues -F sub_issue_id="$CHILD_ID"
+  ```
+
+## Deferred observations
+
+When you notice something off-task, record it briefly in an issue, or add it to
+the matching existing issue: what you saw, where, and why it may matter. Then
+return to the current task. Historical findings stay leads until current
+evidence confirms them.
+
+## Knowledge godoo-py does not own
+
+Classify the claim before you retain it:
+
+| Claim | Owner | What to do from a godoo-py session |
+| --- | --- | --- |
+| How godoo-py code behaves, Python targets, how to work on godoo-py | godoo-py | Edit the docs through godoo-py-docs. Track remaining work here. |
+| What the Odoo server does by version, edition or module | Atlas | Send it to Atlas intake: give the owner a handoff with the claim, the Odoo version, edition and modules, how it was observed, and a reproduction. Once the fact ID exists, add the godoo-py reflection and its `atlas:` marker through godoo-py-docs. |
+| What an agent should do with an MCP tool | MCP repository | Hand off to that project. |
+| Another Godoo component's behaviour or work | That component | Hand off to that project. |
+| Synthesis or decisions across components | The owner's coordination docs | Hand off to the owner. |
+
+Hand-offs go through coordinate-projects as a proposal to the owner in the
+current conversation. Never write into another project's tracker or knowledge
+store from here. If godoo-py work waits on the hand-off, track that dependency
+in a godoo-py issue. Recording something does not authorize executing it.
+
+## Update after delivery
+
+When a PR changes an issue's outcome, blocker or next actor, re-read the issue
+and rewrite its body to describe the current state. Keep acceptance evidence,
+remaining pieces and sources, and drop claims that are no longer true. Use
+comments only for substantive discussion. For a correction, amend the open PR.
+Report the issue URL, what changed and who acts next.

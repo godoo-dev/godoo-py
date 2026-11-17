@@ -94,6 +94,24 @@ uv run ruff format --check .
 uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src
 ```
 
+`ruff check` enforces McCabe complexity (`C901`) at 10. Split a function that
+exceeds it rather than suppressing the rule; an exception needs the
+maintainer's approval and a reason at the suppression.
+
+## Editor and agent setup
+
+`pyright` is a development dependency for editor navigation only; mypy remains
+the type check. The project's Claude Code settings enable the official
+`pyright-lsp` plugin, which starts `pyright-langserver` from `PATH`, so start the
+editor or agent with the workspace environment active (for example
+`source .venv/bin/activate`). Agent working files go in the git-ignored
+`.scratch/` directory. Maintainer procedures for agents are in `.agents/skills/`.
+
+Dependabot (`.github/dependabot.yml`) updates the uv lock, pinned workflow actions
+and the seed-database Dockerfile. It does not update the uv and Python versions
+pinned in workflows and scripts or the Odoo and Postgres image tags in
+`godoo-testcontainers`; bump those by hand.
+
 Use checks relevant to the change. Documentation edits need link/import checks and
 `git diff --check`; they do not require a Docker test campaign.
 

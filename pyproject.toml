@@ -11,6 +11,7 @@ dev-dependencies = [
     "mkdocstrings[python]>=0.27",
     "python-semantic-release>=9",
     "typer>=0.26.5",
+    "pyright[nodejs]>=1.1.400",
 ]
 
 [tool.uv.workspace]

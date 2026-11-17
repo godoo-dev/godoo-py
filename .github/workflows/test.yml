@@ -20,9 +20,11 @@ on:
 permissions:
   contents: read
 
+# Only a newer push to the same PR cancels a run; main, manual and release runs
+# (workflow_call) each get their own group.
 concurrency:
-  group: test-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: test-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
