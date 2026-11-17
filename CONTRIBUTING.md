@@ -107,10 +107,10 @@ editor or agent with the workspace environment active (for example
 `source .venv/bin/activate`). Agent working files go in the git-ignored
 `.scratch/` directory. Maintainer procedures for agents are in `.agents/skills/`.
 
-Dependabot (`.github/dependabot.yml`) updates the uv lock, pinned workflow actions
-and the seed-database Dockerfile. It does not update the uv and Python versions
-pinned in workflows and scripts or the Odoo and Postgres image tags in
-`godoo-testcontainers`; bump those by hand.
+Dependabot (`.github/dependabot.yml`) updates the uv lock and pinned workflow
+actions. It does not update the uv and Python versions pinned in workflows and
+scripts, or the Odoo and Postgres image tags in `godoo-testcontainers` and the
+seed-database build; bump those by hand.
 
 Use checks relevant to the change. Documentation edits need link/import checks and
 `git diff --check`; they do not require a Docker test campaign.

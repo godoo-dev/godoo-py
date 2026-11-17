@@ -5,8 +5,8 @@ description: Check a godoo-py change — the offline check command, the installe
 
 # Verify godoo-py
 
-Work in the selected godoo-py checkout with uv 0.12.5 and Python 3.14.8, which
-the scripts pin. Install the workspace once:
+Work in the selected godoo-py checkout. The workflows pin uv 0.12.5 and the
+scripts pin Python 3.14.8. Install the workspace once:
 
 ```sh
 uv sync --frozen --all-packages --all-extras
@@ -36,8 +36,9 @@ uv run --frozen pytest packages/ tests/ --import-mode=importlib -m "not integrat
 CI ([test.yml](../../../.github/workflows/test.yml), GitHub-hosted
 `ubuntu-latest`) runs `offline`, `package` and `odoo18` on every PR to `main`
 and every push to `main`. The `required` job requires all three. A newer push to
-the same PR cancels the older run. Do not repeat the full check locally when the
-PR's CI will run it.
+the same PR cancels the older run. Run the offline check before pushing, but
+leave the `package` and Odoo tiers to the PR's CI unless the change needs them
+earlier.
 
 ## Complexity
 

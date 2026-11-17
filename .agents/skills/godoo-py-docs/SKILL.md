@@ -49,7 +49,8 @@ reader.
 ## Atlas markers
 
 Text that depends on Odoo server behaviour that can change between versions
-names the Atlas fact it relies on:
+names the Atlas fact it relies on. The ID below is only an example of the
+form:
 
 - Docstring: `See atlas:base/create-record-basic.`
 - Markdown: `<!-- atlas: base/create-record-basic -->`
