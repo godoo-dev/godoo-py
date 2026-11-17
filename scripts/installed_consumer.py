@@ -18,7 +18,28 @@ from pathlib import Path
 
 
 def main() -> None:
-    manifest = json.loads(Path(sys.argv[1]).read_text())
+    manifest_path = Path(sys.argv[1])
+    manifest = json.loads(manifest_path.read_text())
+    origins = _check_origins()
+    _check_wheels(manifest, manifest_path.parent)
+    _check_meta()
+    _check_public_api()
+    print(
+        json.dumps(
+            {
+                "origins": origins,
+                "public_api": (
+                    "client search_read + dynamic property discovery/read/bind/patch + generated model round trip"
+                ),
+                "meta": "metadata-only; no dependencies",
+                "live_odoo": False,
+            },
+            indent=2,
+        )
+    )
+
+
+def _check_origins() -> dict[str, str]:
     origins = {}
     for namespace in ("client", "introspection", "testcontainers"):
         module = importlib.import_module(f"godoo.{namespace}")
@@ -26,82 +47,35 @@ def main() -> None:
         assert location.is_relative_to(Path(sys.prefix).resolve()), location
         assert (location.parent / "py.typed").is_file()
         origins[namespace] = str(location)
+    return origins
+
+
+def _check_wheels(manifest: dict, artifacts: Path) -> None:
     for wheel in manifest["wheels"]:
         distribution = metadata.distribution(wheel["name"])
         assert distribution.version == wheel["version"]
         direct = json.loads(distribution.read_text("direct_url.json"))
         assert direct.get("dir_info", {}).get("editable") is not True
-        archive = Path(sys.argv[1]).parent / wheel["filename"]
+        archive = artifacts / wheel["filename"]
         assert hashlib.sha256(archive.read_bytes()).hexdigest() == wheel["sha256"]
         with zipfile.ZipFile(archive) as z:
             for name in z.namelist():
                 if not name.endswith(("/", ".dist-info/RECORD")):
                     assert distribution.locate_file(name).read_bytes() == z.read(name), name
+
+
+def _check_meta() -> None:
     meta = metadata.distribution("godoo")
     assert not meta.requires
     assert all(".dist-info/" in str(f) for f in meta.files)
 
+
+def _check_public_api() -> None:
     from godoo.client import OdooClient, OdooClientConfig
-    from godoo.client.rpc.types import OdooSessionInfo
     from godoo.client.services.properties import PropertyBinding, PropertyRecord
 
     assert "pydantic" not in sys.modules, "Dynamic properties must not import optional Pydantic"
     from godoo.introspection import CodeGenerator, FieldSchema, Introspector, ModelSchema
-
-    class Transport:
-        """In-process protocol substitute; real JSON-RPC/Odoo is a separate proof."""
-
-        def __init__(self):
-            self.session = None
-            self.calls = []
-            self.property_value = 2
-
-        async def authenticate(self, username, password):
-            self.session = OdooSessionInfo(uid=7, session_id="disposable", db="fixture")
-            return self.session
-
-        async def call(self, model, method, args, kwargs):
-            self.calls.append((model, method, args, kwargs))
-            if model == "res.partner" and method == "search_read":
-                return [{"id": 42, "name": "Wheel consumer"}]
-            if model == "project.task" and method == "fields_get":
-                return {
-                    "task_properties": {
-                        "type": "properties",
-                        "definition_record": "project_id",
-                        "definition_record_field": "task_properties_definition",
-                    },
-                    "project_id": {"type": "many2one", "relation": "project.project"},
-                }
-            if model == "project.project" and method == "fields_get":
-                return {"task_properties_definition": {"type": "properties_definition"}}
-            definition = {"name": "effort_id", "string": "Effort", "type": "integer"}
-            if model == "project.project" and method == "read":
-                return [{"id": 9, "task_properties_definition": [definition]}]
-            if model == "project.task" and method == "read":
-                return [
-                    {
-                        "id": 5,
-                        "project_id": [9, "Project"],
-                        "task_properties": [{**definition, "value": self.property_value}],
-                    }
-                ]
-            if model == "project.task" and method == "write":
-                assert args == [[5], {"task_properties": {"effort_id": 0}}]
-                self.property_value = args[1]["task_properties"]["effort_id"]
-                return True
-            if model == "project.task" and method == "create":
-                batch = isinstance(args[0], list)
-                rows = args[0] if batch else [args[0]]
-                assert rows == [{"name": "Created", "project_id": 9, "task_properties": {"effort_id": 0}}]
-                return [6] if batch else 6
-            raise AssertionError((model, method, args, kwargs))
-
-        def logout(self):
-            self.session = None
-
-        async def aclose(self):
-            pass
 
     async def behavior():
         transport = Transport()
@@ -154,19 +128,64 @@ def main() -> None:
             await client.aclose()
 
     asyncio.run(behavior())
-    print(
-        json.dumps(
-            {
-                "origins": origins,
-                "public_api": (
-                    "client search_read + dynamic property discovery/read/bind/patch + generated model round trip"
-                ),
-                "meta": "metadata-only; no dependencies",
-                "live_odoo": False,
-            },
-            indent=2,
-        )
-    )
+
+
+class Transport:
+    """In-process protocol substitute; real JSON-RPC/Odoo is a separate proof."""
+
+    def __init__(self):
+        self.session = None
+        self.calls = []
+        self.property_value = 2
+
+    async def authenticate(self, username, password):
+        from godoo.client.rpc.types import OdooSessionInfo
+
+        self.session = OdooSessionInfo(uid=7, session_id="disposable", db="fixture")
+        return self.session
+
+    async def call(self, model, method, args, kwargs):
+        self.calls.append((model, method, args, kwargs))
+        if model == "res.partner" and method == "search_read":
+            return [{"id": 42, "name": "Wheel consumer"}]
+        if model == "project.task" and method == "fields_get":
+            return {
+                "task_properties": {
+                    "type": "properties",
+                    "definition_record": "project_id",
+                    "definition_record_field": "task_properties_definition",
+                },
+                "project_id": {"type": "many2one", "relation": "project.project"},
+            }
+        if model == "project.project" and method == "fields_get":
+            return {"task_properties_definition": {"type": "properties_definition"}}
+        definition = {"name": "effort_id", "string": "Effort", "type": "integer"}
+        if model == "project.project" and method == "read":
+            return [{"id": 9, "task_properties_definition": [definition]}]
+        if model == "project.task" and method == "read":
+            return [
+                {
+                    "id": 5,
+                    "project_id": [9, "Project"],
+                    "task_properties": [{**definition, "value": self.property_value}],
+                }
+            ]
+        if model == "project.task" and method == "write":
+            assert args == [[5], {"task_properties": {"effort_id": 0}}]
+            self.property_value = args[1]["task_properties"]["effort_id"]
+            return True
+        if model == "project.task" and method == "create":
+            batch = isinstance(args[0], list)
+            rows = args[0] if batch else [args[0]]
+            assert rows == [{"name": "Created", "project_id": 9, "task_properties": {"effort_id": 0}}]
+            return [6] if batch else 6
+        raise AssertionError((model, method, args, kwargs))
+
+    def logout(self):
+        self.session = None
+
+    async def aclose(self):
+        pass
 
 
 if __name__ == "__main__":

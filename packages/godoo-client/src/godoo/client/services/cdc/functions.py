@@ -125,6 +125,32 @@ async def get_history(
     return events
 
 
+async def _messages_for_records(client: OdooClient, model: str, res_ids: list[int]) -> list[dict[str, Any]]:
+    msg_domain: list[Any] = [
+        ("model", "=", model),
+        ("res_id", "in", res_ids),
+    ]
+    return await client.search_read("mail.message", msg_domain, fields=["id", "date", "author_id"])
+
+
+async def _messages_for_rows(client: OdooClient, tracking_rows: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    all_msg_ids = list(
+        {
+            r["mail_message_id"][0] if isinstance(r.get("mail_message_id"), list) else r.get("mail_message_id")
+            for r in tracking_rows
+            if r.get("mail_message_id")
+        }
+    )
+    if not all_msg_ids:
+        return {}
+    msgs = await client.read(
+        "mail.message",
+        [mid for mid in all_msg_ids if isinstance(mid, int)],
+        fields=["id", "date", "author_id", "model"],
+    )
+    return {m["id"]: m for m in msgs}
+
+
 async def get_feed(
     client: OdooClient,
     options: GetFeedOptions,
@@ -137,24 +163,13 @@ async def get_feed(
         domain: list[Any] = [("id", ">", cursor)]
 
         # If we have specific res_ids, find messages first
+        msg_map: dict[int, dict[str, Any]] = {}
         if options.res_ids is not None:
-            msg_domain: list[Any] = [
-                ("model", "=", options.model),
-                ("res_id", "in", options.res_ids),
-            ]
-            messages = await client.search_read(
-                "mail.message",
-                msg_domain,
-                fields=["id", "date", "author_id"],
-            )
+            messages = await _messages_for_records(client, options.model, options.res_ids)
             if not messages:
                 return
-            msg_ids = [m["id"] for m in messages]
-            domain.append(("mail_message_id", "in", msg_ids))
+            domain.append(("mail_message_id", "in", [m["id"] for m in messages]))
             msg_map = {m["id"]: m for m in messages}
-        else:
-            # Broader: get all tracking values above cursor
-            msg_map = {}
 
         if options.field_names:
             domain.append(("field", "in", options.field_names))
@@ -171,20 +186,7 @@ async def get_feed(
 
         # If we don't have a msg_map yet, build one
         if not msg_map:
-            all_msg_ids = list(
-                {
-                    r["mail_message_id"][0] if isinstance(r.get("mail_message_id"), list) else r.get("mail_message_id")
-                    for r in tracking_rows
-                    if r.get("mail_message_id")
-                }
-            )
-            if all_msg_ids:
-                msgs = await client.read(
-                    "mail.message",
-                    [mid for mid in all_msg_ids if isinstance(mid, int)],
-                    fields=["id", "date", "author_id", "model"],
-                )
-                msg_map = {m["id"]: m for m in msgs}
+            msg_map = await _messages_for_rows(client, tracking_rows)
 
         # Filter by model if needed (when no res_ids constraint)
         field_names = list({r["field"] for r in tracking_rows if r.get("field")})

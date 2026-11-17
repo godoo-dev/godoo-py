@@ -157,26 +157,15 @@ class Introspector:
         Raises OdooValidationError for empty names list.
         Raises OdooValidationError if any name is an empty string.
         """
-        # T-02-01: validate names non-empty
-        if not names:
-            raise OdooValidationError("get_schemas() called with empty names list")
-        # T-02-02: validate each name is a non-empty string
-        for n in names:
-            if not isinstance(n, str) or not n:
-                raise OdooValidationError(f"Invalid model name: {n!r} — must be a non-empty string")
+        _validate_names(names)
 
-        # Check cache first (unless bypassing)
+        # Check cache first (unless bypassing). On a partial hit only the missing
+        # models are fetched and returned.
         if not bypass_cache:
-            cached_result: dict[str, ModelSchema] = {}
-            missing: list[str] = []
-            for n in names:
-                hit = self._cache.get(n)
-                if hit is not None:
-                    cached_result[n] = hit
-                else:
-                    missing.append(n)
+            hits = {n: self._cache.get(n) for n in names}
+            missing = [n for n in names if hits[n] is None]
             if not missing:
-                return cached_result
+                return {n: hit for n, hit in hits.items() if hit is not None}
             names = missing
 
         # ------------------------------------------------------------------
@@ -202,41 +191,12 @@ class Introspector:
         # ------------------------------------------------------------------
         # RPC 3 (conditional): selection values for all selection fields
         # ------------------------------------------------------------------
-        selection_field_ids: list[int] = [
-            r["id"] for r in field_records if r.get("ttype") == "selection" and r.get("selection_ids")
-        ]
-        selection_map: dict[int, list[tuple[str, str]]] = {}
-        if selection_field_ids:
-            sel_records: list[dict[str, Any]] = await self._client.search_read(
-                "ir.model.fields.selection",
-                [("field_id", "in", selection_field_ids)],
-                fields=["field_id", "value", "name", "sequence"],
-                order="sequence",
-            )
-            for sel in sel_records:
-                raw_fid: Any = sel.get("field_id")
-                fid = int(raw_fid[0]) if isinstance(raw_fid, (list, tuple)) else int(raw_fid)
-                value = sel.get("value", "")
-                label = sel.get("name", "")
-                selection_map.setdefault(fid, []).append((str(value), str(label)))
+        selection_map = await self._selection_map(field_records)
 
         # ------------------------------------------------------------------
         # Build FieldSchema instances (defensive: use .get() with defaults)
         # ------------------------------------------------------------------
-        # Group field records by model name
-        fields_by_model: dict[str, list[dict[str, Any]]] = {}
-        for fr in field_records:
-            model_name = fr.get("model") or ""
-            if not model_name:
-                # Older Odoo may not return model — fall back to matching against names
-                # Cannot reliably assign; skip
-                continue
-            fields_by_model.setdefault(model_name, []).append(fr)
-
-        # If "model" column is not returned by search_read, try assigning by domain
-        # (edge case: if only one model was queried and model key is missing)
-        if not any(fields_by_model) and len(names) == 1:
-            fields_by_model[names[0]] = field_records
+        fields_by_model = _group_fields(field_records, names)
 
         # ------------------------------------------------------------------
         # Build ModelSchema instances and warm cache
@@ -252,54 +212,9 @@ class Introspector:
 
             field_schemas: dict[str, FieldSchema] = {}
             for fr in fields_by_model.get(model_name, []):
-                field_name = str(fr.get("name") or "")
-                if not field_name:
-                    continue
-                field_id = int(fr.get("id", 0))
-                ttype = str(fr.get("ttype") or "char")
-
-                # Pitfall 3: "copied" vs "copy" column name
-                copy_val = fr.get("copied")
-                if copy_val is None:
-                    copy_val = fr.get("copy", True)
-
-                # depends: comma-separated Char field
-                depends = _str_to_tuple(fr.get("depends"))
-                # modules: comma-separated Char field
-                modules = _str_to_tuple(fr.get("modules"))
-                # digits: may be string, list, or None
-                digits = _parse_digits(fr.get("digits") or fr.get("size"))
-                size = _coerce_int_or_none(fr.get("size"))
-                # relation: False in Odoo means None
-                relation = _coerce_str_or_none(fr.get("relation"))
-                relation_field = _coerce_str_or_none(fr.get("relation_field"))
-                compute = _coerce_str_or_none(fr.get("compute"))
-                on_delete = _coerce_str_or_none(fr.get("on_delete"))
-
-                # Selection values
-                selection: list[tuple[str, str]] = selection_map.get(field_id, [])
-
-                field_schemas[field_name] = FieldSchema(
-                    name=field_name,
-                    ttype=ttype,
-                    field_description=str(fr.get("field_description") or ""),
-                    relation=relation,
-                    relation_field=relation_field,
-                    required=bool(fr.get("required", False)),
-                    readonly=bool(fr.get("readonly", False)),
-                    store=bool(fr.get("store", True)),
-                    index=bool(fr.get("index", False)),
-                    copy=bool(copy_val) if copy_val is not None else True,
-                    translate=bool(fr.get("translate", False)),
-                    help=str(fr.get("help") or ""),
-                    compute=compute,
-                    depends=depends,
-                    modules=modules,
-                    on_delete=on_delete,
-                    size=size,
-                    digits=digits,
-                    selection=selection,
-                )
+                field_schema = _field_schema(fr, selection_map)
+                if field_schema is not None:
+                    field_schemas[field_schema.name] = field_schema
 
             schema = ModelSchema(
                 name=model_name,
@@ -311,3 +226,91 @@ class Introspector:
             result[model_name] = schema
 
         return result
+
+    async def _selection_map(self, field_records: list[dict[str, Any]]) -> dict[int, list[tuple[str, str]]]:
+        selection_field_ids: list[int] = [
+            r["id"] for r in field_records if r.get("ttype") == "selection" and r.get("selection_ids")
+        ]
+        selection_map: dict[int, list[tuple[str, str]]] = {}
+        if not selection_field_ids:
+            return selection_map
+        sel_records: list[dict[str, Any]] = await self._client.search_read(
+            "ir.model.fields.selection",
+            [("field_id", "in", selection_field_ids)],
+            fields=["field_id", "value", "name", "sequence"],
+            order="sequence",
+        )
+        for sel in sel_records:
+            raw_fid: Any = sel.get("field_id")
+            fid = int(raw_fid[0]) if isinstance(raw_fid, (list, tuple)) else int(raw_fid)
+            value = sel.get("value", "")
+            label = sel.get("name", "")
+            selection_map.setdefault(fid, []).append((str(value), str(label)))
+        return selection_map
+
+
+def _validate_names(names: list[str]) -> None:
+    # T-02-01: validate names non-empty
+    if not names:
+        raise OdooValidationError("get_schemas() called with empty names list")
+    # T-02-02: validate each name is a non-empty string
+    for n in names:
+        if not isinstance(n, str) or not n:
+            raise OdooValidationError(f"Invalid model name: {n!r} — must be a non-empty string")
+
+
+def _group_fields(field_records: list[dict[str, Any]], names: list[str]) -> dict[str, list[dict[str, Any]]]:
+    """Group field records by model name."""
+    fields_by_model: dict[str, list[dict[str, Any]]] = {}
+    for fr in field_records:
+        model_name = fr.get("model") or ""
+        if not model_name:
+            # Older Odoo may not return model — fall back to matching against names
+            # Cannot reliably assign; skip
+            continue
+        fields_by_model.setdefault(model_name, []).append(fr)
+
+    # If "model" column is not returned by search_read, try assigning by domain
+    # (edge case: if only one model was queried and model key is missing)
+    if not any(fields_by_model) and len(names) == 1:
+        fields_by_model[names[0]] = field_records
+    return fields_by_model
+
+
+def _field_schema(fr: dict[str, Any], selection_map: dict[int, list[tuple[str, str]]]) -> FieldSchema | None:
+    """Build one FieldSchema (defensive: use .get() with defaults); None for a nameless record."""
+    field_name = str(fr.get("name") or "")
+    if not field_name:
+        return None
+    field_id = int(fr.get("id", 0))
+    ttype = str(fr.get("ttype") or "char")
+
+    # Pitfall 3: "copied" vs "copy" column name
+    copy_val = fr.get("copied")
+    if copy_val is None:
+        copy_val = fr.get("copy", True)
+
+    return FieldSchema(
+        name=field_name,
+        ttype=ttype,
+        field_description=str(fr.get("field_description") or ""),
+        # relation: False in Odoo means None
+        relation=_coerce_str_or_none(fr.get("relation")),
+        relation_field=_coerce_str_or_none(fr.get("relation_field")),
+        required=bool(fr.get("required", False)),
+        readonly=bool(fr.get("readonly", False)),
+        store=bool(fr.get("store", True)),
+        index=bool(fr.get("index", False)),
+        copy=bool(copy_val) if copy_val is not None else True,
+        translate=bool(fr.get("translate", False)),
+        help=str(fr.get("help") or ""),
+        compute=_coerce_str_or_none(fr.get("compute")),
+        # depends/modules: comma-separated Char fields
+        depends=_str_to_tuple(fr.get("depends")),
+        modules=_str_to_tuple(fr.get("modules")),
+        on_delete=_coerce_str_or_none(fr.get("on_delete")),
+        size=_coerce_int_or_none(fr.get("size")),
+        # digits: may be string, list, or None
+        digits=_parse_digits(fr.get("digits") or fr.get("size")),
+        selection=selection_map.get(field_id, []),
+    )

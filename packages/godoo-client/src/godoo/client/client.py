@@ -281,76 +281,80 @@ class OdooClient:
         if isinstance(model, list) and not model:
             return []
         # Ref / list[Ref] dispatch — D-01, D-02, D-03
-        if isinstance(model, Ref) or (isinstance(model, list) and model and isinstance(model[0], Ref)):
-            # Collect refs, validate all up front (D-03)
-            refs: list[Ref[Any]] = [model] if isinstance(model, Ref) else list(model)
-            # A resolvable Ref must carry an actual Odoo-typed target model. A bare/untyped
-            # field yields _target_cls=None, and Ref[object] yields _target_cls=object — both
-            # lack __odoo_model__ and would otherwise route the class object into the str RPC
-            # path as a model name (CR-02). Reject them up front with a typed error.
-            bad = [r for r in refs if not hasattr(r._target_cls, "__odoo_model__")]
-            if bad:
-                raise OdooValidationError(
-                    f"Cannot resolve Ref(id={bad[0].id}): target {bad[0]._target_cls!r} "
-                    "is not a typed Odoo model (came from an untyped or Ref[object] field)."
-                )
-            # Group by target class, preserving insertion order within each group (D-02)
-            groups: dict[type[Any], list[int]] = defaultdict(list)
-            for r in refs:
-                assert r._target_cls is not None
-                if r.id not in groups[r._target_cls]:
-                    groups[r._target_cls].append(r.id)
-            # Fire one read() per distinct target model (batched)
-            fetched: dict[tuple[type[Any], int], Any] = {}
-            for target_cls, target_ids in groups.items():
-                results = await self.read(target_cls, target_ids)
-                for record in results:
-                    fetched[(target_cls, record.id)] = record
-            # Stitch back in input order. Odoo silently drops ids the user cannot access
-            # (ACL) or that were deleted between snapshot and resolve, so a requested id may
-            # be absent from `fetched` — surface that as a typed error, not a bare KeyError (CR-01).
-            ordered: list[Any] = []
-            for r in refs:
-                assert r._target_cls is not None  # narrowed by the __odoo_model__ guard above
-                record = fetched.get((r._target_cls, r.id))
-                if record is None:
-                    raise OdooMissingError(
-                        f"Ref(id={r.id}) on {r._target_cls.__name__} could not be resolved "
-                        "— the record was not returned by Odoo (deleted or access-restricted)."
-                    )
-                ordered.append(record)
-            if isinstance(model, Ref):
-                return ordered[0]
-            return ordered
+        if isinstance(model, Ref):
+            return (await self._resolve_refs([model]))[0]
+        if isinstance(model, list) and isinstance(model[0], Ref):
+            return await self._resolve_refs(model)
 
         id_list = [ids] if isinstance(ids, int) else (ids or [])
 
         # Typed dispatch — duck-typed guard; never imports pydantic at module level (D-04)
         if hasattr(model, "__odoo_model__"):
-            try:
-                from godoo.client._pydantic_transform import derive_partial_model
-            except ModuleNotFoundError as exc:
-                raise OdooValidationError(
-                    "Typed reads require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
-                ) from exc
-            typed_model = cast("type[Any]", model)
-            odoo_name: str = typed_model.__odoo_model__
-            if fields is not None:
-                # read() always returns id from Odoo regardless of fields — no injection needed.
-                kwargs["fields"] = fields
-                try:
-                    target: type[Any] = derive_partial_model(typed_model, fields)
-                except ValueError as exc:
-                    raise OdooValidationError(str(exc)) from exc
-            else:
-                target = typed_model
-            raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
-            return [_validate_typed(target, r) for r in raw]
+            return await self._read_typed(cast("type[Any]", model), id_list, fields, kwargs)
 
         # str path — UNCHANGED from v1.0 (TYPED-04 regression invariant)
         if fields is not None:
             kwargs["fields"] = fields
         return cast("list[dict[str, Any]]", await self.call(model, "read", [id_list], kwargs))
+
+    async def _resolve_refs(self, refs: list[Ref[Any]]) -> list[Any]:
+        # A resolvable Ref must carry an actual Odoo-typed target model. A bare/untyped
+        # field yields _target_cls=None, and Ref[object] yields _target_cls=object — both
+        # lack __odoo_model__ and would otherwise route the class object into the str RPC
+        # path as a model name (CR-02). Reject them up front with a typed error (D-03).
+        bad = [r for r in refs if not hasattr(r._target_cls, "__odoo_model__")]
+        if bad:
+            raise OdooValidationError(
+                f"Cannot resolve Ref(id={bad[0].id}): target {bad[0]._target_cls!r} "
+                "is not a typed Odoo model (came from an untyped or Ref[object] field)."
+            )
+        # Group by target class, preserving insertion order within each group (D-02)
+        groups: dict[type[Any], list[int]] = defaultdict(list)
+        for r in refs:
+            assert r._target_cls is not None
+            if r.id not in groups[r._target_cls]:
+                groups[r._target_cls].append(r.id)
+        # Fire one read() per distinct target model (batched)
+        fetched: dict[tuple[type[Any], int], Any] = {}
+        for target_cls, target_ids in groups.items():
+            results = await self.read(target_cls, target_ids)
+            for record in results:
+                fetched[(target_cls, record.id)] = record
+        # Stitch back in input order. Odoo silently drops ids the user cannot access
+        # (ACL) or that were deleted between snapshot and resolve, so a requested id may
+        # be absent from `fetched` — surface that as a typed error, not a bare KeyError (CR-01).
+        ordered: list[Any] = []
+        for r in refs:
+            assert r._target_cls is not None  # narrowed by the __odoo_model__ guard above
+            record = fetched.get((r._target_cls, r.id))
+            if record is None:
+                raise OdooMissingError(
+                    f"Ref(id={r.id}) on {r._target_cls.__name__} could not be resolved "
+                    "— the record was not returned by Odoo (deleted or access-restricted)."
+                )
+            ordered.append(record)
+        return ordered
+
+    async def _read_typed(
+        self, typed_model: type[Any], id_list: list[int], fields: list[str] | None, kwargs: dict[str, Any]
+    ) -> list[Any]:
+        try:
+            from godoo.client._pydantic_transform import derive_partial_model
+        except ModuleNotFoundError as exc:
+            raise OdooValidationError(
+                "Typed reads require 'pydantic'. Install with: pip install 'godoo-client[typed]'"
+            ) from exc
+        odoo_name: str = typed_model.__odoo_model__
+        target: type[Any] = typed_model
+        if fields is not None:
+            # read() always returns id from Odoo regardless of fields — no injection needed.
+            kwargs["fields"] = fields
+            try:
+                target = derive_partial_model(typed_model, fields)
+            except ValueError as exc:
+                raise OdooValidationError(str(exc)) from exc
+        raw = cast("list[dict[str, Any]]", await self.call(odoo_name, "read", [id_list], kwargs))
+        return [_validate_typed(target, r) for r in raw]
 
     @overload
     async def search_read(
