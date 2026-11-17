@@ -102,38 +102,45 @@ class Transport:
         assert self.session is not None
         self.calls.append(deepcopy((model, method, args, kwargs)))
         if method == "fields_get":
-            assert args == []
-            if model == MODEL:
-                return deepcopy(self.metadata)
-            assert model == PARENT
-            return {DEFINITION_FIELD: {"type": "properties_definition"}}
+            return self._fields_get(model, args)
         if method == "read" and model == PARENT:
             return [{"id": rid, DEFINITION_FIELD: deepcopy(self.definitions)} for rid in args[0]]
         if method == "read" and model == MODEL:
-            if self.read_error is not None:
-                raise self.read_error
-            rows = []
-            # Deliberately do not preserve request order: public code must restore it.
-            for rid in sorted(args[0]):
-                if rid in self.omitted:
-                    continue
-                values = {**deepcopy(VALUES), **deepcopy(self.values.get(rid, {}))}
-                raw = [{**deepcopy(d), "value": values.get(d["name"])} for d in self.definitions]
-                row = {
-                    "id": rid,
-                    "name": f"Task {rid}",
-                    "project_id": [self.parents[rid], "Project"] if self.parents[rid] else False,
-                    FIELD: deepcopy(self.raw.get(rid, raw)),
-                }
-                fields = kwargs.get("fields")
-                rows.append(row if fields is None else {k: v for k, v in row.items() if k == "id" or k in fields})
-            return rows
+            return self._read(args[0], kwargs.get("fields"))
         if (model, method) == (MODEL, "create"):
             if self.create_hook is not None:
                 return await self.create_hook()
             return list(range(10, 10 + len(args[0]))) if isinstance(args[0], list) else 10
         assert (model, method) == (MODEL, "write"), (model, method)
-        ids, values = args
+        return await self._write(*args)
+
+    def _fields_get(self, model, args):
+        assert args == []
+        if model == MODEL:
+            return deepcopy(self.metadata)
+        assert model == PARENT
+        return {DEFINITION_FIELD: {"type": "properties_definition"}}
+
+    def _read(self, ids, fields):
+        if self.read_error is not None:
+            raise self.read_error
+        rows = []
+        # Deliberately do not preserve request order: public code must restore it.
+        for rid in sorted(ids):
+            if rid in self.omitted:
+                continue
+            values = {**deepcopy(VALUES), **deepcopy(self.values.get(rid, {}))}
+            raw = [{**deepcopy(d), "value": values.get(d["name"])} for d in self.definitions]
+            row = {
+                "id": rid,
+                "name": f"Task {rid}",
+                "project_id": [self.parents[rid], "Project"] if self.parents[rid] else False,
+                FIELD: deepcopy(self.raw.get(rid, raw)),
+            }
+            rows.append(row if fields is None else {k: v for k, v in row.items() if k == "id" or k in fields})
+        return rows
+
+    async def _write(self, ids, values):
         assert len(ids) == 1 and set(values) == {FIELD}
         assert isinstance(values[FIELD], dict), "Properties writes must be value-only dictionaries"
         if self.write_hook is not None:

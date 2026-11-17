@@ -32,3 +32,6 @@ site/
 
 # Compiled ARM templates (generated from the .bicep sources, which are tracked)
 spikes/08-pyodide/infra/*.json
+
+# Agent working files
+.scratch/

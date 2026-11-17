@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = "==3.14.8"
+# requires-python = ">=3.14"
 # dependencies = []
 # ///
 """Installed-wheel integration observer; exact owned resource tracking and cleanup."""

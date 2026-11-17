@@ -203,62 +203,50 @@ class OdooBaseModel(BaseModel):
         out: dict[str, Any] = {}
         for name, value in data.items():
             field_info = cls.model_fields.get(name)
-            if field_info is None:
-                out[name] = value
-                continue
-            annotation = field_info.annotation
-
-            # Finding #1: list-origin check — False for any list-annotated field
-            # (bare list[T] or list[T] | None) maps to [] BEFORE the generic False->None rule.
-            # This also handles x2many Odoo fields that return False for empty sets.
-            _origin = get_origin(annotation)
-            if _origin is not list:
-                # Handle Optional[list[T]] / Union types — scan args for a list origin
-                for _arg in get_args(annotation):
-                    if get_origin(_arg) is list:
-                        _origin = list
-                        break
-            if value is False and _origin is list:
-                out[name] = []
-                continue
-
-            # D-02: preserve False for bool-annotated fields (bare bool AND bool | None)
-            if value is False and not _annotation_is(annotation, bool):
-                out[name] = None
-                continue
-
-            # m2o tuple [id, "Name"] or [id, False] → Ref(id, name)
-            # Finding #3: accept False as value[1] for restricted display names
-            if (
-                isinstance(value, list)
-                and len(value) == 2
-                and isinstance(value[0], int)
-                and (isinstance(value[1], str) or value[1] is False)
-                and _annotation_mentions_ref(annotation)
-            ):
-                out[name] = Ref(
-                    id=value[0],
-                    name=None if value[1] is False else value[1],
-                    _target_cls=_ref_target_class(annotation),
-                )
-                continue
-
-            # ISO datetime BEFORE date (datetime is a subclass of date — order matters)
-            if isinstance(value, str) and _annotation_is(annotation, datetime) and _looks_iso_datetime(value):
-                out[name] = datetime.fromisoformat(value)
-                continue
-
-            if (
-                isinstance(value, str)
-                and _annotation_is(annotation, date)
-                and not _annotation_is(annotation, datetime)
-                and _looks_iso_date(value)
-            ):
-                out[name] = date.fromisoformat(value)
-                continue
-
-            out[name] = value
+            out[name] = value if field_info is None else _wire_value(value, field_info.annotation)
         return out
+
+
+def _annotation_is_list(annotation: Any) -> bool:
+    # Finding #1: list-origin check covers bare list[T] and Optional[list[T]] / Union types.
+    # This also handles x2many Odoo fields that return False for empty sets.
+    return get_origin(annotation) is list or any(get_origin(arg) is list for arg in get_args(annotation))
+
+
+def _is_m2o_pair(value: Any) -> bool:
+    # Finding #3: accept False as value[1] for restricted display names
+    return (
+        isinstance(value, list)
+        and len(value) == 2
+        and isinstance(value[0], int)
+        and (isinstance(value[1], str) or value[1] is False)
+    )
+
+
+def _wire_value(value: Any, annotation: Any) -> Any:
+    """Transform one Odoo wire value for a field with ``annotation``."""
+    if value is False:
+        # False for list-annotated fields maps to [] BEFORE the generic False->None rule.
+        if _annotation_is_list(annotation):
+            return []
+        # D-02: preserve False for bool-annotated fields (bare bool AND bool | None)
+        return False if _annotation_is(annotation, bool) else None
+
+    # m2o tuple [id, "Name"] or [id, False] → Ref(id, name)
+    if _is_m2o_pair(value) and _annotation_mentions_ref(annotation):
+        return Ref(
+            id=value[0],
+            name=None if value[1] is False else value[1],
+            _target_cls=_ref_target_class(annotation),
+        )
+
+    if isinstance(value, str):
+        # ISO datetime BEFORE date (datetime is a subclass of date — order matters)
+        if _annotation_is(annotation, datetime) and _looks_iso_datetime(value):
+            return datetime.fromisoformat(value)
+        if _annotation_is(annotation, date) and not _annotation_is(annotation, datetime) and _looks_iso_date(value):
+            return date.fromisoformat(value)
+    return value
 
 
 # ------------------------------------------------------------------
@@ -324,6 +312,19 @@ def clear_partial_model_cache() -> None:
 # ------------------------------------------------------------------
 
 
+def _write_value(value: Any) -> Any:
+    # Ref -> bare int id
+    if isinstance(value, Ref):
+        return value.id
+    # None (explicitly set) -> Odoo False
+    if value is None:
+        return False
+    # datetime and date -> ISO string (datetime subclasses date; isoformat covers both)
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
 def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
     """Serialize an OdooBaseModel instance to an Odoo write payload.
 
@@ -383,26 +384,6 @@ def _serialize_for_write(instance: OdooBaseModel) -> dict[str, Any]:
             # Read-inherited (never written by the caller) — omit from payload.
             continue
 
-        value = getattr(instance, field_name)
-
-        # Ref -> bare int id
-        if isinstance(value, Ref):
-            payload[field_name] = value.id
-            continue
-
-        # None (explicitly set) -> Odoo False
-        if value is None:
-            payload[field_name] = False
-            continue
-
-        # datetime BEFORE date (datetime subclasses date — order matters, mirrors read-side)
-        if isinstance(value, datetime):
-            payload[field_name] = value.isoformat()
-            continue
-        if isinstance(value, date):
-            payload[field_name] = value.isoformat()
-            continue
-
-        payload[field_name] = value
+        payload[field_name] = _write_value(getattr(instance, field_name))
 
     return payload

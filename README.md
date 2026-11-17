@@ -58,4 +58,5 @@ configuration alone do not establish publication, runtime or consumer acceptance
 language differences. The [organization overview](https://github.com/godoo-dev/.github/blob/main/profile/README.md)
 provides family orientation. Track work in this repository's
 [GitHub issues](https://github.com/godoo-dev/godoo-py/issues).
-Agent entrypoint: [AGENTS.md](AGENTS.md).
+Maintainer procedures for agents (checks, docs, capture) are in
+[`.agents/skills/`](.agents/skills).

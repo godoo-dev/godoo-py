@@ -94,6 +94,30 @@ uv run ruff format --check .
 uv run mypy packages/godoo-client/src packages/godoo-testcontainers/src packages/godoo-introspection/src
 ```
 
+`ruff check` enforces McCabe complexity (`C901`) at 10. Split a function that
+exceeds it rather than suppressing the rule; an exception needs the
+maintainer's approval and a reason at the suppression.
+
+## Editor and agent setup
+
+`pyright` is a development dependency for editor navigation only; mypy remains
+the type check. The project's Claude Code settings enable the official
+`pyright-lsp` plugin, which starts `pyright-langserver` from `PATH`, so start the
+editor or agent with the workspace environment active (for example
+`source .venv/bin/activate`). Agent working files go in the git-ignored
+`.scratch/` directory. Maintainer procedures for agents are in `.agents/skills/`.
+
+Each tool pin lives in one place and is bumped by hand in its own PR:
+
+- uv: `required-version` under `[tool.uv]` in `pyproject.toml`, which `setup-uv`
+  reads in CI. A different local uv refuses to run in this workspace.
+- Python: `.python-version`, read by `setup-python`, uv and the installed-wheel
+  consumer in `scripts/check.py`.
+  Choose a version that the pinned uv can download.
+- Odoo and Postgres images: the major-version tags in `godoo-testcontainers`
+  (`odoo:<major>`, `postgres:15-alpine`) and the seed-database build. These tags
+  float within a major version, so a bump is a deliberate compatibility change.
+
 Use checks relevant to the change. Documentation edits need link/import checks and
 `git diff --check`; they do not require a Docker test campaign.
 

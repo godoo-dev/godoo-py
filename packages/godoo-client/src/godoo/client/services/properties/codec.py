@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from .types import PropertyDefinition, PropertyLookupError, PropertyOption, PropertyOptions, PropertyValueError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
 
 KINDS = frozenset(
     {"boolean", "integer", "float", "char", "date", "datetime", "many2one", "many2many", "selection", "tags"}
@@ -22,37 +22,48 @@ def parse_definitions(raw: Any) -> tuple[PropertyDefinition, ...]:
     if not isinstance(raw, list):
         raise PropertyValueError("Expected a list of property definitions.")
     definitions = []
-    seen = set()
+    seen: set[str] = set()
     for entry in raw:
-        if not isinstance(entry, dict):
-            raise PropertyValueError("Malformed property definition.")
-        name, label, kind = entry.get("name"), entry.get("string"), entry.get("type")
-        if not isinstance(name, str) or not name or name in seen:
-            raise PropertyValueError(f"Missing or duplicate property ID {name!r}.")
-        if not isinstance(label, str) or not isinstance(kind, str):
-            raise PropertyValueError(f"Missing label/type for property {name!r}.")
-        comodel = entry.get("comodel") or None
-        if comodel is not None and not isinstance(comodel, str):
-            raise PropertyValueError(f"Malformed comodel for property {name!r}.")
-        if kind in ("many2one", "many2many") and not comodel:
-            raise PropertyValueError(f"Missing comodel for property {name!r}.")
-        options = []
-        option_ids = set()
-        for option in (entry.get(kind) or []) if kind in ("selection", "tags") else []:
-            size = 2 if kind == "selection" else 3
-            if not isinstance(option, (list, tuple)) or len(option) != size:
-                raise PropertyValueError(f"Malformed option for property {name!r}.")
-            oid, text = option[:2]
-            if not isinstance(oid, str) or not oid or oid in option_ids or not isinstance(text, str):
-                raise PropertyValueError(f"Missing or duplicate option ID for property {name!r}.")
-            color = option[2] if kind == "tags" else None
-            if color is not None and type(color) is not int:
-                raise PropertyValueError(f"Malformed tag color for property {name!r}.")
-            options.append(PropertyOption(oid, text, color))
-            option_ids.add(oid)
-        definitions.append(PropertyDefinition(name, label, kind, comodel, PropertyOptions(tuple(options))))
-        seen.add(name)
+        definition = _parse_definition(entry, seen)
+        definitions.append(definition)
+        seen.add(definition.id)
     return tuple(definitions)
+
+
+def _parse_definition(entry: Any, seen: set[str]) -> PropertyDefinition:
+    if not isinstance(entry, dict):
+        raise PropertyValueError("Malformed property definition.")
+    name, label, kind = entry.get("name"), entry.get("string"), entry.get("type")
+    if not isinstance(name, str) or not name or name in seen:
+        raise PropertyValueError(f"Missing or duplicate property ID {name!r}.")
+    if not isinstance(label, str) or not isinstance(kind, str):
+        raise PropertyValueError(f"Missing label/type for property {name!r}.")
+    comodel = entry.get("comodel") or None
+    if comodel is not None and not isinstance(comodel, str):
+        raise PropertyValueError(f"Malformed comodel for property {name!r}.")
+    if kind in ("many2one", "many2many") and not comodel:
+        raise PropertyValueError(f"Missing comodel for property {name!r}.")
+    return PropertyDefinition(name, label, kind, comodel, PropertyOptions(_parse_options(entry, name, kind)))
+
+
+def _parse_options(entry: dict[str, Any], name: str, kind: str) -> tuple[PropertyOption, ...]:
+    if kind not in ("selection", "tags"):
+        return ()
+    size = 2 if kind == "selection" else 3
+    options = []
+    option_ids = set()
+    for option in entry.get(kind) or []:
+        if not isinstance(option, (list, tuple)) or len(option) != size:
+            raise PropertyValueError(f"Malformed option for property {name!r}.")
+        oid, text = option[:2]
+        if not isinstance(oid, str) or not oid or oid in option_ids or not isinstance(text, str):
+            raise PropertyValueError(f"Missing or duplicate option ID for property {name!r}.")
+        color = option[2] if kind == "tags" else None
+        if color is not None and type(color) is not int:
+            raise PropertyValueError(f"Malformed tag color for property {name!r}.")
+        options.append(PropertyOption(oid, text, color))
+        option_ids.add(oid)
+    return tuple(options)
 
 
 def value_for(definition: PropertyDefinition, value: Any, *, reading: bool = False) -> Any:
@@ -66,40 +77,47 @@ def value_for(definition: PropertyDefinition, value: Any, *, reading: bool = Fal
         if kind in ("many2many", "tags"):
             return []
         return None if reading else False
-    valid = True
-    if kind == "boolean":
-        valid = type(value) is bool
-    elif kind == "integer":
-        valid = type(value) is int
-    elif kind == "float":
-        valid = type(value) in (int, float) and math.isfinite(value)
-    elif kind == "char":
-        valid = isinstance(value, str)
-    elif kind in ("date", "datetime"):
-        valid = isinstance(value, str)
-        if valid:
-            try:
-                if kind == "date":
-                    date.fromisoformat(value)
-                else:
-                    datetime.fromisoformat(value)
-            except ValueError:
-                valid = False
-    elif kind == "many2one":
-        if reading and _display_pair(value):
-            value = value[0]
-        valid = type(value) is int and value > 0
-    elif kind == "many2many":
-        if reading and isinstance(value, list):
-            value = [item[0] if _display_pair(item) else item for item in value]
-        valid = isinstance(value, list) and all(type(item) is int and item > 0 for item in value)
-    elif kind == "selection":
-        valid = isinstance(value, str) and value in definition.options
-    elif kind == "tags":
-        valid = isinstance(value, list) and all(isinstance(item, str) and item in definition.options for item in value)
-    if not valid:
+    if reading:
+        value = _from_display(kind, value)
+    if not _VALIDATORS[kind](definition, value):
         raise PropertyValueError(f"Invalid {kind} value {value!r} for property {definition.id!r}.")
     return value
+
+
+def _from_display(kind: str, value: Any) -> Any:
+    if kind == "many2one" and _display_pair(value):
+        return value[0]
+    if kind == "many2many" and isinstance(value, list):
+        return [item[0] if _display_pair(item) else item for item in value]
+    return value
+
+
+def _valid_iso(parse: Callable[[str], object], value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        parse(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _positive_id(value: Any) -> bool:
+    return type(value) is int and value > 0
+
+
+_VALIDATORS: dict[str, Callable[[PropertyDefinition, Any], bool]] = {
+    "boolean": lambda _d, v: type(v) is bool,
+    "integer": lambda _d, v: type(v) is int,
+    "float": lambda _d, v: type(v) in (int, float) and math.isfinite(v),
+    "char": lambda _d, v: isinstance(v, str),
+    "date": lambda _d, v: _valid_iso(date.fromisoformat, v),
+    "datetime": lambda _d, v: _valid_iso(datetime.fromisoformat, v),
+    "many2one": lambda _d, v: _positive_id(v),
+    "many2many": lambda _d, v: isinstance(v, list) and all(_positive_id(item) for item in v),
+    "selection": lambda d, v: isinstance(v, str) and v in d.options,
+    "tags": lambda d, v: isinstance(v, list) and all(isinstance(item, str) and item in d.options for item in v),
+}
 
 
 def _display_pair(value: Any) -> bool:
@@ -118,26 +136,35 @@ def decode_values(raw: Any, definitions: Mapping[str, PropertyDefinition]) -> di
     if not isinstance(raw, list):
         raise PropertyValueError("Expected a list of properties from Odoo.")
     result = {}
-    seen = set()
+    seen: set[str] = set()
     for entry in raw:
-        if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
-            raise PropertyValueError("Malformed property read entry.")
-        name = entry["name"]
-        if name in seen or name not in definitions:
-            raise PropertyValueError(f"Duplicate or unexpected property ID {name!r} in read.")
+        name = _read_entry_name(entry, definitions, seen)
         seen.add(name)
         definition = definitions[name]
-        if definition.type == "separator":
-            continue
-        if entry.get("type") != definition.type or (entry.get("comodel") or None) != definition.comodel:
-            raise PropertyValueError(f"Property metadata changed during read for {name!r}.")
-        if "value" not in entry:
-            raise PropertyValueError(f"Missing value for property {name!r} in read.")
-        result[name] = value_for(definition, entry["value"], reading=True)
+        if definition.type != "separator":
+            result[name] = _decode_entry(entry, definition)
     for name, definition in definitions.items():
         if name not in seen and definition.type != "separator":
             raise PropertyValueError(f"Property {name!r} missing from the server read.")
     return result
+
+
+def _read_entry_name(entry: Any, definitions: Mapping[str, PropertyDefinition], seen: set[str]) -> str:
+    if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+        raise PropertyValueError("Malformed property read entry.")
+    name: str = entry["name"]
+    if name in seen or name not in definitions:
+        raise PropertyValueError(f"Duplicate or unexpected property ID {name!r} in read.")
+    return name
+
+
+def _decode_entry(entry: dict[str, Any], definition: PropertyDefinition) -> Any:
+    name = definition.id
+    if entry.get("type") != definition.type or (entry.get("comodel") or None) != definition.comodel:
+        raise PropertyValueError(f"Property metadata changed during read for {name!r}.")
+    if "value" not in entry:
+        raise PropertyValueError(f"Missing value for property {name!r} in read.")
+    return value_for(definition, entry["value"], reading=True)
 
 
 def encode_values(values: Mapping[str, Any], definitions: Mapping[str, PropertyDefinition]) -> dict[str, Any]:
