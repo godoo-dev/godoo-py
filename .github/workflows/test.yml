@@ -43,7 +43,7 @@ jobs:
         with:
           python-version-file: .python-version
       - run: ./scripts/check.py offline --evidence "$RUNNER_TEMP/proof/offline"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: proof-offline
@@ -62,12 +62,12 @@ jobs:
         with:
           python-version-file: .python-version
       - run: ./scripts/check.py package --artifacts "$RUNNER_TEMP/candidate" --evidence "$RUNNER_TEMP/proof/package"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: candidate
           path: ${{ runner.temp }}/candidate
           if-no-files-found: error
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: proof-package
@@ -92,7 +92,7 @@ jobs:
           name: candidate
           path: ${{ runner.temp }}/candidate
       - run: ./scripts/check.py odoo18 --artifacts "$RUNNER_TEMP/candidate" --evidence "$RUNNER_TEMP/proof/odoo18"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: proof-odoo18
@@ -142,7 +142,7 @@ jobs:
           name: proof-odoo18
           path: ${{ runner.temp }}/proof/odoo18
       - run: ./scripts/check.py odoo19 --artifacts "$RUNNER_TEMP/candidate" --evidence "$RUNNER_TEMP/proof/odoo19" --baseline18 "$RUNNER_TEMP/proof/odoo18"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: proof-odoo19
