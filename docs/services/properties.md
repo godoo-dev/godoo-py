@@ -27,6 +27,8 @@ await client.properties.patch(
 )
 ```
 
+<!-- atlas: base/properties-type-taxonomy -->
+
 `task.properties` is a mapping keyed by technical property IDs. Definitions expose
 `id`, `label`, `type`, `comodel` and an options mapping. `by_label()` requires an
 exact, unique match and raises `PropertyLookupError` for missing or ambiguous labels.
@@ -195,6 +197,9 @@ No uncertain write is retried automatically.
 
 ## Why read-merge-write?
 
+<!-- atlas: base/properties-full-replacement-danger -->
+<!-- atlas: base/properties-safe-update-helpers -->
+
 Odoo properties writes replace the stored value set. Sparse updates therefore
 read current values, normalize them, merge changes and write a complete value-only
 dictionary. This preserves supported server-visible unbound properties and avoids
@@ -249,6 +254,9 @@ payload = PropertiesService.properties_to_write_format([
 ])
 # {"owner": 7}
 ```
+
+<!-- atlas: base/properties-type-taxonomy -->
+<!-- atlas: base/properties-safe-update-helpers -->
 
 The converter and legacy updates share normalization primitives. This corrects
 the former converter's verbatim relational display pairs and changes legacy

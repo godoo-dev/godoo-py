@@ -16,7 +16,9 @@ _base_url_cache: dict[int, str] = {}
 async def get_base_url(client: OdooClient, *, force_refresh: bool = False) -> str:
     """Read the base URL from ir.config_parameter (web.base.url).
 
-    Results are cached per client instance.
+    See atlas:base/url-base-url.
+    Results are cached per client instance; force_refresh bypasses the cache.
+    Trailing slashes are trimmed. An absent parameter returns an empty string.
     """
     cid = id(client)
     if not force_refresh and cid in _base_url_cache:
@@ -33,7 +35,11 @@ async def get_base_url(client: OdooClient, *, force_refresh: bool = False) -> st
 
 
 async def get_record_url(client: OdooClient, model: str, res_id: int) -> str:
-    """Build a backend record URL via the mail redirect endpoint."""
+    """Interpolate model and res_id into a mail redirect URL without query encoding.
+
+    Resolution depends on installed controllers, model routes and access rights.
+    See atlas:base/url-record-basic.
+    """
     base = await get_base_url(client)
     return f"{base}/mail/view?model={model}&res_id={res_id}"
 
@@ -44,7 +50,14 @@ async def get_portal_url(
     res_id: int,
     options: PortalUrlOptions | None = None,
 ) -> PortalUrlResult:
-    """Build a portal URL using access_url and optionally access_token."""
+    """Read access_url and, when enabled, an existing access_token; never create one.
+
+    Token access depends on the model's portal policy.
+    See atlas:base/url-portal-mixin.
+    Missing rows or access_url fall back to the mail redirect URL. Missing or
+    disabled tokens return None; RPC access errors propagate.
+    See atlas:base/url-record-basic.
+    """
     opts = options or PortalUrlOptions()
     fields = ["access_url"]
     if opts.access_token:

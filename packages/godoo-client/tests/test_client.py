@@ -54,6 +54,7 @@ async def test_authenticate_success(client):
     respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(2)))
     session = await client.authenticate()
     assert session.uid == 2
+    assert session.db == DB
     assert client.is_authenticated()
 
 
@@ -155,6 +156,8 @@ async def test_get_session_after_auth(client):
     session = client.get_session()
     assert session is not None
     assert session.uid == 2
+    assert session.db == DB
+    assert client.is_authenticated()
 
 
 @pytest.mark.asyncio
@@ -572,3 +575,14 @@ async def test_aexit_preserves_body_exception_when_aclose_fails():
         with pytest.raises(ValueError, match="body error"):
             async with c:
                 raise ValueError("body error")
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_generic_call_forwards_read_arguments_and_rows(auth_client):
+    rows = [{"id": 9, "display_name": "Client partner"}]
+    route = respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=httpx.Response(200, json=_jsonrpc_result(rows)))
+    result = await auth_client.call("res.partner", "read", [[9], ["display_name"]], {})
+    assert result == rows
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["params"]["args"][3:] == ["res.partner", "read", [[9], ["display_name"]], {}]

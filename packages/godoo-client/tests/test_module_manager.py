@@ -214,3 +214,36 @@ async def test_install_module_retries_on_ir_cron_lock(auth_client):
     mgr = ModuleManager(auth_client, retry_delay=0.01)
     result = await mgr.install_module("sale")
     assert result["state"] == "installed"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_list_module_query_arguments(auth_client):
+    import json
+
+    route = respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=_rpc_response([]))
+    assert await auth_client.modules.list_modules(state="installed", application=False, limit=7, offset=3) == []
+    args = json.loads(route.calls.last.request.content)["params"]["args"]
+    assert args[3:6] == [
+        "ir.module.module",
+        "search_read",
+        [[["state", "=", "installed"], ["application", "=", False]]],
+    ]
+    assert args[6] == {"fields": MODULE_FIELDS, "limit": 7, "offset": 3}
+
+
+@respx.mock
+@pytest.mark.asyncio
+@pytest.mark.parametrize("rows", [[], [{"id": 8, "name": "sale", "state": "installed"}]])
+async def test_get_module_info_visible_lookup(auth_client, rows):
+    import json
+
+    route = respx.post(f"{BASE_URL}/jsonrpc").mock(return_value=_rpc_response(rows))
+    if rows:
+        assert await auth_client.modules.get_module_info("sale") == rows[0]
+    else:
+        with pytest.raises(RuntimeError, match="not found"):
+            await auth_client.modules.get_module_info("sale")
+    args = json.loads(route.calls.last.request.content)["params"]["args"]
+    assert args[3:6] == ["ir.module.module", "search_read", [[["name", "=", "sale"]]]]
+    assert args[6] == {"fields": MODULE_FIELDS}

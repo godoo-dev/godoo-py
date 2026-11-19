@@ -143,9 +143,11 @@ class OdooClient:
         return await self._transport.authenticate(self._config.username, self._config.password)
 
     def is_authenticated(self) -> bool:
+        """Report local session presence without checking server liveness."""
         return self._transport.session is not None
 
     def get_session(self) -> OdooSessionInfo | None:
+        """Return the local session, or None before authentication and after logout."""
         return self._transport.session
 
     # ------------------------------------------------------------------
