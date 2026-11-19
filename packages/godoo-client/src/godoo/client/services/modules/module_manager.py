@@ -47,7 +47,12 @@ def _is_ir_cron_error(exc: Exception) -> bool:
 
 
 class ModuleManager:
-    """High-level service for managing Odoo modules."""
+    """High-level service for managing Odoo modules.
+
+    Button calls allow three total attempts, with retry_delay seconds between
+    attempts (default 5). Only messages or RPC data mentioning ir_cron or
+    scheduled action qualify; other errors and the final failure propagate.
+    """
 
     def __init__(self, client: OdooClient, *, retry_delay: float = 5.0) -> None:
         self._client = client
@@ -59,6 +64,10 @@ class ModuleManager:
 
     async def install_module(self, module_name: str) -> dict[str, Any]:
         """Install a module by name.
+
+        An installed visible match is returned without dispatch; otherwise calls
+        the server install button and reads metadata again.
+        See atlas:base/modules-install-lifecycle.
 
         Returns updated module info dict.
         Raises RuntimeError if module not found.
@@ -73,7 +82,10 @@ class ModuleManager:
         return await self._fetch_module_info(module_name)
 
     async def uninstall_module(self, module_name: str) -> dict[str, Any]:
-        """Uninstall a module by name.
+        """Uninstall a module by name, including an already-uninstalled match.
+
+        Calls the server uninstall button, which can affect dependent modules.
+        See atlas:base/modules-uninstall-lifecycle.
 
         Returns updated module info dict.
         Raises RuntimeError if module not found.
@@ -104,7 +116,12 @@ class ModuleManager:
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[dict[str, Any]]:
-        """List modules with optional filters."""
+        """List visible modules with keyword state/application equality filters.
+
+        limit and offset paginate results. Rows select identity, state, descriptions,
+        author, website, versions, license, application and category metadata.
+        See atlas:base/modules-list-installed.
+        """
         domain: list[Any] = []
         if state is not None:
             domain.append(("state", "=", state))
@@ -120,14 +137,20 @@ class ModuleManager:
         return await self._client.search_read(_MODEL, domain, **kwargs)
 
     async def get_module_info(self, module_name: str) -> dict[str, Any]:
-        """Return detailed info for a single module.
+        """Return the first visible technical-name match with list metadata.
+
+        An invisible match is indistinguishable from an absent one here.
+        See atlas:base/modules-check-installed.
 
         Raises RuntimeError if module not found.
         """
         return await self._find_module(module_name)
 
     async def is_module_installed(self, module_name: str) -> bool:
-        """Return True if the named module is installed."""
+        """Return True for a visible installed technical-name match, else False.
+
+        See atlas:base/modules-check-installed.
+        """
         ids = await self._client.search(
             _MODEL,
             [("name", "=", module_name), ("state", "=", "installed")],
@@ -162,7 +185,7 @@ class ModuleManager:
         method: str,
         module_name: str,
     ) -> Any:
-        """Call a module button method, retrying up to _MAX_RETRIES on ir_cron errors."""
+        """Call a module button method, allowing _MAX_RETRIES total attempts on ir_cron errors."""
         last_exc: Exception | None = None
         for attempt in range(1, _MAX_RETRIES + 1):
             try:

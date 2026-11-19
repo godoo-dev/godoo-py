@@ -10,6 +10,23 @@ if TYPE_CHECKING:
 
 @pytest.mark.integration
 class TestCRUDIntegration:
+    async def test_generic_call_read(self, client: OdooClient, odoo) -> None:
+        assert client.is_authenticated()
+        session = client.get_session()
+        assert session is not None
+        assert session.uid > 0
+        assert session.db == odoo.database
+        partner_id = await client.create("res.partner", {"name": "Godoo Python call partner"})
+        try:
+            rows = await client.call("res.partner", "read", [[partner_id], ["display_name"]], {})
+            assert isinstance(rows, list)
+            assert len(rows) == 1
+            assert rows[0]["id"] == partner_id
+            assert isinstance(rows[0]["display_name"], str)
+            assert rows[0]["display_name"]
+        finally:
+            await client.unlink("res.partner", partner_id)
+
     async def test_search_partners(self, client: OdooClient) -> None:
         ids = await client.search("res.partner", limit=5)
         assert isinstance(ids, list)

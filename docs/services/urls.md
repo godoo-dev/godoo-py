@@ -7,6 +7,8 @@ pages.
 
 ### get_base_url
 
+<!-- atlas: base/url-base-url -->
+
 Reads `web.base.url` from `ir.config_parameter`.  The result is cached per
 client instance:
 
@@ -19,18 +21,17 @@ Pass `force_refresh=True` to bypass the cache.
 
 ### get_record_url
 
-Build a version-agnostic backend URL for any record:
+Build a mail-controller redirect URL by interpolating the model and record ID:
 
 ```python
 url = await client.urls.get_record_url("sale.order", 42)
 # "https://mycompany.odoo.com/mail/view?model=sale.order&res_id=42"
 ```
 
-!!! info "Why `/mail/view`?"
-    The Odoo backend URL format has changed across versions (hash fragment in
-    older versions, `/odoo/` prefix in newer ones).  The `/mail/view` controller
-    exists on Odoo 14 through 19 and performs a server-side redirect to the
-    correct format.  This makes URLs stable across upgrades.
+<!-- atlas: base/url-record-basic -->
+
+Resolution requires the deployed mail controller and suitable record access.
+The redirect destination depends on the version, installed modules and model routes.
 
 ### get_portal_url
 
@@ -39,11 +40,19 @@ Build a customer-facing portal URL with an access token:
 ```python
 result = await client.urls.get_portal_url("sale.order", 42)
 print(result.url)           # full portal URL with token
-print(result.access_token)  # the token string, if generated
+print(result.access_token)  # an existing token string, or None
 ```
 
-Portal URLs let external users (customers, vendors) view specific records
-without logging in.
+<!-- atlas: base/url-portal-mixin -->
+
+The helper reads an existing token and never requests token creation. Pass
+`PortalUrlOptions(access_token=False)` to omit token reads and URL parameters.
+Token links grant access only where the model's portal policy permits it.
+
+<!-- atlas: base/url-record-basic -->
+
+Missing records or an empty `access_url` use the mail redirect instead. A missing
+or disabled token yields `None`; RPC access failures propagate.
 
 ## Types
 

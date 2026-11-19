@@ -16,6 +16,12 @@ print(info["state"])  # "installed"
 
 ### uninstall_module
 
+Dispatches the uninstall button even for an already-uninstalled visible match.
+The server can affect dependent modules; returned metadata is read after dispatch.
+Install, uninstall and detail lookup raise `RuntimeError` for no visible match.
+
+<!-- atlas: base/modules-uninstall-lifecycle -->
+
 ```python
 info = await client.modules.uninstall_module("sale")
 ```
@@ -31,7 +37,9 @@ info = await client.modules.upgrade_module("sale")
 
 ### is_module_installed
 
-Quick boolean check:
+Returns false if no visible installed match exists; invisible addons cannot be distinguished from absent ones:
+
+<!-- atlas: base/modules-check-installed -->
 
 ```python
 if await client.modules.is_module_installed("hr_timesheet"):
@@ -40,7 +48,9 @@ if await client.modules.is_module_installed("hr_timesheet"):
 
 ### get_module_info
 
-Fetch detailed info for a single module:
+Fetch the first visible technical-name match. Missing visible matches raise `RuntimeError`:
+
+<!-- atlas: base/modules-check-installed -->
 
 ```python
 info = await client.modules.get_module_info("sale")
@@ -49,7 +59,11 @@ print(info["shortdesc"], info["installed_version"])
 
 ### list_modules
 
-List modules with optional filters:
+List visible module rows using keyword `state` and `application` equality filters,
+plus `limit` and `offset` pagination. List and detail rows select identity, state,
+descriptions, author, website, versions, license, application and category metadata:
+
+<!-- atlas: base/modules-list-installed -->
 
 ```python
 # All installed applications
@@ -61,10 +75,13 @@ all_mods = await client.modules.list_modules(limit=20)
 
 ## ir_cron retry
 
-Module install/uninstall/upgrade triggers Odoo server operations that sometimes
-collide with scheduled actions (`ir.cron`).  When a lock error mentioning
-`ir_cron` is detected, godoo retries up to **3 times** with a **5-second
-delay** between attempts.
+<!-- atlas: base/modules-install-lifecycle -->
+
+Module buttons can conflict with scheduled actions. The client allows **three
+total attempts** (at most two delays). The constructor's `retry_delay` defaults
+to **5 seconds**. Classification checks exception text and RPC data fields
+`message`, `debug` and `name` for `ir_cron` or `scheduled action`, ignoring case.
+Unclassified errors and the final failure propagate.
 
 ## Module states
 
